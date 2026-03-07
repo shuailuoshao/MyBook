@@ -59,82 +59,6 @@
     "updatedAt": "2026-03-07T08:28:03.843Z"
   },
   {
-    "id": "1772852287876",
-    "title": "3333",
-    "author": "",
-    "startDate": null,
-    "endDate": null,
-    "status": "未开始",
-    "notes": [],
-    "rating": {
-      "totalScore": 50,
-      "profile": "标准配置",
-      "ratings": {},
-      "ratedAt": "2026-03-07T02:58:25.688Z"
-    },
-    "tags": [
-      "游戏剧情"
-    ],
-    "enableRating": true,
-    "createdAt": "2026-03-07T02:58:07.876Z",
-    "updatedAt": "2026-03-07T09:12:23.934Z"
-  },
-  {
-    "id": "1772864171677",
-    "title": "测试",
-    "author": "1",
-    "startDate": null,
-    "endDate": null,
-    "status": "未开始",
-    "notes": [],
-    "rating": {
-      "totalScore": 53,
-      "profile": "标准配置",
-      "ratings": {
-        "情节架构": 1,
-        "世界观": 1,
-        "人物设计": 1,
-        "叙事时间": 1,
-        "人物关系网络": -1
-      },
-      "ratedAt": "2026-03-07T08:22:17.368Z"
-    },
-    "tags": [
-      "轻小说"
-    ],
-    "enableRating": true,
-    "createdAt": "2026-03-07T06:16:11.677Z",
-    "updatedAt": "2026-03-07T09:06:20.915Z"
-  },
-  {
-    "id": "1772865466184",
-    "title": "··1111",
-    "author": "",
-    "startDate": null,
-    "endDate": null,
-    "status": "未开始",
-    "notes": [],
-    "rating": {
-      "totalScore": 49.5,
-      "profile": "标准配置",
-      "ratings": {
-        "象征与意象": 1,
-        "人物设计": 0,
-        "世界观": -1
-      },
-      "ratedAt": "2026-03-07T08:22:14.885Z"
-    },
-    "tags": [
-      "文学",
-      "悬疑",
-      "科幻",
-      "推理"
-    ],
-    "enableRating": true,
-    "createdAt": "2026-03-07T06:37:46.184Z",
-    "updatedAt": "2026-03-07T08:56:30.833Z"
-  },
-  {
     "id": "1772872226446",
     "title": "圆通的人际关系",
     "author": "曾仕强",
@@ -144,10 +68,15 @@
     "notes": [],
     "rating": null,
     "tags": [
-      "纪实"
+      "纪实",
+      "科幻",
+      "悬疑",
+      "奇幻",
+      "戏剧",
+      "心理"
     ],
     "enableRating": false,
     "createdAt": "2026-03-07T08:30:26.446Z",
-    "updatedAt": "2026-03-07T09:12:06.995Z"
+    "updatedAt": "2026-03-07T10:07:06.894Z"
   }
 ]

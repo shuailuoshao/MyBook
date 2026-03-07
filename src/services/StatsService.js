@@ -54,27 +54,27 @@ class StatsService {
   }
 
   /**
-   * 获取评分统计
+   * 获取评分统计 (0-100分制)
    * @param {Array} books 书籍列表
    * @returns {Object} 评分统计
    */
   getRatingStats(books) {
     const ratingRanges = {
-      '0-1': 0,
-      '1-2': 0,
-      '2-3': 0,
-      '3-4': 0,
-      '4-5': 0
+      '0-20': 0,
+      '21-40': 0,
+      '41-60': 0,
+      '61-80': 0,
+      '81-100': 0
     };
 
     books.forEach(book => {
-      if (book.rating !== undefined) {
-        const rating = book.rating.overall || book.rating;
-        if (rating >= 0 && rating < 1) ratingRanges['0-1']++;
-        else if (rating >= 1 && rating < 2) ratingRanges['1-2']++;
-        else if (rating >= 2 && rating < 3) ratingRanges['2-3']++;
-        else if (rating >= 3 && rating < 4) ratingRanges['3-4']++;
-        else if (rating >= 4 && rating <= 5) ratingRanges['4-5']++;
+      if (book.rating && book.rating.totalScore !== undefined) {
+        const score = book.rating.totalScore;
+        if (score >= 0 && score <= 20) ratingRanges['0-20']++;
+        else if (score > 20 && score <= 40) ratingRanges['21-40']++;
+        else if (score > 40 && score <= 60) ratingRanges['41-60']++;
+        else if (score > 60 && score <= 80) ratingRanges['61-80']++;
+        else if (score > 80 && score <= 100) ratingRanges['81-100']++;
       }
     });
 

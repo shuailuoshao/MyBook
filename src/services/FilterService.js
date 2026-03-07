@@ -63,7 +63,7 @@ class FilterService {
     });
   }
 
-  // 按书名/作者关键词搜索
+  // 按书名/作者/标签关键词搜索
   static filterByKeyword(books, keyword) {
     if (!keyword || keyword.trim() === '') return books;
 
@@ -71,7 +71,11 @@ class FilterService {
     return books.filter(book => {
       const titleMatch = book.title && book.title.toLowerCase().includes(searchTerm);
       const authorMatch = book.author && book.author.toLowerCase().includes(searchTerm);
-      return titleMatch || authorMatch;
+      // 搜索标签数组（题材和类型）
+      const tagsMatch = book.tags && book.tags.some(tag =>
+        tag.toLowerCase().includes(searchTerm)
+      );
+      return titleMatch || authorMatch || tagsMatch;
     });
   }
 

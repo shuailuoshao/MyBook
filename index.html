@@ -65,66 +65,70 @@
                     </button>
                 </div>
             </div>
-        </header>
 
-        <!-- 过滤面板（默认隐藏） -->
-        <div id="filterPanel" class="filter-panel" style="display: none;">
+            <!-- 过滤面板（默认隐藏） -->
+            <div id="filterPanel" class="filter-panel" style="display: none;">
             <div class="filter-header">
                 <h3><i class="fas fa-filter"></i> 筛选条件</h3>
                 <button id="closeFilterPanelBtn" class="close-btn"><i class="fas fa-times"></i></button>
             </div>
             <div class="filter-content">
-                <!-- 状态筛选 -->
-                <div class="filter-group">
-                    <label>阅读状态</label>
-                    <div class="checkbox-group" id="filterStatusGroup">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="filterStatus" value="未开始"> 未开始
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="filterStatus" value="阅读中"> 阅读中
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="filterStatus" value="已读完"> 已读完
-                        </label>
+                <!-- 第一行：状态、时间、评分、时长并排 -->
+                <div class="filter-top-row">
+                    <!-- 状态筛选 -->
+                    <div class="filter-group">
+                        <label class="filter-label">阅读状态</label>
+                        <div class="checkbox-group" id="filterStatusGroup">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="filterStatus" value="未开始"> 未开始
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="filterStatus" value="阅读中"> 阅读中
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="filterStatus" value="已读完"> 已读完
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 时间范围筛选 -->
+                    <div class="filter-group">
+                        <label class="filter-label">开始时间范围</label>
+                        <div class="date-range">
+                            <input type="date" id="filterStartDateFrom" placeholder="开始日期">
+                            <span>至</span>
+                            <input type="date" id="filterStartDateTo" placeholder="结束日期">
+                        </div>
+                    </div>
+
+                    <!-- 评分范围筛选 -->
+                    <div class="filter-group">
+                        <label class="filter-label">评分范围</label>
+                        <div class="rating-range">
+                            <input type="number" id="filterRatingMin" min="0" max="100" placeholder="最低分">
+                            <span>至</span>
+                            <input type="number" id="filterRatingMax" min="0" max="100" placeholder="最高分">
+                        </div>
+                    </div>
+
+                    <!-- 阅读时长筛选 -->
+                    <div class="filter-group">
+                        <label class="filter-label">阅读时长（天）</label>
+                        <div class="duration-range">
+                            <input type="number" id="filterDurationMin" min="0" placeholder="最少天数">
+                            <span>至</span>
+                            <input type="number" id="filterDurationMax" min="0" placeholder="最多天数">
+                        </div>
                     </div>
                 </div>
 
-                <!-- 标签筛选 -->
-                <div class="filter-group">
-                    <label>标签</label>
-                    <div id="filterTagsContainer" class="tag-filter-list">
-                        <span class="empty-tip">暂无标签</span>
-                    </div>
-                </div>
-
-                <!-- 时间范围筛选 -->
-                <div class="filter-group">
-                    <label>开始时间范围</label>
-                    <div class="date-range">
-                        <input type="date" id="filterStartDateFrom" placeholder="开始日期">
-                        <span>至</span>
-                        <input type="date" id="filterStartDateTo" placeholder="结束日期">
-                    </div>
-                </div>
-
-                <!-- 评分范围筛选 -->
-                <div class="filter-group">
-                    <label>评分范围</label>
-                    <div class="rating-range">
-                        <input type="number" id="filterRatingMin" min="0" max="100" placeholder="最低分">
-                        <span>至</span>
-                        <input type="number" id="filterRatingMax" min="0" max="100" placeholder="最高分">
-                    </div>
-                </div>
-
-                <!-- 阅读时长筛选 -->
-                <div class="filter-group">
-                    <label>阅读时长（天）</label>
-                    <div class="duration-range">
-                        <input type="number" id="filterDurationMin" min="0" placeholder="最少天数">
-                        <span>至</span>
-                        <input type="number" id="filterDurationMax" min="0" placeholder="最多天数">
+                <!-- 第二行：标签筛选（横向铺开） -->
+                <div class="filter-bottom-row">
+                    <div class="filter-group filter-tags-group">
+                        <label class="filter-label">标签</label>
+                        <div id="filterTagsContainer" class="tag-filter-list">
+                            <span class="empty-tip">暂无标签</span>
+                        </div>
                     </div>
                 </div>
             </div>

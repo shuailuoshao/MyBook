@@ -1707,6 +1707,18 @@ class BookApp {
   }
 
   bindEvents() {
+    // 滚动监听 - Header 粘性效果增强
+    window.addEventListener('scroll', () => {
+      const header = document.querySelector('.app-header');
+      if (header) {
+        if (window.scrollY > 10) {
+          header.classList.add('stuck');
+        } else {
+          header.classList.remove('stuck');
+        }
+      }
+    });
+
     this.bookForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
     this.addBookBtn.addEventListener('click', () => this.showBookForm());
     this.refreshBtn.addEventListener('click', () => this.loadBooks());
@@ -1794,12 +1806,18 @@ class BookApp {
   }
 
   // 就是这个函数被 Claude 搞丢了！现在它回来了。
-  renderBooks() {
+  renderBooks(searchTerm = '') {
     let books = this.storageService.getAllBooks();
 
-    // 应用过滤
-    if (this.hasActiveFilters()) {
-      books = FilterService.applyFilters(books, this.activeFilters);
+    // 构建过滤选项，包含搜索关键词
+    const filterOptions = {
+      ...this.activeFilters,
+      keyword: searchTerm
+    };
+
+    // 应用过滤（包含搜索关键词和筛选面板条件）
+    if (searchTerm || this.hasActiveFilters()) {
+      books = FilterService.applyFilters(books, filterOptions);
     }
 
     const sortedBooks = SortService.applyCurrentSort(
@@ -1870,9 +1888,9 @@ class BookApp {
 
     let html = '';
 
-    // 题材标签区域（多选）
+    // 第一行：题材标签区域
     if (categorizedTags.format.length > 0) {
-      html += '<div class="filter-tag-section"><span class="filter-tag-category">题材：</span>';
+      html += '<div class="filter-tag-category-row"><span class="filter-tag-category">题材：</span>';
       categorizedTags.format.forEach(tag => {
         const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
         html += `
@@ -1885,9 +1903,11 @@ class BookApp {
       html += '</div>';
     }
 
-    // 类型标签区域（多选）
-    if (categorizedTags.genre.length > 0) {
-      html += '<div class="filter-tag-section"><span class="filter-tag-category">类型：</span>';
+    // 第二行：类型和其他标签区域
+    if (categorizedTags.genre.length > 0 || categorizedTags.unknown.length > 0) {
+      html += '<div class="filter-tag-category-row"><span class="filter-tag-category">类型：</span>';
+
+      // 类型标签
       categorizedTags.genre.forEach(tag => {
         const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
         html += `
@@ -1897,21 +1917,21 @@ class BookApp {
           </label>
         `;
       });
-      html += '</div>';
-    }
 
-    // 未知/自定义标签
-    if (categorizedTags.unknown.length > 0) {
-      html += '<div class="filter-tag-section"><span class="filter-tag-category">其他：</span>';
-      categorizedTags.unknown.forEach(tag => {
-        const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
-        html += `
-          <label class="filter-tag-item">
-            <input type="checkbox" name="filterUnknownTag" value="${this.escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
-            <span class="tag-name">${this.escapeHtml(tag)}</span>
-          </label>
-        `;
-      });
+      // 其他标签（如果有的话）
+      if (categorizedTags.unknown.length > 0) {
+        html += '<span class="filter-tag-category" style="margin-left: 20px;">其他：</span>';
+        categorizedTags.unknown.forEach(tag => {
+          const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
+          html += `
+            <label class="filter-tag-item">
+              <input type="checkbox" name="filterUnknownTag" value="${this.escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
+              <span class="tag-name">${this.escapeHtml(tag)}</span>
+            </label>
+          `;
+        });
+      }
+
       html += '</div>';
     }
 
@@ -1991,9 +2011,13 @@ class BookApp {
       durationRange: null
     };
 
-    // 重置 UI
+    // 重置 UI - 状态复选框
     document.querySelectorAll('input[name="filterStatus"]').forEach(cb => cb.checked = false);
-    document.querySelectorAll('input[name="filterTag"]').forEach(cb => cb.checked = false);
+    // 重置 UI - 标签复选框（题材、类型、其他）
+    document.querySelectorAll('input[name="filterFormatTag"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('input[name="filterGenreTag"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('input[name="filterUnknownTag"]').forEach(cb => cb.checked = false);
+    // 重置 UI - 其他筛选条件
     document.getElementById('filterStartDateFrom').value = '';
     document.getElementById('filterStartDateTo').value = '';
     document.getElementById('filterRatingMin').value = '';
@@ -2698,10 +2722,27 @@ class BookApp {
       this.activeCharts.set('monthlyTrendChart', chart);
     }
 
-    // 评分分布 - 柱状图
+    // 评分分布 - 柱状图 (0-100分制)
     const ratingDistributionCanvas = document.getElementById('ratingDistributionChart');
     if (ratingDistributionCanvas) {
-      const chart = this.chartManager.createBarChart(ratingDistributionCanvas, stats.ratingStats);
+      const ratingOptions = {
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 45,
+              minRotation: 45,
+              autoSkip: false
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        }
+      };
+      const chart = this.chartManager.createBarChart(ratingDistributionCanvas, stats.ratingStats, ratingOptions);
       this.activeCharts.set('ratingDistributionChart', chart);
     }
 
