@@ -6,7 +6,7 @@
     <title>我的读书记录</title>
     <link rel="stylesheet" href="styles.css?v=888">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
 </head>
 <body>
     <div class="app-container">
@@ -14,10 +14,19 @@
         <header class="app-header">
             <h1><i class="fas fa-book"></i> 我的读书记录</h1>
             <div class="toolbar">
-                <button id="addBookBtn" class="btn-primary">
-                    <i class="fas fa-plus"></i> 添加书籍
-                </button>
+                <div class="toolbar-left">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="globalSearch" placeholder="搜索书名、作者、标签...">
+                    </div>
+                    <button id="addBookBtn" class="btn-primary">
+                        <i class="fas fa-plus"></i> 添加书籍
+                    </button>
+                </div>
                 <div class="data-controls">
+                    <button id="themeToggleBtn" class="btn-secondary" title="切换主题">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
                     <button id="statsBtn" class="btn-secondary" title="查看统计">
                         <i class="fas fa-chart-bar"></i> 统计
                     </button>
@@ -171,6 +180,30 @@
                                     <input type="checkbox" id="enableRating">
                                     <span>启用评分功能</span>
                                 </label>
+                            </div>
+                        </div>
+                        <!-- 标签选择区域 - 三区式严格分离 -->
+                        <div class="form-group">
+                            <label>标签</label>
+
+                            <!-- 第一区：已选展示区（带删除按钮） -->
+                            <div id="selectedTagsContainer" class="selected-tags-area"></div>
+
+                            <!-- 第二区：自定义输入 -->
+                            <div class="tag-input-wrapper">
+                                <input type="text" id="customTagInput" class="form-control" placeholder="输入自定义标签，按 Enter 键添加">
+                            </div>
+
+                            <!-- 第三区：双分类推荐区 -->
+                            <div class="tag-groups-container">
+                                <div class="tag-group">
+                                    <span class="tag-group-title">题材：</span>
+                                    <div id="formatTags" class="preset-tags-container"></div>
+                                </div>
+                                <div class="tag-group">
+                                    <span class="tag-group-title">类型：</span>
+                                    <div id="genreTags" class="preset-tags-container"></div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-actions">
@@ -559,6 +592,20 @@
 
     <!-- 遮罩层 -->
     <div id="overlay" class="overlay" style="display: none;"></div>
+
+    <!-- Toast 通知容器 -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- 右键菜单 -->
+    <div id="contextMenu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="edit"><i class="fas fa-edit"></i> 编辑</li>
+            <li data-action="notes"><i class="fas fa-sticky-note"></i> 笔记</li>
+            <li data-action="rating"><i class="fas fa-star"></i> 评分</li>
+            <li class="divider"></li>
+            <li data-action="delete" class="danger"><i class="fas fa-trash"></i> 删除</li>
+        </ul>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

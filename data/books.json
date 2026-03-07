@@ -56,58 +56,7 @@
     "tags": [],
     "enableRating": true,
     "createdAt": "2026-03-06T10:13:18.638Z",
-    "updatedAt": "2026-03-07T02:36:33.586Z"
-  },
-  {
-    "id": "1772852282834",
-    "title": "1111",
-    "author": "",
-    "startDate": null,
-    "endDate": null,
-    "status": "未开始",
-    "notes": [],
-    "rating": {
-      "totalScore": 60,
-      "profile": "标准配置",
-      "ratings": {
-        "世界观": 1,
-        "时代背景": 1,
-        "叙事时间": 1,
-        "人物设计": 1,
-        "作品主题": 1,
-        "情节架构": 1,
-        "象征与意象": 1
-      },
-      "ratedAt": "2026-03-07T02:58:14.058Z"
-    },
-    "tags": [],
-    "enableRating": true,
-    "createdAt": "2026-03-07T02:58:02.834Z",
-    "updatedAt": "2026-03-07T02:58:14.058Z"
-  },
-  {
-    "id": "1772852285657",
-    "title": "2222",
-    "author": "",
-    "startDate": null,
-    "endDate": null,
-    "status": "未开始",
-    "notes": [],
-    "rating": {
-      "totalScore": 43,
-      "profile": "标准配置",
-      "ratings": {
-        "作品主题": -1,
-        "叙事时间": -1,
-        "象征与意象": -1,
-        "世界观": -1
-      },
-      "ratedAt": "2026-03-07T02:58:19.197Z"
-    },
-    "tags": [],
-    "enableRating": true,
-    "createdAt": "2026-03-07T02:58:05.658Z",
-    "updatedAt": "2026-03-07T02:58:19.197Z"
+    "updatedAt": "2026-03-07T08:28:03.843Z"
   },
   {
     "id": "1772852287876",
@@ -123,9 +72,82 @@
       "ratings": {},
       "ratedAt": "2026-03-07T02:58:25.688Z"
     },
-    "tags": [],
+    "tags": [
+      "游戏剧情"
+    ],
     "enableRating": true,
     "createdAt": "2026-03-07T02:58:07.876Z",
-    "updatedAt": "2026-03-07T02:58:25.688Z"
+    "updatedAt": "2026-03-07T09:12:23.934Z"
+  },
+  {
+    "id": "1772864171677",
+    "title": "测试",
+    "author": "1",
+    "startDate": null,
+    "endDate": null,
+    "status": "未开始",
+    "notes": [],
+    "rating": {
+      "totalScore": 53,
+      "profile": "标准配置",
+      "ratings": {
+        "情节架构": 1,
+        "世界观": 1,
+        "人物设计": 1,
+        "叙事时间": 1,
+        "人物关系网络": -1
+      },
+      "ratedAt": "2026-03-07T08:22:17.368Z"
+    },
+    "tags": [
+      "轻小说"
+    ],
+    "enableRating": true,
+    "createdAt": "2026-03-07T06:16:11.677Z",
+    "updatedAt": "2026-03-07T09:06:20.915Z"
+  },
+  {
+    "id": "1772865466184",
+    "title": "··1111",
+    "author": "",
+    "startDate": null,
+    "endDate": null,
+    "status": "未开始",
+    "notes": [],
+    "rating": {
+      "totalScore": 49.5,
+      "profile": "标准配置",
+      "ratings": {
+        "象征与意象": 1,
+        "人物设计": 0,
+        "世界观": -1
+      },
+      "ratedAt": "2026-03-07T08:22:14.885Z"
+    },
+    "tags": [
+      "文学",
+      "悬疑",
+      "科幻",
+      "推理"
+    ],
+    "enableRating": true,
+    "createdAt": "2026-03-07T06:37:46.184Z",
+    "updatedAt": "2026-03-07T08:56:30.833Z"
+  },
+  {
+    "id": "1772872226446",
+    "title": "圆通的人际关系",
+    "author": "曾仕强",
+    "startDate": "2026-02-24",
+    "endDate": "2026-03-01",
+    "status": "已读完",
+    "notes": [],
+    "rating": null,
+    "tags": [
+      "纪实"
+    ],
+    "enableRating": false,
+    "createdAt": "2026-03-07T08:30:26.446Z",
+    "updatedAt": "2026-03-07T09:12:06.995Z"
   }
 ]

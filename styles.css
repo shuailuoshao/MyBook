@@ -14,15 +14,129 @@
     --bg-light: #fff5f5;
     --bg-gradient: linear-gradient(135deg, #f8f0ff 0%, #ffe4e1 100%);
     --danger-color: #e74c3c;
+
+    /* 基础颜色变量 */
+    --bg-color: white;
+    --text-color: #333;
+    --border-color: #e9ecef;
+    --card-bg: white;
+    --header-bg: var(--primary-gradient);
+    --footer-bg: #f8f9fa;
+    --input-bg: linear-gradient(135deg, #fff5f5 0%, #fff0f5 100%);
+    --modal-bg: white;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* 深色模式变量 */
+[data-theme="dark"] {
+    --primary-gradient: linear-gradient(135deg, #4a2c4a 0%, #5a3a5a 50%, #7a4a7a 100%);
+    --primary-color: #8a5a8a;
+    --secondary-color: #9a6a9a;
+    --hover-color: #aa7aaa;
+    --bg-light: #2a1a2a;
+    --bg-gradient: linear-gradient(135deg, #3a2a3a 0%, #4a3a4a 100%);
+
+    --bg-color: #1a0a1a;
+    --text-color: #e9ecef;
+    --border-color: #4a3a4a;
+    --card-bg: #2a1a2a;
+    --header-bg: var(--primary-gradient);
+    --footer-bg: #2a1a2a;
+    --input-bg: linear-gradient(135deg, #3a2a3a 0%, #4a3a4a 100%);
+    --modal-bg: #2a1a2a;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+
+    /* 深色模式具体元素样式覆盖 */
+    --btn-text: #f8f9fa;
+}
+
+[data-theme="dark"] .book-title {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .book-author {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .date-label {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .date-value {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .form-select,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="date"] {
+    background: #2a2a2a;
+    color: #e9ecef;
+    border-color: #4a4a4a;
+}
+
+[data-theme="dark"] .modal h3 {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .modal p {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .action-btn {
+    background: #3a3a3a;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .action-btn:hover {
+    background: #4a4a4a;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .action-btn.edit {
+    background: #1a3a5a;
+    color: #90caf9;
+}
+
+[data-theme="dark"] .action-btn.delete {
+    background: #5a1a1a;
+    color: #ef9a9a;
+}
+
+[data-theme="dark"] .status-未开始 {
+    background: #3a3a3a;
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .status-阅读中 {
+    background: #5a4a1a;
+    color: #ffe082;
+}
+
+[data-theme="dark"] .status-已读完 {
+    background: #1a5a3a;
+    color: #a5d6a7;
+}
+
+[data-theme="dark"] .empty-state {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .empty-state h3 {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] #bookCount {
+    color: #e9ecef;
 }
 
 body {
     font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
     background: var(--bg-gradient);
-    color: #333;
+    color: var(--text-color);
     line-height: 1.6;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
 }
 
 .app-container {
@@ -31,19 +145,41 @@ body {
     min-height: 100vh;
     max-width: 1400px;
     margin: 0 auto;
-    background: white;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+    background: var(--bg-color);
+    box-shadow: 0 0 40px var(--shadow-color);
+    transition: background 0.3s, box-shadow 0.3s;
 }
 
 /* 顶部工具栏 */
 .app-header {
-    background: var(--primary-gradient);
+    background: var(--header-bg);
     color: #4a2c4a;
     padding: 20px 30px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
+    transition: background 0.3s, box-shadow 0.3s;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* 粘性头部内部容器 */
+.app-header .header-content {
+    position: relative;
+}
+
+/* 筛选面板不跟随 sticky，改为正常流布局 */
+.filter-panel {
+    position: relative !important;
+    z-index: 99;
+    margin-top: 0;
+}
+
+/* 筛选面板展开时的阴影，增强视觉隔离 */
+.filter-panel:not(.hidden) {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-bottom: 2px solid var(--primary-color);
 }
 
 .app-header h1 {
@@ -59,28 +195,78 @@ body {
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 20px;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    max-width: 700px;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 250px;
+    max-width: 500px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+#globalSearch {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 25px;
+    font-size: 0.9rem;
+    background: var(--input-bg);
+    color: var(--text-color);
+    transition: all 0.3s;
+}
+
+#globalSearch:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
+}
+
+#globalSearch:hover {
+    border-color: var(--secondary-color);
 }
 
 .sort-controls {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     align-items: center;
     flex-wrap: wrap;
 }
 
 /* 按钮样式 */
 .btn-primary, .btn-secondary, .btn-danger {
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 600;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     transition: all 0.3s ease;
+}
+
+.btn-primary i, .btn-secondary i, .btn-danger i {
+    font-size: 1.1rem;
 }
 
 .btn-primary {
@@ -120,15 +306,21 @@ body {
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
+/* 按钮防挤压 */
+.btn-primary, .btn-secondary, .btn-danger, .action-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* 表单控件 */
 .form-select, input[type="text"], input[type="date"] {
     padding: 8px 12px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     font-size: 0.9rem;
     transition: all 0.3s ease;
-    background: linear-gradient(135deg, #fff5f5 0%, #fff0f5 100%);
-    color: #4a2c4a;
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 
 .form-select:focus, input:focus {
@@ -148,15 +340,24 @@ body {
     display: flex;
     flex-direction: column;
     gap: 30px;
+    position: relative;
+    z-index: 1;
+}
+
+/* 书籍列表区域 - 防止被 sticky 元素遮挡 */
+.book-list-section {
+    flex: 1;
+    scroll-margin-top: 20px;
 }
 
 /* 表单区域 */
 .form-section {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     padding: 18px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
+    box-shadow: 0 4px 20px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
 .form-container h2 {
@@ -225,6 +426,289 @@ body {
     font-weight: 500;
 }
 
+/* 标签输入区域样式 */
+.tag-input-container {
+    margin-bottom: 12px;
+}
+
+/* 标签区域 - 三个独立区域 */
+.selected-tags-section,
+.preset-tags-section,
+.custom-tags-section {
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin-right: 5px;
+    white-space: nowrap;
+}
+
+.tag-input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--input-bg);
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.tag-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
+}
+
+.preset-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.preset-tag-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-right: 5px;
+}
+
+.preset-tag {
+    padding: 5px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-tag:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+}
+
+/* 自定义标签容器 */
+.preset-tag-item {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+/* 自定义标签样式 */
+.preset-tag.custom-tag {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+
+/* 删除按钮 - 始终显示 */
+.tag-delete {
+    display: inline-block;
+    margin-left: 4px;
+    color: #e74c3c;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    opacity: 0.5;
+}
+
+.preset-tag-item:hover .tag-delete {
+    display: inline-block;
+    opacity: 1;
+}
+
+.tag-delete:hover {
+    background: rgba(231, 76, 60, 0.2);
+    color: #c0392b;
+}
+
+.selected-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 30px;
+}
+
+.selected-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.selected-tag .remove-tag {
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.selected-tag .remove-tag:hover {
+    opacity: 1;
+}
+
+/* =========================================
+   三区式标签系统样式
+   ========================================= */
+
+/* 第一区：已选展示区 */
+.selected-tags-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 36px;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+.selected-tags-area .no-tags-tip {
+    color: #adb5bd;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* 已选标签（主色调背景） */
+.selected-tags-area .selected-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.selected-tags-area .selected-tag .remove-tag {
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    margin-left: 2px;
+}
+
+.selected-tags-area .selected-tag .remove-tag:hover {
+    opacity: 1;
+}
+
+/* 题材标签高亮样式（已选区域） */
+.selected-tags-area .tag-format-active {
+    background: #f3e5f5 !important;
+    color: #6a1b9a !important;
+    font-weight: 700 !important;
+    border: 1px solid #ce93d8 !important;
+}
+
+/* 普通类型标签样式（已选区域） */
+.selected-tags-area .tag-genre-item {
+    background: var(--primary-gradient) !important;
+    color: #4a2c4a !important;
+    font-weight: 500 !important;
+}
+
+/* 预设标签选中状态 */
+.preset-tag.active {
+    background: var(--primary-gradient) !important;
+    color: #4a2c4a !important;
+    border-color: var(--primary-color) !important;
+    font-weight: 600 !important;
+}
+
+/* 第二区：自定义输入 */
+.tag-input-wrapper {
+    margin-bottom: 12px;
+}
+
+.tag-input-wrapper .form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--input-bg);
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.tag-input-wrapper .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
+}
+
+/* 第三区：双分类推荐区容器 */
+.tag-groups-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 标签分组 */
+.tag-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tag-group-title {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    min-width: 40px;
+    padding-top: 5px;
+}
+
+/* 预设标签容器 */
+.preset-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+}
+
+/* 预设标签（镂空样式） */
+.preset-tags-container .preset-tag {
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-tags-container .preset-tag:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+}
+
 /* 书籍列表区域 */
 .book-list-section {
     flex: 1;
@@ -259,15 +743,16 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 20px;
     margin-top: 20px;
+    scroll-margin-top: 100px;
 }
 
 /* 书籍卡片 */
 .book-card {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e9ecef;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -433,14 +918,15 @@ body {
 
 /* 底部状态栏 */
 .app-footer {
-    background: #f8f9fa;
+    background: var(--footer-bg);
     padding: 15px 30px;
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 0.85rem;
-    color: #6c757d;
+    color: var(--text-color);
+    transition: background 0.3s, border-color 0.3s, color 0.3s;
 }
 
 .status-info {
@@ -468,13 +954,14 @@ body {
 }
 
 .modal-content {
-    background: white;
+    background: var(--modal-bg);
     padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 40px var(--shadow-color);
     max-width: 500px;
     width: 90%;
     z-index: 1001;
+    transition: background 0.3s, box-shadow 0.3s;
 }
 
 .modal h3 {
@@ -829,10 +1316,32 @@ body {
     .toolbar {
         flex-direction: column;
         align-items: stretch;
+        gap: 15px;
+    }
+
+    .toolbar-left {
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+
+    .search-box {
+        min-width: 100%;
+        max-width: 100%;
     }
 
     .sort-controls {
         flex-direction: column;
+        gap: 10px;
+    }
+
+    .data-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-primary, .btn-secondary, .btn-danger {
+        padding: 10px 18px;
+        font-size: 0.9rem;
     }
 
     .main-content {
@@ -904,6 +1413,163 @@ body {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* =========================================
+   增强动画效果
+   ========================================= */
+
+/* 书籍卡片入场动画 */
+@keyframes book-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.book-card {
+    animation: book-card-in 0.4s ease-out;
+    animation-fill-mode: both;
+}
+
+/* 为每个卡片添加延迟动画 */
+.book-card:nth-child(1) { animation-delay: 0.05s; }
+.book-card:nth-child(2) { animation-delay: 0.1s; }
+.book-card:nth-child(3) { animation-delay: 0.15s; }
+.book-card:nth-child(4) { animation-delay: 0.2s; }
+.book-card:nth-child(5) { animation-delay: 0.25s; }
+.book-card:nth-child(6) { animation-delay: 0.3s; }
+.book-card:nth-child(7) { animation-delay: 0.35s; }
+.book-card:nth-child(8) { animation-delay: 0.4s; }
+.book-card:nth-child(9) { animation-delay: 0.45s; }
+.book-card:nth-child(10) { animation-delay: 0.5s; }
+
+/* 按钮波纹效果 */
+.btn-primary, .btn-secondary, .btn-danger {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary:after, .btn-secondary:after, .btn-danger:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+}
+
+.btn-primary:focus:after, .btn-secondary:focus:after, .btn-danger:focus:after {
+    animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+    }
+    20% {
+        transform: scale(25, 25);
+        opacity: 0.3;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40, 40);
+    }
+}
+
+/* 模态框动画 */
+.modal-content {
+    animation: modal-in 0.3s ease-out;
+}
+
+@keyframes modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 表单区域动画 */
+.form-section {
+    animation: form-in 0.4s ease-out;
+}
+
+@keyframes form-in {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 状态栏加载动画 */
+.status-info.loading {
+    position: relative;
+    padding-left: 25px;
+}
+
+.status-info.loading:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--primary-color);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin-small 1s linear infinite;
+}
+
+@keyframes spin-small {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* 搜索框聚焦动画 */
+#globalSearch:focus {
+    animation: search-focus 0.3s ease-out;
+}
+
+@keyframes search-focus {
+    0% {
+        box-shadow: 0 0 0 0 rgba(221, 160, 221, 0.25);
+    }
+    100% {
+        box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
+    }
+}
+
+/* 空状态动画 */
+.empty-state i {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 /* 工具类 */
@@ -1132,15 +1798,6 @@ body {
     background: #fafafa; border-radius: 0 0 12px 12px;
 }
 
-/* ==================== 过滤面板样式 ==================== */
-.filter-panel {
-    background: #fff;
-    border-bottom: 1px solid #e9ecef;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    position: relative;
-    z-index: 100;
-}
-
 .filter-header {
     display: flex;
     justify-content: space-between;
@@ -1208,17 +1865,57 @@ body {
 
 .tag-filter-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 8px;
-    max-height: 100px;
+    max-height: 150px;
     overflow-y: auto;
     padding: 8px;
     background: #f8f9fa;
     border-radius: 6px;
 }
 
+/* 筛选面板标签分类 */
+.filter-tag-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-tag-category {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    min-width: 35px;
+}
+
+/* 题材标签单选样式 */
+.tag-format-checkbox {
+    background: rgba(155, 89, 182, 0.1);
+    border-color: rgba(155, 89, 182, 0.3);
+}
+
+.tag-format-checkbox:hover {
+    background: rgba(155, 89, 182, 0.2);
+    border-color: rgba(155, 89, 182, 0.5);
+}
+
+/* 题材标签选中状态 */
+.tag-format-checkbox.active {
+    background: rgba(155, 89, 182, 0.3) !important;
+    border-color: rgba(155, 89, 182, 0.5) !important;
+}
+
+.tag-format-checkbox.active .tag-name {
+    color: #6a1b9a !important;
+    font-weight: 600;
+}
+
 .tag-checkbox {
-    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
     background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 15px;
@@ -1234,6 +1931,33 @@ body {
 .tag-checkbox input {
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
+}
+
+/* 筛选面板标签项 - 通用样式 */
+.filter-tag-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.filter-tag-item:hover {
+    border-color: #F88379;
+    background: #fff5f5;
+}
+
+.filter-tag-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    accent-color: #F88379;
 }
 
 .tag-name {
@@ -1310,16 +2034,188 @@ body {
     line-height: 18px;
 }
 
+/* =========================================
+   Toast 通知系统
+   ========================================= */
+.toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 400px;
+}
+
+.toast {
+    padding: 14px 20px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    animation: toast-in 0.3s ease-out;
+    backdrop-filter: blur(10px);
+}
+
+.toast.toast-out {
+    animation: toast-out 0.3s ease-in forwards;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+}
+
+.toast.success {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+}
+
+.toast.error {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.toast.warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.toast.info {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.toast i {
+    font-size: 1.2rem;
+}
+
+.toast .toast-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: white;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 0 5px;
+    font-size: 1.1rem;
+    transition: opacity 0.2s;
+}
+
+.toast .toast-close:hover {
+    opacity: 1;
+}
+
+/* =========================================
+   右键菜单样式
+   ========================================= */
+.context-menu {
+    position: fixed;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px var(--shadow-color);
+    z-index: 10000;
+    min-width: 180px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    animation: context-menu-in 0.15s ease-out;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+@keyframes context-menu-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+}
+
+.context-menu li {
+    padding: 10px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #495057;
+    transition: background 0.2s;
+}
+
+.context-menu li:hover {
+    background: #f8f9fa;
+}
+
+.context-menu li.danger {
+    color: #e74c3c;
+}
+
+.context-menu li.danger:hover {
+    background: #ffebee;
+}
+
+.context-menu li.divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 8px 0;
+    padding: 0;
+    cursor: default;
+}
+
+.context-menu li.divider:hover {
+    background: #e9ecef;
+}
+
 /* ==================== 导入/导出样式 ==================== */
 .data-controls {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     margin-right: 15px;
+    align-items: center;
 }
 
 .data-controls .btn-secondary {
-    padding: 8px 15px;
-    font-size: 0.9rem;
+    padding: 10px 22px;
+    font-size: 1rem;
+    border-radius: 25px;
+}
+
+.data-controls .btn-secondary i {
+    font-size: 1.1rem;
+}
+
+#themeToggleBtn {
+    padding: 10px 18px;
+    font-size: 1rem;
+}
+
+#themeToggleBtn i {
+    font-size: 1.2rem;
 }
 
 .export-options,
@@ -1760,5 +2656,695 @@ body {
         flex-direction: column;
         gap: 5px;
     }
+}
+
+/* =========================================
+   深色模式完美适配 (Dark Mode Text Contrast Fix)
+   ========================================= */
+
+/* 1. 覆盖基础大标题文本 */
+[data-theme="dark"] body,
+[data-theme="dark"] .app-header h1,
+[data-theme="dark"] .section-header h2,
+[data-theme="dark"] .form-container h2 {
+    color: #f8f9fa !important;
+}
+
+/* 深色模式：确保 header 背景正确覆盖 */
+[data-theme="dark"] .app-header {
+    background: var(--header-bg) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 2. 书籍卡片内部文本高对比度提亮 */
+[data-theme="dark"] .book-title {
+    color: #ffffff !important; /* 书名用纯白，最醒目 */
+}
+
+[data-theme="dark"] .book-author,
+[data-theme="dark"] .date-label {
+    color: #adb5bd !important; /* 作者和标签用浅灰，保持视觉层次感 */
+}
+
+[data-theme="dark"] .date-value {
+    color: #e9ecef !important; /* 日期具体数值提亮 */
+}
+
+/* 3. 顶部工具栏和表单输入框改造 */
+[data-theme="dark"] .form-select,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] #globalSearch {
+    background-color: rgba(255, 255, 255, 0.1) !important; /* 输入框变成半透明深色 */
+    color: #f8f9fa !important; /* 用户打的字变成白色 */
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 修复下拉菜单在深色模式下展开时的选项背景 */
+[data-theme="dark"] .form-select option {
+    background-color: #2c2c3e !important;
+    color: #f8f9fa !important;
+}
+
+/* 4. 列表右上角的书籍数量小药丸 */
+[data-theme="dark"] .list-info {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #f8f9fa !important;
+}
+
+/* 5. 空状态提示和各种弹窗内部文本 */
+[data-theme="dark"] .empty-state h3,
+[data-theme="dark"] .empty-state p,
+[data-theme="dark"] .modal h3,
+[data-theme="dark"] .modal p {
+    color: #e9ecef !important;
+}
+
+/* 6. 顶部工具栏：按钮、图标与提示词深色模式终极修复 */
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .toolbar button,
+[data-theme="dark"] .form-select {
+    color: #f8f9fa !important; /* 按钮文字和下拉菜单文字变白 */
+}
+
+[data-theme="dark"] .btn-primary i,
+[data-theme="dark"] .btn-secondary i,
+[data-theme="dark"] .toolbar button i,
+[data-theme="dark"] .app-header h1 i {
+    color: #f8f9fa !important; /* 所有的 FontAwesome 小图标变白 */
+}
+
+/* 修复搜索框里的提示文字(Placeholder)太暗的问题 */
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: #adb5bd !important; /* 提示词变成柔和的浅灰色 */
+}
+
+/* =========================================
+   深色模式终极修复：表单、笔记、评分面板背景适配
+   ========================================= */
+
+/* --- 1. 添加书籍表单：标签和复选框文字提亮 --- */
+[data-theme="dark"] .form-group label,
+[data-theme="dark"] .checkbox-label {
+    color: #e9ecef !important;
+}
+
+/* 标签输入区域深色模式 */
+[data-theme="dark"] .tag-input {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f8f9fa;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .tag-input::placeholder {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .preset-tag-label,
+[data-theme="dark"] .section-label {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .preset-tag {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e9ecef;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .preset-tag:hover {
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+}
+
+/* 深色模式自定义标签 */
+[data-theme="dark"] .preset-tag.custom-tag {
+    background: rgba(46, 125, 50, 0.3);
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+[data-theme="dark"] .tag-delete {
+    color: #ef9a9a;
+}
+
+[data-theme="dark"] .tag-delete:hover {
+    background: rgba(231, 76, 60, 0.3);
+    color: #ef5350;
+}
+
+[data-theme="dark"] .selected-tag {
+    background: rgba(255, 255, 255, 0.15);
+    color: #f8f9fa;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .selected-tag .remove-tag {
+    color: #f8f9fa;
+}
+
+/* =========================================
+   三区式标签系统深色模式
+   ========================================= */
+
+/* 第一区：已选展示区 */
+[data-theme="dark"] .selected-tags-area {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .selected-tags-area .no-tags-tip {
+    color: #adb5bd;
+}
+
+/* 已选标签 - 半透明深紫色 */
+[data-theme="dark"] .selected-tags-area .selected-tag {
+    background: rgba(180, 100, 180, 0.3);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .selected-tags-area .selected-tag .remove-tag {
+    color: #ffffff;
+    opacity: 0.8;
+}
+
+[data-theme="dark"] .selected-tags-area .selected-tag .remove-tag:hover {
+    opacity: 1;
+}
+
+/* 深色模式：题材标签高亮 */
+[data-theme="dark"] .selected-tags-area .tag-format-active {
+    background: rgba(155, 89, 182, 0.25) !important;
+    color: #d192e8 !important;
+    border: 1px solid rgba(155, 89, 182, 0.4) !important;
+    font-weight: 700 !important;
+}
+
+/* 深色模式：普通类型标签 */
+[data-theme="dark"] .selected-tags-area .tag-genre-item {
+    background: rgba(180, 100, 180, 0.3) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 深色模式：预设标签选中状态 */
+[data-theme="dark"] .preset-tag.active {
+    background: rgba(180, 100, 180, 0.4) !important;
+    color: #ffffff !important;
+    border-color: rgba(155, 89, 182, 0.6) !important;
+    font-weight: 600 !important;
+}
+
+/* 第二区：自定义输入 */
+[data-theme="dark"] .tag-input-wrapper .form-control {
+    background: rgba(0, 0, 0, 0.2);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .tag-input-wrapper .form-control::placeholder {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .tag-input-wrapper .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
+}
+
+/* 第三区：双分类推荐区 */
+[data-theme="dark"] .tag-group-title {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .preset-tags-container .preset-tag {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .preset-tags-container .preset-tag:hover {
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+    border-color: var(--primary-color);
+}
+
+/* --- 2. 笔记面板：消灭刺眼的白色大雪糕 --- */
+/* 历史笔记大容器、当前书籍信息框、底部输入大框 */
+[data-theme="dark"] .notes-list-container,
+[data-theme="dark"] .current-book-info,
+[data-theme="dark"] .notes-input-section {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 笔记多行文本输入框、搜索框 */
+[data-theme="dark"] #newNoteContent,
+[data-theme="dark"] #noteSearchInput {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    color: #f8f9fa !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 单条笔记卡片 */
+[data-theme="dark"] .note-item {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-theme="dark"] .note-content {
+    color: #e9ecef !important;
+}
+
+/* --- 3. 评分面板：左侧指标卡片漂黑 --- */
+/* 移除左右两侧的默认纯白背景 */
+[data-theme="dark"] .rating-workspace,
+[data-theme="dark"] .rating-actions {
+    background-color: transparent !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 25个指标卡片及内部文字 */
+[data-theme="dark"] .rating-metric-box {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-theme="dark"] .rating-metric-box .metric-name {
+    color: #f8f9fa !important;
+}
+
+/* -1 / 0 / 1 打分按钮常态 */
+[data-theme="dark"] .rating-btn {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #adb5bd !important;
+}
+
+/* 选中打分按钮时保持白字 (强制覆盖以防失效) */
+[data-theme="dark"] .rating-btn.active[data-v="-1"],
+[data-theme="dark"] .rating-btn.active[data-v="0"],
+[data-theme="dark"] .rating-btn.active[data-v="1"] {
+    color: #ffffff !important;
+}
+
+/* 右侧总分卡片半透明化 */
+[data-theme="dark"] .rating-total-card {
+    background: rgba(0, 0, 0, 0.2) !important;
+    box-shadow: none !important;
+}
+
+/* =========================================
+   终极抹杀深色模式下复选框/标签的死亡白块
+   ========================================= */
+
+/* 1. 强制清空包含 checkbox 的所有标签和容器背景 */
+[data-theme="dark"] label:has(input[type="checkbox"]),
+[data-theme="dark"] .checkbox-label,
+[data-theme="dark"] .form-group:has(input[type="checkbox"]) {
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    color: #f8f9fa !important; /* 强制白字 */
+    border: none !important;
+}
+
+/* 2. 鼠标悬浮时给予极其微弱的高级深灰，绝不刺眼 */
+[data-theme="dark"] label:has(input[type="checkbox"]):hover,
+[data-theme="dark"] .checkbox-label:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    border-radius: 6px !important;
+}
+
+/* 3. 勾选框本身的强调色 */
+[data-theme="dark"] input[type="checkbox"] {
+    accent-color: var(--primary-color) !important;
+    cursor: pointer;
+}
+
+/* =========================================
+   深色模式终极修复 2.0：筛选面板完美融合
+   ========================================= */
+
+/* 1. 筛选面板主背景：精准匹配系统的深紫灰色 */
+[data-theme="dark"] #filterPanel {
+    background-color: #282430 !important; /* 匹配你系统的紫灰色背景 */
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 2. 彻底抹杀头部和底部的白色长条！(无论它叫 header 还是 action) */
+[data-theme="dark"] #filterPanel .filter-header,
+[data-theme="dark"] #filterPanel .filter-actions,
+[data-theme="dark"] #filterPanel > div {
+    background-color: transparent !important; 
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 3. 筛选面板内的标题、文字提亮 */
+[data-theme="dark"] #filterPanel,
+[data-theme="dark"] #filterPanel h3,
+[data-theme="dark"] #filterPanel label,
+[data-theme="dark"] #filterPanel .filter-label {
+    color: #f8f9fa !important;
+}
+
+/* 4. 修复"暂无标签"区域和各种输入框 */
+[data-theme="dark"] #filterTagsContainer,
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] #filterPanel input[type="date"] {
+    background-color: rgba(0, 0, 0, 0.25) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #e9ecef !important;
+}
+
+/* 筛选面板标签分类深色模式 */
+[data-theme="dark"] .filter-tag-category {
+    color: #d192e8 !important;
+}
+
+[data-theme="dark"] .filter-tag-item {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #e9ecef !important;
+}
+
+[data-theme="dark"] .filter-tag-item:hover {
+    background: rgba(155, 89, 182, 0.2) !important;
+    border-color: rgba(155, 89, 182, 0.4) !important;
+}
+
+[data-theme="dark"] .filter-tag-item input[type="checkbox"] {
+    accent-color: #d192e8;
+}
+
+[data-theme="dark"] .tag-name {
+    color: #e9ecef !important;
+}
+
+/* 深色模式标签选中状态 - 核心修复 */
+[data-theme="dark"] .filter-tag-item:has(input:checked) {
+    background: rgba(180, 100, 180, 0.35) !important;
+    border-color: rgba(180, 100, 180, 0.6) !important;
+}
+
+[data-theme="dark"] .filter-tag-item:has(input:checked) .tag-name {
+    color: #ffffff !important;
+    font-weight: 600;
+}
+
+/* 5. 修复底部操作按钮的颜色适配 */
+[data-theme="dark"] #applyFilterBtn {
+    background: var(--primary-color) !important; /* 恢复主色丁香紫 */
+    color: #fff !important;
+}
+
+[data-theme="dark"] #clearFilterBtn {
+    background: rgba(255, 255, 255, 0.1) !important; /* 清除按钮变成低调的高级灰 */
+    color: #f8f9fa !important;
+}
+
+/* 6. 关闭按钮(X)常态和悬浮修复 */
+[data-theme="dark"] #filterPanel .close-btn {
+    background: transparent !important;
+    color: #ff6b6b !important;
+}
+[data-theme="dark"] #filterPanel .close-btn:hover {
+    background-color: rgba(255, 107, 107, 0.1) !important;
+}
+
+/* =========================================
+   深色模式终极修复：阅读统计面板 (Stats Modal)
+   ========================================= */
+
+/* 1. 彻底抹杀统计面板中所有刺眼的白色卡片背景 */
+[data-theme="dark"] #statsModal .stat-card,
+[data-theme="dark"] #statsModal .chart-card,
+[data-theme="dark"] #statsModal .chart-container,
+[data-theme="dark"] #statsModal .overview-cards > div,
+[data-theme="dark"] #statsModal .charts-grid > div,
+[data-theme="dark"] #statsModal [style*="background: white"],
+[data-theme="dark"] #statsModal [style*="background-color: #fff"] {
+    background-color: rgba(255, 255, 255, 0.05) !important; /* 替换为高级半透明深色 */
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: none !important;
+}
+
+/* 2. 提亮面板内的标题、数字和普通文字 */
+[data-theme="dark"] #statsModal h2,
+[data-theme="dark"] #statsModal h3,
+[data-theme="dark"] #statsModal h4,
+[data-theme="dark"] #statsModal .stat-value,
+[data-theme="dark"] #statsModal .stat-label,
+[data-theme="dark"] #statsModal .chart-title,
+[data-theme="dark"] #statsModal p,
+[data-theme="dark"] #statsModal span {
+    color: #f8f9fa !important;
+}
+
+/* 3. 保护彩色图标容器不被影响（左侧的红/绿/黄圆角背景） */
+[data-theme="dark"] #statsModal .stat-icon {
+    border: none !important;
+}
+
+/* =========================================
+   深色模式终极修复 3.0：导入/导出及所有模态框死角
+   ========================================= */
+
+/* 1. 彻底干掉所有模态框底部的白色操作栏 (Footer/Actions) */
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] .modal-actions,
+[data-theme="dark"] .export-actions,
+[data-theme="dark"] .import-actions,
+[data-theme="dark"] .stats-actions,
+[data-theme="dark"] .modal-content > div:last-child {
+    background: transparent !important;
+    background-color: transparent !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 2. 修复导出弹窗 (Export) 的选项卡文字颜色 */
+[data-theme="dark"] .export-option,
+[data-theme="dark"] .radio-group label,
+[data-theme="dark"] .export-modal label {
+    color: #f8f9fa !important; /* 主标题纯白 */
+}
+[data-theme="dark"] .export-option small,
+[data-theme="dark"] .export-option p,
+[data-theme="dark"] .export-modal span {
+    color: #adb5bd !important; /* 副标题/描述用浅灰色 */
+}
+
+/* 3. 修复导入弹窗 (Import) 那个巨大的白色虚线上传框 */
+[data-theme="dark"] .file-drop-area,
+[data-theme="dark"] #fileDropArea {
+    background-color: rgba(0, 0, 0, 0.25) !important; /* 镂空的高级深灰 */
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #f8f9fa !important;
+}
+[data-theme="dark"] .file-drop-area * {
+    color: #adb5bd !important; /* 虚线框里面的图标和文字提亮 */
+}
+
+/* 4. 导入弹窗悬浮状态（拖拽文件进入时） */
+[data-theme="dark"] .file-drop-area.drag-over,
+[data-theme="dark"] #fileDropArea.drag-over {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--primary-color) !important;
+}
+
+/* 5. 修复阅读统计底部的白条和个别漏网的文字 */
+[data-theme="dark"] .stats-modal .modal-content > div {
+    background: transparent !important;
+}
+[data-theme="dark"] .stat-card .stat-label {
+    color: #adb5bd !important;
+}
+
+/* =========================================
+   深色模式终极修复 4.0：强制提亮导出/导入面板文字
+   ========================================= */
+
+/* 1. 无差别强制提亮导出/导入面板内的所有常见文本容器 */
+[data-theme="dark"] #exportModal label,
+[data-theme="dark"] #exportModal span,
+[data-theme="dark"] #exportModal div,
+[data-theme="dark"] #importModal label,
+[data-theme="dark"] #importModal span,
+[data-theme="dark"] #importModal div {
+    color: #f8f9fa !important; /* 强制全部变成亮白色 */
+}
+
+/* 2. 针对底部的描述性小字（如：导出所有书籍数据...），稍微调暗一点点以增加层次感 */
+[data-theme="dark"] #exportModal p,
+[data-theme="dark"] #exportModal small,
+[data-theme="dark"] #exportModal .text-muted,
+[data-theme="dark"] #importModal p,
+[data-theme="dark"] #importModal small {
+    color: #adb5bd !important; /* 浅灰色 */
+}
+
+/* 3. 保护底部的操作按钮，防止被上面的 div 选择器误伤 */
+[data-theme="dark"] #exportModal button,
+[data-theme="dark"] #importModal button {
+    color: #ffffff !important;
+}
+
+/* 4. 修复单选框被选中时的边框颜色（可选，让它更搭深色模式） */
+[data-theme="dark"] .radio-group label,
+[data-theme="dark"] .export-options label {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* =========================================
+   深色模式终极修复 5.0：核弹级文字提亮（针对导出导入面板）
+   ========================================= */
+
+/* 1. 选中导出和导入弹窗主体区域内的【所有元素】，强制设为白色！ */
+[data-theme="dark"] #exportModal .modal-body *,
+[data-theme="dark"] #importModal .modal-body *,
+[data-theme="dark"] #exportModal .export-options *,
+[data-theme="dark"] #exportModal [class*="option"] * {
+    color: #f8f9fa !important;
+}
+
+/* 2. 重新把辅助说明的小字（如：导出所有书籍数据...）压暗一点点，保持层次感 */
+[data-theme="dark"] #exportModal p,
+[data-theme="dark"] #exportModal small,
+[data-theme="dark"] #exportModal .text-muted,
+[data-theme="dark"] #importModal p,
+[data-theme="dark"] #importModal small,
+[data-theme="dark"] #importModal .text-muted {
+    color: #adb5bd !important; 
+}
+
+/* 3. 保护右上角的红色关闭按钮不被误伤 */
+[data-theme="dark"] #exportModal .close-btn,
+[data-theme="dark"] #importModal .close-btn {
+    color: #ff6b6b !important;
+}
+
+/* =========================================
+   深色模式终极修复 6.0：统计面板顽固白块彻底清除
+   ========================================= */
+
+/* 1. 击碎所有图表卡片顶部的白色标题栏 (Chart Headers) */
+[data-theme="dark"] #statsModal .chart-card > div:first-child,
+[data-theme="dark"] #statsModal .chart-header,
+[data-theme="dark"] #statsModal .card-header {
+    background-color: transparent !important; /* 让它继承外层的深色 */
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 2. 击碎底部巨大的"详细报告/最近活动"白色大板块 */
+[data-theme="dark"] #statsModal .report-section,
+[data-theme="dark"] #statsModal .detailed-report,
+[data-theme="dark"] #statsModal .activity-section,
+[data-theme="dark"] #statsModal .report-card {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 3. 连带修复"最近活动"列表中可能存在的浅色卡片和看不清的灰字 */
+[data-theme="dark"] #statsModal .activity-item {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme="dark"] #statsModal .activity-meta,
+[data-theme="dark"] #statsModal .activity-meta * {
+    color: #adb5bd !important; /* 调整为清晰的浅灰色 */
+}
+
+/* 4. 核弹级兜底：无差别清理统计面板内所有自带 bg-white 类的元素 */
+[data-theme="dark"] #statsModal .bg-white {
+    background-color: transparent !important;
+}
+
+/* =========================================
+   深色模式终极修复 7.0：统计报告底部栏彻底净化
+   ========================================= */
+
+/* 1. 彻底干掉带【导出报告】按钮那一栏的白色背景 */
+[data-theme="dark"] #statsModal .report-header,
+[data-theme="dark"] #statsModal .report-action-bar,
+[data-theme="dark"] #statsModal .report-card > div:first-child,
+[data-theme="dark"] #statsModal .report-card header {
+    background: transparent !important;
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 2. 强制点亮"阅读效率"和"最近活动"等特定的深色标题字 */
+[data-theme="dark"] #statsModal .report-section h3,
+[data-theme="dark"] #statsModal .report-section h4,
+[data-theme="dark"] #statsModal .report-title,
+[data-theme="dark"] #statsModal .section-title,
+[data-theme="dark"] #statsModal .text-primary,
+[data-theme="dark"] #statsModal .text-dark,
+[data-theme="dark"] #statsModal [style*="color"] {
+    color: #ffffff !important;
+}
+
+/* 3. 顺手修复可能被影响的图标颜色（如左上角那个绿色的小文档图标） */
+[data-theme="dark"] #statsModal .report-header i,
+[data-theme="dark"] #statsModal .report-card > div:first-child i {
+    color: #2ecc71 !important; /* 保持图标的亮绿色 */
+}
+
+/* =========================================
+   深色模式终极修复 8.0：抹杀白线与深蓝字体
+   ========================================= */
+
+/* 1. 物理超度所有刺眼的白色分割线 (hr 标签与边框) */
+[data-theme="dark"] #statsModal hr,
+[data-theme="dark"] #statsModal .report-section,
+[data-theme="dark"] #statsModal .report-section h3,
+[data-theme="dark"] #statsModal .report-section h4 {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-top-color: rgba(255, 255, 255, 0.1) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: transparent !important; /* 确保 hr 本身没有白底 */
+}
+
+/* 2. 强制点亮深蓝色的顽固字体（阅读效率、最近活动标题、具体书名） */
+[data-theme="dark"] #statsModal .report-section h3,
+[data-theme="dark"] #statsModal .report-section h4,
+[data-theme="dark"] #statsModal .activity-title,
+[data-theme="dark"] #statsModal .text-primary {
+    color: #ffffff !important;
+}
+
+/* =========================================
+   深色模式终极修复 9.0：无差别文本翻白与图表适配
+   ========================================= */
+
+/* 1. 强制统计面板里的所有常规元素文本变白 (地毯式覆盖所有 div 和文字标签) */
+[data-theme="dark"] #statsModal .modal-body div,
+[data-theme="dark"] #statsModal .modal-body span,
+[data-theme="dark"] #statsModal .modal-body h1,
+[data-theme="dark"] #statsModal .modal-body h2,
+[data-theme="dark"] #statsModal .modal-body h3,
+[data-theme="dark"] #statsModal .modal-body h4,
+[data-theme="dark"] #statsModal .modal-body h5,
+[data-theme="dark"] #statsModal .modal-body h6,
+[data-theme="dark"] #statsModal .modal-body p,
+[data-theme="dark"] #statsModal .modal-body label {
+    color: #e9ecef !important;
+}
+
+/* 2. 单独把次要信息（如：平均阅读时间，阅读完成率，日期，各种小字等）压暗成灰色 */
+[data-theme="dark"] #statsModal .modal-body .text-muted,
+[data-theme="dark"] #statsModal .modal-body .activity-meta,
+[data-theme="dark"] #statsModal .modal-body .activity-meta span,
+[data-theme="dark"] #statsModal .modal-body .activity-date,
+[data-theme="dark"] #statsModal .modal-body .activity-date span,
+[data-theme="dark"] #statsModal .modal-body [style*="color: #666"],
+[data-theme="dark"] #statsModal .modal-body [style*="color: #999"] {
+    color: #adb5bd !important;
+}
+
+/* 3. 保护统计卡片最上面的四个彩底大方块里的图标和字不被搞乱 */
+[data-theme="dark"] #statsModal .stat-card i,
+[data-theme="dark"] #statsModal .stat-icon i {
+    color: #ffffff !important;
 }
 

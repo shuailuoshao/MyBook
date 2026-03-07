@@ -29,7 +29,10 @@
       "Bash(npx electron main_minimal.js)",
       "Bash(where electron)",
       "Bash(npm uninstall electron)",
-      "Bash(npm install electron@latest --save-dev)"
+      "Bash(npm install electron@latest --save-dev)",
+      "Bash(ls -la *.js *.html *.css)",
+      "Bash(xxd -l 20 \"d:\\\\study_and_try\\\\MyBook\\\\MyBook\\\\styles.css\")",
+      "Bash(xxd)"
     ]
   }
 }

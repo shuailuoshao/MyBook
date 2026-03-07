@@ -130,6 +130,13 @@ function setupIPCHandlers() {
     }
   });
 
+  // 打开开发者工具
+  ipcMain.on('open-devtools', () => {
+    if (mainWindow) {
+      mainWindow.webContents.openDevTools();
+    }
+  });
+
   // 文件操作
   ipcMain.handle('open-file-dialog', async (event, options = {}) => {
     try {

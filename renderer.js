@@ -446,7 +446,7 @@ class Book {
 class StorageService {
   constructor() {
     this.books = [];
-    this.loadBooks();
+    // 不在构造函数中调用 loadBooks，由外部控制加载时机
   }
 
   async loadBooks() {
@@ -466,8 +466,8 @@ class StorageService {
       return this.books;
     } catch (error) {
       console.error('加载书籍失败:', error);
-      this.books = [];
-      return [];
+      // 保留原有数据，不清空
+      return this.books;
     }
   }
 
@@ -498,12 +498,19 @@ class StorageService {
     const book = new Book(bookData);
     const validation = book.validate();
     if (!validation.isValid) throw new Error(validation.errors.join(', '));
+    
+    // 🌟 必须先放进数组！
     this.books.push(book);
+    
+    // 🌟 然后连同新书一起保存到硬盘
     const success = await this.saveBooks();
+    
     if (!success) {
-      this.books = this.books.filter(b => b.id !== book.id);
-      throw new Error('保存书籍失败');
+      // 如果硬盘保存失败，把刚刚放进去的书拿出来（数据回滚）
+      this.books.pop();
+      throw new Error('本地保存失败，请检查文件权限');
     }
+    
     return book;
   }
 
@@ -518,10 +525,11 @@ class StorageService {
         Object.assign(book, originalBook);
         throw new Error(validation.errors.join(', '));
       }
+      // 先保存，保存成功后再更新
       const success = await this.saveBooks();
       if (!success) {
         Object.assign(book, originalBook);
-        throw new Error('保存更新失败');
+        throw new Error('本地保存失败');
       }
       return book;
     } catch (error) {
@@ -770,6 +778,38 @@ class FilterService {
     });
     return Array.from(tagSet).sort();
   }
+
+  // 获取所有标签（按分类）
+  static getAllTagsByCategory(books) {
+    const formatSet = new Set();
+    const genreSet = new Set();
+    const unknownSet = new Set();
+
+    // 题材标签列表
+    const formatTags = ['文学', '小说', '轻小说', '网文', '纪实', '报告文学', '传记', '游戏剧情', 'Galgame', '电视剧', '动漫', '电影', '漫画', '技术文档', '学术论文'];
+    // 类型标签列表
+    const genreTags = ['科幻', '悬疑', '推理', '奇幻', '戏剧', '哲学', '心理', '社会', '恋爱', '治愈', '致郁', '赛博朋克', '硬核'];
+
+    books.forEach(book => {
+      if (book.tags && Array.isArray(book.tags)) {
+        book.tags.forEach(tag => {
+          if (formatTags.includes(tag)) {
+            formatSet.add(tag);
+          } else if (genreTags.includes(tag)) {
+            genreSet.add(tag);
+          } else {
+            unknownSet.add(tag); // 自定义标签或其他
+          }
+        });
+      }
+    });
+
+    return {
+      format: Array.from(formatSet).sort(),
+      genre: Array.from(genreSet).sort(),
+      unknown: Array.from(unknownSet).sort()
+    };
+  }
 }
 
 // StatsService类定义（统计服务）
@@ -806,7 +846,7 @@ class StatsService {
    */
   getReadingStatusStats(books) {
     const stats = {
-      '未读': 0,
+      '未开始': 0,
       '阅读中': 0,
       '已读完': 0
     };
@@ -830,22 +870,24 @@ class StatsService {
    * @returns {Object} 评分统计
    */
   getRatingStats(books) {
+    // 0-100 分制划分为5个区间
     const ratingRanges = {
-      '0-1': 0,
-      '1-2': 0,
-      '2-3': 0,
-      '3-4': 0,
-      '4-5': 0
+      '0-20': 0,
+      '21-40': 0,
+      '41-60': 0,
+      '61-80': 0,
+      '81-100': 0
     };
 
     books.forEach(book => {
-      if (book.rating !== undefined) {
-        const rating = book.rating.overall || book.rating;
-        if (rating >= 0 && rating < 1) ratingRanges['0-1']++;
-        else if (rating >= 1 && rating < 2) ratingRanges['1-2']++;
-        else if (rating >= 2 && rating < 3) ratingRanges['2-3']++;
-        else if (rating >= 3 && rating < 4) ratingRanges['3-4']++;
-        else if (rating >= 4 && rating <= 5) ratingRanges['4-5']++;
+      // 只统计已启用评分且有评分的书籍
+      if (book.rating && book.enableRating) {
+        const rating = book.rating.totalScore || 0;
+        if (rating >= 0 && rating <= 20) ratingRanges['0-20']++;
+        else if (rating > 20 && rating <= 40) ratingRanges['21-40']++;
+        else if (rating > 40 && rating <= 60) ratingRanges['41-60']++;
+        else if (rating > 60 && rating <= 80) ratingRanges['61-80']++;
+        else if (rating > 80 && rating <= 100) ratingRanges['81-100']++;
       }
     });
 
@@ -1006,7 +1048,7 @@ class StatsService {
       totalBooks: books.length,
       completedBooks: completedBooks.length,
       readingBooks: books.filter(book => book.status === '阅读中').length,
-      unreadBooks: books.filter(book => book.status === '未读').length,
+      unreadBooks: books.filter(book => book.status === '未开始').length,
 
       averageRating: this.calculateAverageRating(books),
       averageReadingTime: this.calculateAverageReadingTime(completedBooks),
@@ -1021,18 +1063,20 @@ class StatsService {
   /**
    * 计算平均评分
    * @param {Array} books 书籍列表
-   * @returns {number} 平均评分
+   * @returns {number} 平均评分（0-100分制）
    */
   calculateAverageRating(books) {
+    // 只统计已启用评分且有评分的书籍
     const ratedBooks = books.filter(book =>
-      book.rating !== undefined &&
-      (book.rating.overall !== undefined || typeof book.rating === 'number')
+      book.enableRating &&
+      book.rating &&
+      book.rating.totalScore > 0
     );
 
     if (ratedBooks.length === 0) return 0;
 
     const totalRating = ratedBooks.reduce((sum, book) => {
-      const rating = book.rating.overall || book.rating;
+      const rating = book.rating.totalScore || 0;
       return sum + rating;
     }, 0);
 
@@ -1503,6 +1547,35 @@ class ChartManager {
 // 主渲染进程逻辑
 class BookApp {
   constructor() {
+    // 构造函数为空，初始化在 init() 方法中完成
+  }
+
+  async init() {
+    // 添加快捷键 Ctrl+Shift+I 打开开发者工具
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+        e.preventDefault();
+        if (window.electronAPI) {
+          window.electronAPI.openDevTools();
+        } else {
+          // 浏览器模式
+          console.log('浏览器模式，请按 F12 打开开发者工具');
+        }
+      }
+      // F12 快捷键
+      if (e.key === 'F12') {
+        e.preventDefault();
+        if (window.electronAPI && window.electronAPI.openDevTools) {
+          window.electronAPI.openDevTools();
+        } else if (window.openDevTools) {
+          window.openDevTools();
+        } else {
+          // 尝试浏览器方式
+          console.log('开发者工具');
+        }
+      }
+    });
+
     this.storageService = new StorageService();
     this.currentSortField = 'title';
     this.currentSortOrder = 'asc';
@@ -1521,7 +1594,8 @@ class BookApp {
 
     this.initializeElements();
     this.bindEvents();
-    this.loadBooks();
+    this.initTheme();
+    await this.loadBooks();
   }
 
   initializeElements() {
@@ -1533,6 +1607,17 @@ class BookApp {
     this.endDateInput = document.getElementById('endDate');
     this.statusSelect = document.getElementById('status');
     this.enableRatingCheckbox = document.getElementById('enableRating');
+
+    // 标签相关元素
+    this.customTagInput = document.getElementById('customTagInput');
+    this.selectedTagsContainer = document.getElementById('selectedTagsContainer');
+    this.formatTagsContainer = document.getElementById('formatTags');
+    this.genreTagsContainer = document.getElementById('genreTags');
+    this.currentTags = []; // 当前表单中的标签数组（已选标签）
+    // 题材标签列表（单选）
+    this.formatTags = ['文学', '小说', '轻小说', '网文', '纪实', '报告文学', '传记', '游戏剧情', 'Galgame', '电视剧', '动漫', '电影', '漫画', '技术文档', '学术论文'];
+    // 类型标签列表（多选）
+    this.genreTags = ['科幻', '悬疑', '推理', '奇幻', '戏剧', '哲学', '心理', '社会', '恋爱', '治愈', '致郁', '赛博朋克', '硬核'];
 
     this.addBookBtn = document.getElementById('addBookBtn');
     this.refreshBtn = document.getElementById('refreshBtn');
@@ -1601,6 +1686,18 @@ class BookApp {
 
     // 统计服务
     this.statsService = new StatsService(this.storageService);
+
+    // 新增元素
+    this.globalSearchInput = document.getElementById('globalSearch');
+    this.themeToggleBtn = document.getElementById('themeToggleBtn');
+    this.themeIcon = document.getElementById('themeIcon');
+    this.toastContainer = document.getElementById('toastContainer');
+    this.contextMenu = document.getElementById('contextMenu');
+    this.contextMenuTarget = null;
+
+    // 键盘快捷键状态
+    this.keyboardShortcuts = new Map();
+    this.isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     this.chartManager = new ChartManager();
     this.activeCharts = new Map();
     this.importPreview = document.getElementById('importPreview');
@@ -1614,6 +1711,20 @@ class BookApp {
     this.addBookBtn.addEventListener('click', () => this.showBookForm());
     this.refreshBtn.addEventListener('click', () => this.loadBooks());
     this.cancelBtn.addEventListener('click', () => this.hideBookForm());
+
+    // 标签输入事件 - 自定义标签输入框回车添加
+    if (this.customTagInput) {
+      this.customTagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const tagValue = this.customTagInput.value.trim();
+          if (tagValue) {
+            this.addTag(tagValue);
+            this.customTagInput.value = '';
+          }
+        }
+      });
+    }
 
     // 过滤面板事件
     this.toggleFilterBtn.addEventListener('click', () => this.toggleFilterPanel());
@@ -1656,6 +1767,13 @@ class BookApp {
     this.startDateInput.addEventListener('change', () => this.handleDateChange());
     this.endDateInput.addEventListener('change', () => this.handleDateChange());
     this.statusSelect.addEventListener('change', () => this.handleStatusChange());
+
+    // 新增事件监听器
+    this.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+    this.globalSearchInput.addEventListener('input', () => this.handleGlobalSearch());
+    document.addEventListener('keydown', (e) => this.handleKeydown(e));
+    document.addEventListener('click', (e) => this.handleDocumentClick(e));
+    document.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
   }
 
   async loadBooks() {
@@ -1667,10 +1785,9 @@ class BookApp {
       console.log('书籍加载完成, 数量:', books.length);
       this.renderBooks();
       this.updateBookCount();
-      this.showStatus('书籍加载成功', 'success');
     } catch (error) {
       console.error('加载书籍失败:', error);
-      this.showStatus('加载书籍失败', 'error');
+      this.showToast('加载书籍失败', 'error');
     } finally {
       this.hideLoading();
     }
@@ -1742,23 +1859,62 @@ class BookApp {
   // 加载可用的标签
   loadFilterTags() {
     const allBooks = this.storageService.getAllBooks();
-    const tags = FilterService.getAllTags(allBooks);
+    const categorizedTags = FilterService.getAllTagsByCategory(allBooks);
 
-    if (tags.length === 0) {
+    const hasAnyTags = categorizedTags.format.length > 0 || categorizedTags.genre.length > 0 || categorizedTags.unknown.length > 0;
+
+    if (!hasAnyTags) {
       this.filterTagsContainer.innerHTML = '<span class="empty-tip">暂无标签</span>';
       return;
     }
 
     let html = '';
-    tags.forEach(tag => {
-      const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
-      html += `
-        <label class="checkbox-label tag-checkbox">
-          <input type="checkbox" name="filterTag" value="${this.escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
-          <span class="tag-name">${this.escapeHtml(tag)}</span>
-        </label>
-      `;
-    });
+
+    // 题材标签区域（多选）
+    if (categorizedTags.format.length > 0) {
+      html += '<div class="filter-tag-section"><span class="filter-tag-category">题材：</span>';
+      categorizedTags.format.forEach(tag => {
+        const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
+        html += `
+          <label class="filter-tag-item tag-format-label">
+            <input type="checkbox" name="filterFormatTag" value="${this.escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
+            <span class="tag-name">${this.escapeHtml(tag)}</span>
+          </label>
+        `;
+      });
+      html += '</div>';
+    }
+
+    // 类型标签区域（多选）
+    if (categorizedTags.genre.length > 0) {
+      html += '<div class="filter-tag-section"><span class="filter-tag-category">类型：</span>';
+      categorizedTags.genre.forEach(tag => {
+        const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
+        html += `
+          <label class="filter-tag-item">
+            <input type="checkbox" name="filterGenreTag" value="${this.escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
+            <span class="tag-name">${this.escapeHtml(tag)}</span>
+          </label>
+        `;
+      });
+      html += '</div>';
+    }
+
+    // 未知/自定义标签
+    if (categorizedTags.unknown.length > 0) {
+      html += '<div class="filter-tag-section"><span class="filter-tag-category">其他：</span>';
+      categorizedTags.unknown.forEach(tag => {
+        const isChecked = this.activeFilters.tags && this.activeFilters.tags.includes(tag);
+        html += `
+          <label class="filter-tag-item">
+            <input type="checkbox" name="filterUnknownTag" value="${this.escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
+            <span class="tag-name">${this.escapeHtml(tag)}</span>
+          </label>
+        `;
+      });
+      html += '</div>';
+    }
+
     this.filterTagsContainer.innerHTML = html;
   }
 
@@ -1768,9 +1924,22 @@ class BookApp {
     const statusCheckboxes = document.querySelectorAll('input[name="filterStatus"]:checked');
     this.activeFilters.status = Array.from(statusCheckboxes).map(cb => cb.value);
 
-    // 获取选中的标签
-    const tagCheckboxes = document.querySelectorAll('input[name="filterTag"]:checked');
-    this.activeFilters.tags = Array.from(tagCheckboxes).map(cb => cb.value);
+    // 获取选中的标签（题材、类型、其他均为多选，OR逻辑）
+    const selectedTags = [];
+
+    // 题材标签 - 多选（checkbox）
+    const formatCheckboxes = document.querySelectorAll('input[name="filterFormatTag"]:checked');
+    selectedTags.push(...Array.from(formatCheckboxes).map(cb => cb.value));
+
+    // 类型标签 - 多选（checkbox）
+    const genreCheckboxes = document.querySelectorAll('input[name="filterGenreTag"]:checked');
+    selectedTags.push(...Array.from(genreCheckboxes).map(cb => cb.value));
+
+    // 其他/自定义标签 - 多选
+    const unknownCheckboxes = document.querySelectorAll('input[name="filterUnknownTag"]:checked');
+    selectedTags.push(...Array.from(unknownCheckboxes).map(cb => cb.value));
+
+    this.activeFilters.tags = selectedTags.length > 0 ? selectedTags : null;
 
     // 获取时间范围
     const startDateFrom = document.getElementById('filterStartDateFrom').value;
@@ -1808,7 +1977,7 @@ class BookApp {
     this.hideFilterPanel();
     this.updateFilterBadge();
     this.renderBooks();
-    this.showStatus('筛选已应用', 'success');
+    this.showToast('筛选已应用', 'success');
   }
 
   // 清除过滤条件
@@ -1834,7 +2003,7 @@ class BookApp {
 
     this.updateFilterBadge();
     this.renderBooks();
-    this.showStatus('筛选已清除', 'success');
+    this.showToast('筛选已清除', 'success');
   }
 
   // 更新过滤计数徽章
@@ -1956,6 +2125,9 @@ class BookApp {
     this.currentBookId = book ? book.id : null;
     document.getElementById('formTitle').textContent = this.isEditing ? '编辑书籍' : '添加书籍';
 
+    // 初始化标签数组
+    this.currentTags = book && book.tags ? [...book.tags] : [];
+
     if (book) {
       this.bookIdInput.value = book.id;
       this.titleInput.value = book.title;
@@ -1974,6 +2146,13 @@ class BookApp {
       this.enableRatingCheckbox.checked = false;
     }
 
+    // 渲染已选标签
+    this.renderSelectedTags();
+    // 渲染题材标签
+    this.renderFormatTags();
+    // 渲染类型标签
+    this.renderGenreTags();
+
     this.bookFormSection.style.display = 'block';
     this.titleInput.focus();
   }
@@ -1983,6 +2162,108 @@ class BookApp {
     this.bookForm.reset();
     this.isEditing = false;
     this.currentBookId = null;
+    this.currentTags = [];
+    this.renderSelectedTags();
+  }
+
+  // 判断是否为题材标签
+  isFormatTag(tagName) {
+    return this.formatTags.includes(tagName);
+  }
+
+  // 添加标签（单选题材+多选类型逻辑）
+  addTag(tagName, tagType = null) {
+    if (!tagName) return;
+
+    // 判断标签类型：如果指定了类型则使用指定类型，否则根据是否在题材列表中判断
+    const isFormat = tagType === 'format' || this.isFormatTag(tagName);
+
+    if (isFormat) {
+      // 题材类：单选，先移除所有题材标签，再添加新题材
+      this.currentTags = this.currentTags.filter(t => !this.isFormatTag(t));
+      this.currentTags.unshift(tagName); // 添加到数组首位
+    } else {
+      // 类型类：多选，增量添加（排除重复）
+      if (this.currentTags.includes(tagName)) return;
+      this.currentTags.push(tagName);
+    }
+
+    this.renderSelectedTags();
+    this.renderFormatTags();
+    this.renderGenreTags();
+  }
+
+  // 移除标签
+  removeTag(tagName) {
+    this.currentTags = this.currentTags.filter(t => t !== tagName);
+    this.renderSelectedTags();
+    this.renderFormatTags();
+    this.renderGenreTags();
+  }
+
+  // 渲染已选标签（带删除按钮）
+  renderSelectedTags() {
+    if (!this.selectedTagsContainer) return;
+    if (this.currentTags.length === 0) {
+      this.selectedTagsContainer.innerHTML = '<span class="no-tags-tip">暂无标签</span>';
+      return;
+    }
+
+    this.selectedTagsContainer.innerHTML = this.currentTags.map((tag, index) => {
+      // 数组第一位（题材标签）使用特殊样式，其他为类型标签
+      const isFormat = index === 0 && this.isFormatTag(tag);
+      const tagClass = isFormat ? 'selected-tag tag-format-active' : 'selected-tag tag-genre-item';
+      return `
+        <span class="${tagClass}">
+          ${tag}
+          <span class="remove-tag" onclick="window.bookApp.removeTag('${tag}')">&times;</span>
+        </span>
+      `;
+    }).join('');
+  }
+
+  // 渲染题材标签（无删除按钮，点击添加到已选）
+  renderFormatTags() {
+    const container = this.formatTagsContainer;
+    if (!container) return;
+
+    // 获取当前已选中的题材标签（数组第一位）
+    const selectedFormat = this.currentTags.length > 0 && this.isFormatTag(this.currentTags[0])
+      ? this.currentTags[0]
+      : null;
+
+    container.innerHTML = this.formatTags.map(tag => {
+      const isSelected = tag === selectedFormat;
+      const activeClass = isSelected ? 'preset-tag active' : 'preset-tag';
+      return `<button type="button" class="${activeClass}" data-tag="${tag}">${tag}</button>`;
+    }).join('');
+
+    container.querySelectorAll('.preset-tag').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.addTag(btn.dataset.tag, 'format');
+      });
+    });
+  }
+
+  // 渲染类型标签（无删除按钮，点击添加到已选）
+  renderGenreTags() {
+    const container = this.genreTagsContainer;
+    if (!container) return;
+
+    // 获取当前已选中的所有类型标签
+    const selectedGenres = this.currentTags.filter(t => !this.isFormatTag(t));
+
+    container.innerHTML = this.genreTags.map(tag => {
+      const isSelected = selectedGenres.includes(tag);
+      const activeClass = isSelected ? 'preset-tag active' : 'preset-tag';
+      return `<button type="button" class="${activeClass}" data-tag="${tag}">${tag}</button>`;
+    }).join('');
+
+    container.querySelectorAll('.preset-tag').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.addTag(btn.dataset.tag, 'genre');
+      });
+    });
   }
 
   async handleFormSubmit(e) {
@@ -1993,21 +2274,29 @@ class BookApp {
       startDate: this.startDateInput.value || null,
       endDate: this.endDateInput.value || null,
       status: this.statusSelect.value,
-      enableRating: this.enableRatingCheckbox.checked
+      enableRating: this.enableRatingCheckbox ? this.enableRatingCheckbox.checked : false,
+      tags: [...this.currentTags]
     };
 
     try {
       if (this.isEditing && this.currentBookId) {
         await this.storageService.updateBook(this.currentBookId, bookData);
-        this.showStatus('书籍更新成功', 'success');
+        // 🌟 修复为右上角弹窗 showToast
+        this.showToast('书籍更新成功', 'success'); 
       } else {
         await this.storageService.addBook(bookData);
-        this.showStatus('书籍添加成功', 'success');
+        // 🌟 修复为右上角弹窗 showToast
+        this.showToast('书籍添加成功', 'success'); 
       }
+      
+      // 彻底成功后，隐藏表单并刷新列表
       this.hideBookForm();
-      this.loadBooks();
+      this.loadBooks(); 
+      
     } catch (error) {
-      this.showStatus(`保存失败: ${error.message}`, 'error');
+      console.error('表单提交失败:', error);
+      // 失败后只弹红框报错，绝对不调用 loadBooks() 清空数据
+      this.showToast(`保存失败: ${error.message}`, 'error');
     }
   }
 
@@ -2182,9 +2471,9 @@ class BookApp {
         this.renderNotes(updatedBook);
       }
 
-      this.showStatus('笔记删除成功', 'success');
+      this.showToast('笔记删除成功', 'success');
     } catch (error) {
-      this.showStatus(`删除失败: ${error.message}`, 'error');
+      this.showToast(`删除失败: ${error.message}`, 'error');
     }
   }
 
@@ -2216,10 +2505,10 @@ class BookApp {
     if (!this.bookToDelete) return;
     try {
       await this.storageService.deleteBook(this.bookToDelete.id);
-      this.showStatus('书籍删除成功', 'success');
+      this.showToast('书籍删除成功', 'success');
       this.loadBooks();
     } catch (error) {
-      this.showStatus(`删除失败: ${error.message}`, 'error');
+      this.showToast(`删除失败: ${error.message}`, 'error');
     } finally {
       this.hideDeleteModal();
     }
@@ -2228,7 +2517,7 @@ class BookApp {
   async saveNote() {
     const content = this.newNoteContent.value.trim();
     if (!content) {
-      this.showStatus('请输入笔记内容', 'warning');
+      this.showToast('请输入笔记内容', 'warning');
       return;
     }
     if (!this.currentNotesBookId) return;
@@ -2244,7 +2533,7 @@ class BookApp {
           book.notes[noteIndex].content = content;
           book.notes[noteIndex].updatedAt = new Date().toISOString();
           await this.storageService.updateBook(this.currentNotesBookId, { notes: book.notes });
-          this.showStatus('笔记更新成功', 'success');
+          this.showToast('笔记更新成功', 'success');
         }
       } else {
         // 创建新笔记
@@ -2260,7 +2549,7 @@ class BookApp {
         if (!book.notes) book.notes = [];
         book.notes.push(newNote);
         await this.storageService.updateBook(this.currentNotesBookId, { notes: book.notes });
-        this.showStatus('笔记保存成功', 'success');
+        this.showToast('笔记保存成功', 'success');
       }
 
       this.newNoteContent.value = '';
@@ -2272,7 +2561,7 @@ class BookApp {
         this.renderNotes(updatedBook);
       }
     } catch (error) {
-      this.showStatus(`保存失败: ${error.message}`, 'error');
+      this.showToast(`保存失败: ${error.message}`, 'error');
     }
   }
 
@@ -2286,7 +2575,7 @@ class BookApp {
     const startDate = this.startDateInput.value;
     const endDate = this.endDateInput.value;
     if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-      this.showStatus('开始日期不能晚于结束日期', 'warning');
+      this.showToast('开始日期不能晚于结束日期', 'warning');
       this.endDateInput.value = '';
     }
   }
@@ -2330,8 +2619,11 @@ class BookApp {
   }
 
   // 加载统计数据
-  loadStatsData() {
+  async loadStatsData() {
     try {
+      // 先重新加载书籍数据，确保获取最新数据
+      await this.storageService.loadBooks();
+
       // 获取统计数据
       const overviewStats = this.statsService.getOverviewStats();
       const detailedReport = this.statsService.getDetailedReport();
@@ -2348,7 +2640,7 @@ class BookApp {
       console.log('统计数据加载完成');
     } catch (error) {
       console.error('加载统计数据失败:', error);
-      this.showStatus('加载统计数据失败', 'error');
+      this.showToast('加载统计数据失败', 'error');
     }
   }
 
@@ -2368,9 +2660,24 @@ class BookApp {
   }
 
   // 创建图表
+  // 创建图表
   createCharts(stats) {
     // 销毁现有图表
     this.destroyAllCharts();
+
+    // 🌟 终极修复：动态配置 Chart.js 全局字体和网格线颜色，适配深色模式！
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#e9ecef' : '#666'; // 深色模式用亮白，浅色用深灰
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    if (window.Chart) {
+      Chart.defaults.color = textColor;
+      Chart.defaults.borderColor = gridColor;
+      if (Chart.defaults.scale) {
+        Chart.defaults.scale.grid.color = gridColor;
+        Chart.defaults.scale.ticks.color = textColor;
+      }
+    }
 
     // 阅读状态分布 - 环形图
     const readingStatusCanvas = document.getElementById('readingStatusChart');
@@ -2495,7 +2802,7 @@ class BookApp {
   refreshStats() {
     console.log('刷新统计数据');
     this.loadStatsData();
-    this.showStatus('统计数据已刷新', 'success');
+    this.showToast('统计数据已刷新', 'success');
   }
 
   // 导出统计报告
@@ -2522,10 +2829,10 @@ class BookApp {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      this.showStatus('统计报告已导出', 'success');
+      this.showToast('统计报告已导出', 'success');
     } catch (error) {
       console.error('导出统计报告失败:', error);
-      this.showStatus('导出统计报告失败', 'error');
+      this.showToast('导出统计报告失败', 'error');
     }
   }
 
@@ -2580,13 +2887,13 @@ class BookApp {
       // 检查文件类型
       const fileName = file.name.toLowerCase();
       if (!fileName.endsWith('.json') && !fileName.endsWith('.csv')) {
-        this.showStatus('仅支持 JSON 和 CSV 格式', 'error');
+        this.showToast('仅支持 JSON 和 CSV 格式', 'error');
         return;
       }
 
       // 检查文件大小（最大 5MB）
       if (file.size > 5 * 1024 * 1024) {
-        this.showStatus('文件过大（最大 5MB）', 'error');
+        this.showToast('文件过大（最大 5MB）', 'error');
         return;
       }
 
@@ -2602,7 +2909,7 @@ class BookApp {
       }
 
       if (!importResult.success) {
-        this.showStatus(`文件解析失败: ${importResult.error}`, 'error');
+        this.showToast(`文件解析失败: ${importResult.error}`, 'error');
         return;
       }
 
@@ -2635,7 +2942,7 @@ class BookApp {
       this.currentImportData = importResult;
 
     } catch (error) {
-      this.showStatus(`读取文件失败: ${error.message}`, 'error');
+      this.showToast(`读取文件失败: ${error.message}`, 'error');
     }
   }
 
@@ -2658,7 +2965,7 @@ class BookApp {
       const books = this.storageService.getAllBooks();
 
       if (books.length === 0) {
-        this.showStatus('没有数据可导出', 'warning');
+        this.showToast('没有数据可导出', 'warning');
         return;
       }
 
@@ -2707,15 +3014,15 @@ class BookApp {
 
       if (exportResult.success) {
         console.log('导出成功');
-        this.showStatus(`数据已导出到 ${result.filePath}`, 'success');
+        this.showToast(`数据已导出到 ${result.filePath}`, 'success');
         this.closeExportModal();
       } else {
         console.log('导出失败:', exportResult.error);
-        this.showStatus(`导出失败: ${exportResult.error}`, 'error');
+        this.showToast(`导出失败: ${exportResult.error}`, 'error');
       }
 
     } catch (error) {
-      this.showStatus(`导出失败: ${error.message}`, 'error');
+      this.showToast(`导出失败: ${error.message}`, 'error');
     }
   }
 
@@ -2723,7 +3030,7 @@ class BookApp {
   async confirmImport() {
     try {
       if (!this.currentImportData || !this.currentImportData.success) {
-        this.showStatus('请先选择有效的导入文件', 'warning');
+        this.showToast('请先选择有效的导入文件', 'warning');
         return;
       }
 
@@ -2758,12 +3065,12 @@ class BookApp {
         message = `导入完成: 替换全部数据，共 ${mergeResult.totalCount} 本书籍`;
       }
 
-      this.showStatus(message, 'success');
+      this.showToast(message, 'success');
       this.closeImportModal();
       this.loadBooks();
 
     } catch (error) {
-      this.showStatus(`导入失败: ${error.message}`, 'error');
+      this.showToast(`导入失败: ${error.message}`, 'error');
     }
   }
 
@@ -2808,7 +3115,7 @@ class BookApp {
       if (!imageExts.includes(ext) && !videoExts.includes(ext)) {
         const fileResult = await window.electronAPI.readFile(filePath);
         if (!fileResult.success) {
-          this.showStatus(`读取文件失败: ${fileResult.error}`, 'error');
+          this.showToast(`读取文件失败: ${fileResult.error}`, 'error');
           return;
         }
         content = fileResult.content;
@@ -2843,9 +3150,9 @@ class BookApp {
       }
 
       const typeName = noteType === 'image' ? '图片' : (noteType === 'video' ? '视频' : '笔记');
-      this.showStatus(`成功导入${typeName}`, 'success');
+      this.showToast(`成功导入${typeName}`, 'success');
     } catch (error) {
-      this.showStatus(`导入失败: ${error.message}`, 'error');
+      this.showToast(`导入失败: ${error.message}`, 'error');
     }
   }
 
@@ -2988,7 +3295,7 @@ class BookApp {
     book.rating = ratingData;
     await this.storageService.updateBook(this.currentRatingBookId, { rating: ratingData });
 
-    this.showStatus('评分保存成功', 'success');
+    this.showToast('评分保存成功', 'success');
     this.closeRatingModal();
     this.renderBooks();
   }
@@ -3051,11 +3358,43 @@ class BookApp {
     const option = {
       tooltip: {
         trigger: 'item',
+        // 让提示框背景色也适配深色/浅色模式
+        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(30, 32, 40, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'rgba(218, 112, 214, 0.3)',
+        borderWidth: 1,
+        textStyle: {
+          color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#f8f9fa' : '#333'
+        },
         formatter: (params) => {
-          let html = `<b>${params.name}</b><br/>`;
-          params.value.forEach((val, idx) => {
-            html += `${indicatorData[idx].name}: ${val - 2}<br/>`; // 提示框中还原真实分数
-          });
+          const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+          const values = params.value; // 这是加了2偏移量的数据
+          let valIdx = 0;
+
+          // 开启弹性盒子布局，横向排列三列
+          let html = `<div style="display: flex; gap: 25px; padding: 5px;">`;
+
+          // 遍历三大层面（作者、文本、读者）
+          for (const [layer, items] of Object.entries(profile)) {
+            html += `<div style="display: flex; flex-direction: column;">`;
+            html += `<div style="font-weight: bold; color: #dda0dd; border-bottom: 1px solid rgba(218, 112, 214, 0.3); margin-bottom: 8px; padding-bottom: 4px; font-size: 13px;">${layer}</div>`;
+            
+            // 遍历该层面下的具体指标
+            items.forEach(m => {
+              const realScore = values[valIdx] - 2; // 还原真实分数
+              // 根据分数给上不同的颜色：正分为粉红，负分为灰色
+              let scoreColor = realScore > 0 ? '#F88379' : (realScore < 0 ? '#95a5a6' : '#adb5bd');
+              let scoreText = realScore > 0 ? '+' + realScore : realScore;
+              
+              html += `<div style="font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 15px;">
+                         <span style="opacity: 0.9;">${m.name}</span>
+                         <span style="color: ${scoreColor}; font-weight: bold; font-family: monospace;">${scoreText}</span>
+                       </div>`;
+              valIdx++;
+            });
+            html += `</div>`; // 结束当前列
+          }
+          
+          html += `</div>`; // 结束整个弹性盒子
           return html;
         }
       },
@@ -3107,7 +3446,7 @@ class BookApp {
   // 通用工具方法
   // =========================================
 
-  showStatus(message, type = 'info') {
+  showToast(message, type = 'info') {
     this.statusMessageElement.textContent = message;
     const typeClasses = { 
       success: 'text-success', 
@@ -3135,15 +3474,248 @@ class BookApp {
   generateId() {
     return Date.now().toString() + Math.random().toString(36).substring(2, 9);
   }
+
+  // =========================================
+  // 新增用户体验功能
+  // =========================================
+
+  // 1. Toast 通知系统
+  showToast(message, type = 'info', duration = 3000) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+      <i class="fas fa-${this.getToastIcon(type)}"></i>
+      <span>${message}</span>
+      <button class="toast-close"><i class="fas fa-times"></i></button>
+    `;
+
+    this.toastContainer.appendChild(toast);
+
+    // 添加关闭事件
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.addEventListener('click', () => {
+      toast.classList.add('toast-out');
+      setTimeout(() => toast.remove(), 300);
+    });
+
+    // 自动关闭
+    if (duration > 0) {
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.classList.add('toast-out');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, duration);
+    }
+
+    return toast;
+  }
+
+  getToastIcon(type) {
+    const icons = {
+      success: 'check-circle',
+      error: 'exclamation-circle',
+      warning: 'exclamation-triangle',
+      info: 'info-circle'
+    };
+    return icons[type] || 'info-circle';
+  }
+
+  // 2. 深色模式切换
+  toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+
+    // 更新图标
+    this.themeIcon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+
+    this.showToast(`已切换到${newTheme === 'dark' ? '深色' : '浅色'}模式`, 'info');
+  }
+
+  initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    this.themeIcon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  }
+
+  // 3. 全局搜索
+  handleGlobalSearch() {
+    const searchTerm = this.globalSearchInput.value.trim().toLowerCase();
+
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+
+    this.searchDebounceTimer = setTimeout(() => {
+      this.renderBooks(searchTerm);
+    }, 300);
+  }
+
+  // 4. 键盘快捷键
+  handleKeydown(e) {
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+    // 防止在输入框中触发快捷键
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    // Ctrl/Cmd + N: 添加新书籍
+    if (isCtrlOrCmd && e.key === 'n') {
+      e.preventDefault();
+      this.showBookForm();
+      this.showToast('打开添加书籍表单', 'info');
+    }
+
+    // Ctrl/Cmd + F: 聚焦搜索框
+    if (isCtrlOrCmd && e.key === 'f') {
+      e.preventDefault();
+      this.globalSearchInput.focus();
+      this.showToast('聚焦搜索框', 'info');
+    }
+
+    // Ctrl/Cmd + S: 保存当前表单
+    if (isCtrlOrCmd && e.key === 's') {
+      e.preventDefault();
+      if (this.bookFormSection.style.display !== 'none') {
+        this.bookForm.dispatchEvent(new Event('submit'));
+        this.showToast('保存书籍', 'success');
+      }
+    }
+
+    // Escape: 关闭模态框
+    if (e.key === 'Escape') {
+      this.hideAllModals();
+      this.hideContextMenu();
+    }
+
+    // Delete: 删除选中的书籍
+    if (e.key === 'Delete' && this.contextMenuTarget) {
+      this.showDeleteModal(this.contextMenuTarget);
+    }
+  }
+
+  hideAllModals() {
+    this.hideBookForm();
+    this.hideNotesModal();
+    this.hideDeleteModal();
+    this.hideFilterPanel();
+    this.hideContextMenu();
+  }
+
+  // 5. 右键菜单
+  handleContextMenu(e) {
+    // 检查是否点击在书籍卡片上
+    const bookCard = e.target.closest('.book-card');
+    if (bookCard) {
+      e.preventDefault();
+      this.showContextMenu(e, bookCard);
+    }
+  }
+
+  showContextMenu(e, target) {
+    this.contextMenuTarget = target;
+    this.contextMenu.style.display = 'block';
+
+    // 设置菜单位置
+    const menuWidth = this.contextMenu.offsetWidth;
+    const menuHeight = this.contextMenu.offsetHeight;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    let left = e.clientX;
+    let top = e.clientY;
+
+    // 防止菜单超出窗口边界
+    if (left + menuWidth > windowWidth) {
+      left = windowWidth - menuWidth - 10;
+    }
+    if (top + menuHeight > windowHeight) {
+      top = windowHeight - menuHeight - 10;
+    }
+
+    this.contextMenu.style.left = `${left}px`;
+    this.contextMenu.style.top = `${top}px`;
+
+    // 添加菜单项点击事件
+    this.bindContextMenuEvents();
+  }
+
+  hideContextMenu() {
+    this.contextMenu.style.display = 'none';
+    this.contextMenuTarget = null;
+  }
+
+  bindContextMenuEvents() {
+    const menuItems = this.contextMenu.querySelectorAll('li[data-action]');
+
+    menuItems.forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        const action = item.getAttribute('data-action');
+        this.handleContextMenuAction(action);
+        this.hideContextMenu();
+      };
+    });
+  }
+
+  handleContextMenuAction(action) {
+    if (!this.contextMenuTarget) return;
+
+    const bookId = this.contextMenuTarget.getAttribute('data-id');
+    const book = this.storageService.getBookById(bookId);
+
+    if (!book) return;
+
+    switch (action) {
+      case 'edit':
+        this.editBook(bookId);
+        break;
+      case 'notes':
+        this.showNotesModal(bookId);
+        break;
+      case 'rating':
+        this.openRatingModal(bookId);
+        break;
+      case 'delete':
+        this.showDeleteModal(bookId);
+        break;
+    }
+  }
+
+  handleDocumentClick(e) {
+    // 点击文档其他地方时隐藏右键菜单
+    if (!this.contextMenu.contains(e.target)) {
+      this.hideContextMenu();
+    }
+  }
+
+  // 6. 加载指示器
+  showLoading() {
+    this.statusMessageElement.textContent = '加载中...';
+    this.statusMessageElement.classList.add('loading');
+  }
+
+  hideLoading() {
+    this.statusMessageElement.textContent = '就绪';
+    this.statusMessageElement.classList.remove('loading');
+  }
+
+  // 7. 增强的书籍渲染（支持搜索）
+  
 } // BookApp 类结束
 
 // =========================================
 // 应用初始化与全局事件绑定
 // =========================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // 确保 electronAPI 加载完成后再初始化
-  setTimeout(() => {
+  setTimeout(async () => {
     window.bookApp = new BookApp();
+    await window.bookApp.init();
     
     // 🌟 将 BookApp 内部的方法暴露为全局函数，以便 index.html 中的 onclick 能直接调用
     window.closeRatingModal = () => {

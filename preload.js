@@ -18,7 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
   showOpenDialog: (options) => ipcRenderer.invoke('show-open-dialog', options),
   exportData: ({ format, data, filePath }) => ipcRenderer.invoke('export-data', { format, data, filePath }),
-  importData: ({ filePath }) => ipcRenderer.invoke('import-data', { filePath })
+  importData: ({ filePath }) => ipcRenderer.invoke('import-data', { filePath }),
+
+  // 开发者工具
+  openDevTools: () => ipcRenderer.send('open-devtools')
 });
 
 // 监听主进程发送的消息
