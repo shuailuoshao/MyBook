@@ -1,0 +1,24 @@
+{
+  "name": "mybook",
+  "version": "1.0.0",
+  "description": "书籍记录桌面应用",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "books",
+    "reading",
+    "tracker"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "chart.js": "^4.5.1"
+  },
+  "devDependencies": {
+    "electron": "^40.8.0"
+  }
+}

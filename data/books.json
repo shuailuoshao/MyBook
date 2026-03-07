@@ -1,0 +1,131 @@
+[
+  {
+    "id": "1772791998638",
+    "title": "苦难辉煌",
+    "author": "金一南",
+    "startDate": "2026-03-02",
+    "endDate": null,
+    "status": "阅读中",
+    "notes": [
+      {
+        "id": "1772804634254",
+        "content": "111111111111\n222222222222\n333333333333\n555555555555",
+        "type": "text",
+        "createdAt": "2026-03-06T13:43:54.254Z",
+        "updatedAt": "2026-03-06T13:44:44.391Z",
+        "sourceFile": "D:\\学习\\MyBook\\新建 文本文档.txt",
+        "tags": []
+      },
+      {
+        "id": "1772804637587",
+        "content": "111111111111\r\n222222222222\r\n333333333333",
+        "type": "text",
+        "createdAt": "2026-03-06T13:43:57.587Z",
+        "updatedAt": "2026-03-06T13:43:57.587Z",
+        "sourceFile": "D:\\学习\\MyBook\\新建 文本文档.txt",
+        "tags": []
+      },
+      {
+        "id": "1772804640805",
+        "content": "111111111111\n222222222222\n333333333333",
+        "type": "text",
+        "createdAt": "2026-03-06T13:44:00.805Z",
+        "updatedAt": "2026-03-06T15:04:24.930Z",
+        "sourceFile": "D:\\学习\\MyBook\\新建 文本文档.txt",
+        "tags": []
+      },
+      {
+        "id": "1772804651648",
+        "content": "你好啊",
+        "createdAt": "2026-03-06T13:44:11.648Z",
+        "updatedAt": "2026-03-06T13:44:11.648Z",
+        "sourceFile": null,
+        "tags": []
+      }
+    ],
+    "rating": {
+      "totalScore": 54,
+      "profile": "标准配置",
+      "ratings": {
+        "情节架构": 1,
+        "世界观": 1,
+        "象征与意象": 1
+      },
+      "ratedAt": "2026-03-07T01:44:21.236Z"
+    },
+    "tags": [],
+    "enableRating": true,
+    "createdAt": "2026-03-06T10:13:18.638Z",
+    "updatedAt": "2026-03-07T02:36:33.586Z"
+  },
+  {
+    "id": "1772852282834",
+    "title": "1111",
+    "author": "",
+    "startDate": null,
+    "endDate": null,
+    "status": "未开始",
+    "notes": [],
+    "rating": {
+      "totalScore": 60,
+      "profile": "标准配置",
+      "ratings": {
+        "世界观": 1,
+        "时代背景": 1,
+        "叙事时间": 1,
+        "人物设计": 1,
+        "作品主题": 1,
+        "情节架构": 1,
+        "象征与意象": 1
+      },
+      "ratedAt": "2026-03-07T02:58:14.058Z"
+    },
+    "tags": [],
+    "enableRating": true,
+    "createdAt": "2026-03-07T02:58:02.834Z",
+    "updatedAt": "2026-03-07T02:58:14.058Z"
+  },
+  {
+    "id": "1772852285657",
+    "title": "2222",
+    "author": "",
+    "startDate": null,
+    "endDate": null,
+    "status": "未开始",
+    "notes": [],
+    "rating": {
+      "totalScore": 43,
+      "profile": "标准配置",
+      "ratings": {
+        "作品主题": -1,
+        "叙事时间": -1,
+        "象征与意象": -1,
+        "世界观": -1
+      },
+      "ratedAt": "2026-03-07T02:58:19.197Z"
+    },
+    "tags": [],
+    "enableRating": true,
+    "createdAt": "2026-03-07T02:58:05.658Z",
+    "updatedAt": "2026-03-07T02:58:19.197Z"
+  },
+  {
+    "id": "1772852287876",
+    "title": "3333",
+    "author": "",
+    "startDate": null,
+    "endDate": null,
+    "status": "未开始",
+    "notes": [],
+    "rating": {
+      "totalScore": 50,
+      "profile": "标准配置",
+      "ratings": {},
+      "ratedAt": "2026-03-07T02:58:25.688Z"
+    },
+    "tags": [],
+    "enableRating": true,
+    "createdAt": "2026-03-07T02:58:07.876Z",
+    "updatedAt": "2026-03-07T02:58:25.688Z"
+  }
+]

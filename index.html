@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的读书记录</title>
+    <link rel="stylesheet" href="styles.css?v=888">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:;">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部工具栏 -->
+        <header class="app-header">
+            <h1><i class="fas fa-book"></i> 我的读书记录</h1>
+            <div class="toolbar">
+                <button id="addBookBtn" class="btn-primary">
+                    <i class="fas fa-plus"></i> 添加书籍
+                </button>
+                <div class="data-controls">
+                    <button id="statsBtn" class="btn-secondary" title="查看统计">
+                        <i class="fas fa-chart-bar"></i> 统计
+                    </button>
+                    <button id="exportBtn" class="btn-secondary" title="导出数据">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                    <button id="importBtn" class="btn-secondary" title="导入数据">
+                        <i class="fas fa-upload"></i> 导入
+                    </button>
+                </div>
+                <div class="sort-controls">
+                    <select id="sortField" class="form-select">
+                        <option value="title">按书名排序</option>
+                        <option value="author">按作者排序</option>
+                        <option value="startDate">按开始时间排序</option>
+                        <option value="endDate">按结束时间排序</option>
+                        <option value="status">按阅读状态排序</option>
+                        <option value="rating">按综合评分排序</option>
+                        <option value="rating.authorScore">按作者层面得分排序</option>
+                        <option value="rating.textScore">按文本层面得分排序</option>
+                        <option value="rating.readerScore">按读者层面得分排序</option>
+                        <option value="tags">按标签排序</option>
+                        <option value="readingDuration">按阅读时长排序</option>
+                        <option value="createdAt">按添加时间排序</option>
+                        <option value="updatedAt">按更新时间排序</option>
+                    </select>
+                    <select id="sortOrder" class="form-select">
+                        <option value="asc">升序</option>
+                        <option value="desc">降序</option>
+                    </select>
+                    <button id="toggleFilterBtn" class="btn-secondary">
+                        <i class="fas fa-filter"></i> 筛选 <span id="activeFilterCount" class="badge" style="display: none;">0</span>
+                    </button>
+                    <button id="refreshBtn" class="btn-secondary">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 过滤面板（默认隐藏） -->
+        <div id="filterPanel" class="filter-panel" style="display: none;">
+            <div class="filter-header">
+                <h3><i class="fas fa-filter"></i> 筛选条件</h3>
+                <button id="closeFilterPanelBtn" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="filter-content">
+                <!-- 状态筛选 -->
+                <div class="filter-group">
+                    <label>阅读状态</label>
+                    <div class="checkbox-group" id="filterStatusGroup">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="filterStatus" value="未开始"> 未开始
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="filterStatus" value="阅读中"> 阅读中
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="filterStatus" value="已读完"> 已读完
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 标签筛选 -->
+                <div class="filter-group">
+                    <label>标签</label>
+                    <div id="filterTagsContainer" class="tag-filter-list">
+                        <span class="empty-tip">暂无标签</span>
+                    </div>
+                </div>
+
+                <!-- 时间范围筛选 -->
+                <div class="filter-group">
+                    <label>开始时间范围</label>
+                    <div class="date-range">
+                        <input type="date" id="filterStartDateFrom" placeholder="开始日期">
+                        <span>至</span>
+                        <input type="date" id="filterStartDateTo" placeholder="结束日期">
+                    </div>
+                </div>
+
+                <!-- 评分范围筛选 -->
+                <div class="filter-group">
+                    <label>评分范围</label>
+                    <div class="rating-range">
+                        <input type="number" id="filterRatingMin" min="0" max="100" placeholder="最低分">
+                        <span>至</span>
+                        <input type="number" id="filterRatingMax" min="0" max="100" placeholder="最高分">
+                    </div>
+                </div>
+
+                <!-- 阅读时长筛选 -->
+                <div class="filter-group">
+                    <label>阅读时长（天）</label>
+                    <div class="duration-range">
+                        <input type="number" id="filterDurationMin" min="0" placeholder="最少天数">
+                        <span>至</span>
+                        <input type="number" id="filterDurationMax" min="0" placeholder="最多天数">
+                    </div>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button id="applyFilterBtn" class="btn-primary">
+                    <i class="fas fa-check"></i> 应用筛选
+                </button>
+                <button id="clearFilterBtn" class="btn-secondary">
+                    <i class="fas fa-times"></i> 清除筛选
+                </button>
+            </div>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 添加/编辑书籍表单（默认隐藏） -->
+            <section id="bookFormSection" class="form-section" style="display: none;">
+                <div class="form-container">
+                    <h2><i class="fas fa-edit"></i> <span id="formTitle">添加书籍</span></h2>
+                    <form id="bookForm">
+                        <input type="hidden" id="bookId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="title">书名 *</label>
+                                <input type="text" id="title" required placeholder="请输入书名">
+                            </div>
+                            <div class="form-group">
+                                <label for="author">作者</label>
+                                <input type="text" id="author" placeholder="请输入作者">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="startDate">开始阅读日期</label>
+                                <input type="date" id="startDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="endDate">结束阅读日期</label>
+                                <input type="date" id="endDate">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="status">阅读状态</label>
+                                <select id="status" class="form-select">
+                                    <option value="未开始">未开始</option>
+                                    <option value="阅读中">阅读中</option>
+                                    <option value="已读完">已读完</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: flex-end;">
+                                <label class="checkbox-label" style="margin-bottom: 0;">
+                                    <input type="checkbox" id="enableRating">
+                                    <span>启用评分功能</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-save"></i> 保存
+                            </button>
+                            <button type="button" id="cancelBtn" class="btn-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- 书籍列表区域 -->
+            <section class="book-list-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-list"></i> 书籍列表</h2>
+                    <div class="list-info">
+                        <span id="bookCount">0 本书</span>
+                    </div>
+                </div>
+                <div id="bookListContainer" class="book-list-container">
+                    <!-- 书籍列表将通过JavaScript动态生成 -->
+                    <!--
+                    书籍卡片模板示例：
+                    <div class="book-card">
+                        <div class="book-header">
+                            <div>
+                                <h3 class="book-title">书名</h3>
+                                <p class="book-author">作者</p>
+                            </div>
+                            <span class="book-status status-未开始">未开始</span>
+                        </div>
+                        <div class="book-dates">
+                            <div class="date-item">
+                                <div class="date-label">开始阅读</div>
+                                <div class="date-value">未开始</div>
+                            </div>
+                            <div class="date-item">
+                                <div class="date-label">结束阅读</div>
+                                <div class="date-value">进行中</div>
+                            </div>
+                        </div>
+                        <div class="book-actions">
+                            <button class="action-btn edit"><i class="fas fa-edit"></i> 编辑</button>
+                            <button class="action-btn delete"><i class="fas fa-trash"></i> 删除</button>
+                            <button class="action-btn notes"><i class="fas fa-sticky-note"></i> 笔记</button>
+                            <button class="action-btn rating" onclick="openRatingModal('${book.id}')"><i class="fas fa-star"></i> 评分</button>
+                        </div>
+                    </div>
+                    -->
+                    <div class="empty-state" id="emptyState">
+                        <i class="fas fa-book-open"></i>
+                        <h3>暂无书籍记录</h3>
+                        <p>点击"添加书籍"按钮开始记录你的阅读旅程</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 底部状态栏 -->
+        <footer class="app-footer">
+            <div class="status-info">
+                <span id="statusMessage">就绪</span>
+            </div>
+            <div class="footer-actions">
+                <span id="appVersion">版本 1.0.0</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 确认删除对话框 -->
+    <div id="deleteModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3><i class="fas fa-exclamation-triangle"></i> 确认删除</h3>
+            <p id="deleteMessage">确定要删除这本书吗？此操作无法撤销。</p>
+            <div class="modal-actions">
+                <button id="confirmDeleteBtn" class="btn-danger">确认删除</button>
+                <button id="cancelDeleteBtn" class="btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 笔记管理模态框 -->
+    <div id="notesModal" class="modal" style="display: none;">
+        <div class="modal-content notes-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-sticky-note"></i> 书籍笔记管理</h3>
+                <button id="closeNotesModalBtn" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- 当前书籍信息 -->
+            <div class="current-book-info">
+                <h4 id="currentBookTitle"></h4>
+                <span id="currentBookAuthor"></span>
+            </div>
+
+            <!-- 笔记展示区 -->
+            <div class="notes-list-section">
+                <div class="section-header">
+                    <h4><i class="fas fa-history"></i> 历史笔记</h4>
+                    <input type="text" id="noteSearchInput" placeholder="搜索笔记内容...">
+                    <span id="notesCount">0 条笔记</span>
+                </div>
+                <div id="notesListContainer" class="notes-list-container">
+                    <!-- 笔记列表将通过JavaScript动态生成 -->
+                    <div class="empty-state" id="notesEmptyState">
+                        <i class="fas fa-sticky-note"></i>
+                        <p>暂无笔记记录</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作区 -->
+            <div class="notes-actions">
+                <button id="importNotesBtn" class="btn-secondary">
+                    <i class="fas fa-file-import"></i> 导入文件(图片/视频/文本)
+                </button>
+            </div>
+
+            <!-- 笔记输入区 -->
+            <div class="notes-input-section">
+                <h4><i class="fas fa-edit"></i> 添加新笔记</h4>
+                <textarea id="newNoteContent" placeholder="在此输入笔记内容..." rows="6"></textarea>
+                <div class="input-actions">
+                    <button id="saveNoteBtn" class="btn-primary">
+                        <i class="fas fa-save"></i> 保存笔记
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 评分模态框 -->
+    <div id="ratingModal" class="modal" style="display: none;">
+        <div class="modal-content rating-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-star"></i> 书籍评分 - <span id="ratingBookTitle"></span></h3>
+                <button class="close-btn" onclick="closeRatingModal()">×</button>
+            </div>
+            <div class="rating-workspace">
+                <div class="rating-left">
+                    <div class="rating-metrics" id="ratingMetrics">
+                        <!-- 25个指标将通过JS动态渲染 -->
+                    </div>
+                </div>
+                <div class="rating-right">
+                    <div class="rating-chart-panel">
+                        <div class="rating-total-card">
+                            <span class="rating-label">加权总分</span>
+                            <span class="rating-score" id="ratingTotalScore">50.0</span>
+                        </div>
+                        <div id="ratingChart" class="rating-chart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="rating-actions">
+                <button class="btn-secondary" onclick="closeRatingModal()">取消</button>
+                <button class="btn-primary" onclick="saveRating()"><i class="fas fa-save"></i> 保存评分</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出模态框 -->
+    <div id="exportModal" class="modal" style="display: none;">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3><i class="fas fa-download"></i> 导出数据</h3>
+                <button class="close-btn" onclick="closeExportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <label class="radio-label">
+                        <input type="radio" name="exportFormat" value="json" checked>
+                        <span class="radio-text">
+                            <strong>JSON (完整数据)</strong>
+                            <small>导出所有书籍数据，包括笔记和评分</small>
+                        </span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="exportFormat" value="json-detailed">
+                        <span class="radio-text">
+                            <strong>JSON (含评分详情)</strong>
+                            <small>导出完整数据，包含详细的评分指标</small>
+                        </span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="exportFormat" value="csv">
+                        <span class="radio-text">
+                            <strong>CSV (表格)</strong>
+                            <small>导出为表格格式，适合在 Excel 中查看</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="confirmExport()" class="btn-primary">
+                    <i class="fas fa-download"></i> 导出
+                </button>
+                <button onclick="closeExportModal()" class="btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入模态框 -->
+    <div id="importModal" class="modal" style="display: none;">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3><i class="fas fa-upload"></i> 导入数据</h3>
+                <button class="close-btn" onclick="closeImportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-file-area">
+                    <input type="file" id="importFile" accept=".json,.csv" style="display: none;">
+                    <div class="file-drop-area" id="fileDropArea">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>点击选择文件或拖放到此处</p>
+                        <p class="file-hint">支持 JSON 和 CSV 格式</p>
+                    </div>
+                    <div id="importPreview" class="import-preview" style="display: none;">
+                        <h4>数据预览</h4>
+                        <div id="previewContent"></div>
+                    </div>
+                </div>
+                <div class="import-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="importMerge" checked>
+                        <span>合并到现有数据（取消则替换全部数据）</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="confirmImport()" class="btn-primary" id="confirmImportBtn" disabled>
+                    <i class="fas fa-upload"></i> 导入
+                </button>
+                <button onclick="closeImportModal()" class="btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计图表模态框 -->
+    <div class="modal" id="statsModal" style="display: none;">
+        <div class="modal-content" style="max-width: 1200px; width: 95%;">
+            <div class="modal-header">
+                <h3><i class="fas fa-chart-bar"></i> 阅读统计</h3>
+                <button class="close-btn" onclick="closeStatsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="stats-container">
+                    <!-- 统计概览卡片 -->
+                    <div class="stats-overview">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #e74c3c;">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="totalBooks">0</div>
+                                <div class="stat-label">总书籍数</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #2ecc71;">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="completedBooks">0</div>
+                                <div class="stat-label">已读完</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #f39c12;">
+                                <i class="fas fa-spinner"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="readingBooks">0</div>
+                                <div class="stat-label">阅读中</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #3498db;">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="avgRating">0.0</div>
+                                <div class="stat-label">平均评分</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图表区域 -->
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4><i class="fas fa-chart-pie"></i> 阅读状态分布</h4>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="readingStatusChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4><i class="fas fa-chart-bar"></i> 月度阅读趋势</h4>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="monthlyTrendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4><i class="fas fa-star-half-alt"></i> 评分分布</h4>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="ratingDistributionChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4><i class="fas fa-tags"></i> 热门标签</h4>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="tagDistributionChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4><i class="fas fa-clock"></i> 阅读时间分布</h4>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="readingTimeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h4><i class="fas fa-chart-line"></i> 阅读完成趋势</h4>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="completionTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 详细统计报告 -->
+                    <div class="detailed-report">
+                        <div class="report-header">
+                            <h4><i class="fas fa-file-alt"></i> 详细统计报告</h4>
+                            <button class="btn-secondary" onclick="exportStatsReport()">
+                                <i class="fas fa-download"></i> 导出报告
+                            </button>
+                        </div>
+                        <div class="report-content">
+                            <div class="report-section">
+                                <h5>阅读效率</h5>
+                                <div class="report-stats">
+                                    <div class="report-stat">
+                                        <span class="report-label">平均阅读时间：</span>
+                                        <span class="report-value" id="avgReadingTime">0</span>
+                                        <span class="report-unit">天</span>
+                                    </div>
+                                    <div class="report-stat">
+                                        <span class="report-label">阅读完成率：</span>
+                                        <span class="report-value" id="completionRate">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="report-section">
+                                <h5>最近活动</h5>
+                                <div class="recent-activities" id="recentActivities">
+                                    <!-- 最近活动列表将通过JavaScript动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="refreshStats()">
+                    <i class="fas fa-sync-alt"></i> 刷新统计
+                </button>
+                <button class="btn-secondary" onclick="closeStatsModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遮罩层 -->
+    <div id="overlay" class="overlay" style="display: none;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="renderer.js"></script>
+</body>
+</html>
