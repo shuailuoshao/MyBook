@@ -32,7 +32,10 @@
       "Bash(npm install electron@latest --save-dev)",
       "Bash(ls -la *.js *.html *.css)",
       "Bash(xxd -l 20 \"d:\\\\study_and_try\\\\MyBook\\\\MyBook\\\\styles.css\")",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Bash(npm install --save-dev electron-builder)",
+      "Bash(npm run build)",
+      "Bash(npx electron-builder --win --x64 --dir)"
     ]
   }
 }
