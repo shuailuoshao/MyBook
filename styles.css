@@ -5,6 +5,13 @@
     box-sizing: border-box;
 }
 
+/* 基础样式 - 重置默认边距 */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 /* 全局颜色变量 - 浅丁香紫/粉白 → 珊瑚粉/桃粉主题 */
 :root {
     --primary-gradient: linear-gradient(135deg, #e6e6fa 0%, #ffe4e1 50%, #ffb6c1 100%);
@@ -27,6 +34,13 @@
     --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
+/* 消除 body 默认边距，确保全屏无缝对齐 */
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-gradient);
+}
+
 /* 深色模式变量 */
 [data-theme="dark"] {
     --primary-gradient: linear-gradient(135deg, #4a2c4a 0%, #5a3a5a 50%, #7a4a7a 100%);
@@ -35,6 +49,7 @@
     --hover-color: #aa7aaa;
     --bg-light: #2a1a2a;
     --bg-gradient: linear-gradient(135deg, #3a2a3a 0%, #4a3a4a 100%);
+    --footer-bg: #1a0a1a;
 
     --bg-color: #1a0a1a;
     --text-color: #e9ecef;
@@ -145,9 +160,10 @@ body {
     min-height: 100vh;
     max-width: 1400px;
     margin: 0 auto;
-    background: var(--bg-color);
+    background: transparent;
     box-shadow: 0 0 40px var(--shadow-color);
     transition: background 0.3s, box-shadow 0.3s;
+    overflow: hidden;
 }
 
 /* 顶部工具栏 */
@@ -339,6 +355,136 @@ body {
     border-color: var(--secondary-color);
 }
 
+/* 主要内容包装层 */
+.app-main-wrapper {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* 侧边栏 */
+.sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    padding: 0 20px 15px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 15px;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex: 1;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s;
+}
+
+.sidebar-item:hover {
+    background: rgba(180, 100, 180, 0.1);
+}
+
+.sidebar-item.active {
+    background: rgba(180, 100, 180, 0.15);
+    color: var(--primary-color);
+    border-right: 3px solid var(--primary-color);
+}
+
+.sidebar-item i {
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-item .folder-count {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.sidebar-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 15px 20px 0;
+    padding: 10px;
+    background: transparent;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sidebar-add-btn:hover {
+    background: rgba(180, 100, 180, 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* 深色模式侧边栏 */
+[data-theme="dark"] .sidebar {
+    background: #2a1a2a;
+    border-right-color: var(--border-color);
+}
+
+[data-theme="dark"] .sidebar-header {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .sidebar-header h3 {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .sidebar-item {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .sidebar-item:hover {
+    background: rgba(180, 100, 180, 0.2);
+}
+
+[data-theme="dark"] .sidebar-item.active {
+    background: rgba(180, 100, 180, 0.2);
+    color: var(--primary-color);
+    border-right-color: var(--primary-color);
+}
+
+[data-theme="dark"] .sidebar-add-btn {
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .sidebar-add-btn:hover {
+    background: rgba(180, 100, 180, 0.2);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
 /* 主要内容区域 */
 .main-content {
     flex: 1;
@@ -348,6 +494,7 @@ body {
     gap: 30px;
     position: relative;
     z-index: 1;
+    overflow-y: auto;
 }
 
 /* 书籍列表区域 - 防止被 sticky 元素遮挡 */
@@ -746,22 +893,25 @@ body {
 /* 书籍列表容器 */
 .book-list-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 15px;
     margin-top: 20px;
     scroll-margin-top: 100px;
+    align-items: start;
+    align-content: start;
 }
 
 /* 书籍卡片 */
 .book-card {
     background: var(--card-bg);
     border-radius: 12px;
-    padding: 20px;
+    padding: 15px;
     box-shadow: 0 4px 12px var(--shadow-color);
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    max-width: 500px;
 }
 
 .book-card:hover {
@@ -838,11 +988,12 @@ body {
 
 .book-dates {
     display: flex;
-    gap: 20px;
+    gap: 8px;
     margin: 15px 0;
     padding: 15px 0;
     border-top: 1px solid #e9ecef;
     border-bottom: 1px solid #e9ecef;
+    flex-wrap: wrap;
 }
 
 .date-item {
@@ -850,31 +1001,32 @@ body {
 }
 
 .date-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: #6c757d;
     margin-bottom: 4px;
 }
 
 .date-value {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: #2c3e50;
 }
 
 .book-actions {
     display: flex;
-    gap: 10px;
+    gap: 6px;
     justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .action-btn {
-    padding: 6px 12px;
+    padding: 5px 8px;
     border: none;
     border-radius: 6px;
     background: #f8f9fa;
     color: #495057;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -923,16 +1075,24 @@ body {
 }
 
 /* 底部状态栏 */
+/* 底部状态栏 */
 .app-footer {
-    background: var(--footer-bg);
+    background: transparent;
     padding: 15px 30px;
-    border-top: 1px solid var(--border-color);
+    border-top: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 0.85rem;
-    color: var(--text-color);
-    transition: background 0.3s, border-color 0.3s, color 0.3s;
+    color: #6c757d;
+
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+/* 深色模式下确保底部状态栏与容器底色完全融合 */
+[data-theme="dark"] .app-footer {
+    background-color: transparent !important;
 }
 
 .status-info {
@@ -1686,7 +1846,11 @@ body {
 
 /* 1. 模态框主体扩宽，去除内边距 */
 .rating-modal {
-    max-width: 1200px !important;
+    max-width: none !important;
+    width: 100% !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .rating-modal .modal-content {
@@ -1705,6 +1869,20 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+/* 深色模式下评分模态框头部使用透明背景 */
+[data-theme="dark"] .rating-modal .modal-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .rating-modal {
+    background: rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="dark"] .rating-modal .modal-header h3 {
+    color: var(--text-color);
 }
 
 .rating-modal .modal-header h3 {
@@ -1840,14 +2018,15 @@ body {
     grid-template-rows: auto auto;
     gap: 30px;
     padding: 25px 30px;
-    border-bottom: 1px solid var(--border-color);
     background: var(--card-bg);
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
     box-sizing: border-box;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 0;
+    box-shadow: none !important;
+    border: none !important;
+    padding-bottom: 15px;
 }
 
 .filter-top-row .filter-group {
@@ -1875,6 +2054,9 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     box-sizing: border-box;
+    border: none !important;
+    box-shadow: none !important;
+    padding-top: 15px;
 }
 
 .filter-tags-group {
@@ -2021,7 +2203,8 @@ body {
 [data-theme="dark"] .filter-top-row,
 [data-theme="dark"] .filter-bottom-row {
     background-color: #282430 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: none !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-theme="dark"] #filterPanel,
@@ -2386,7 +2569,7 @@ body {
     box-shadow: 0 10px 30px var(--shadow-color);
     z-index: 10000;
     min-width: 180px;
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid var(--border-color);
     animation: context-menu-in 0.15s ease-out;
     transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
@@ -2442,6 +2625,88 @@ body {
 
 .context-menu li.divider:hover {
     background: #e9ecef;
+}
+
+/* 子菜单样式 */
+.context-menu li.has-submenu {
+    position: relative;
+}
+
+.context-menu .submenu-arrow {
+    margin-left: auto;
+    font-size: 0.7rem;
+    opacity: 0.6;
+}
+
+.context-menu .submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 160px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px var(--shadow-color);
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+    z-index: 10001;
+}
+
+.context-menu li.has-submenu:hover .submenu {
+    display: block;
+}
+
+.context-menu .submenu li {
+    padding: 10px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #495057;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.context-menu .submenu li:hover {
+    background: #f8f9fa;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .context-menu .submenu {
+    background: var(--card-bg);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .context-menu .submenu li {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .context-menu .submenu li:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 深色模式右键菜单 */
+[data-theme="dark"] .context-menu li {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .context-menu li:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .context-menu li.danger {
+    color: #ff6b6b;
+}
+
+[data-theme="dark"] .context-menu li.danger:hover {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+[data-theme="dark"] .context-menu li.divider {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 /* ==================== 导入/导出样式 ==================== */
@@ -2594,6 +2859,74 @@ body {
 .modal-actions .btn-primary,
 .modal-actions .btn-secondary {
     min-width: 100px;
+}
+
+/* ===== 新建文件夹弹窗专用样式 ===== */
+
+.folder-input {
+    width: 100%;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    color: #2c3e50;
+}
+
+.folder-input:focus {
+    background: #fff;
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(221, 160, 221, 0.15);
+    outline: none;
+}
+
+.folder-input::placeholder {
+    color: #adb5bd;
+}
+
+.folder-confirm-btn {
+    background: var(--primary-gradient) !important;
+    color: #4a2c4a !important;
+    border-radius: 8px !important;
+}
+
+.folder-confirm-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(180, 100, 180, 0.3);
+}
+
+.folder-cancel-btn {
+    background: transparent !important;
+    color: #6c757d !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+
+.folder-cancel-btn:hover {
+    background: #f1f3f5 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* 文件夹弹窗按钮容器 - 移除灰色底座 */
+#folderModal .modal-actions {
+    background: transparent !important;
+    border-top: none !important;
+    padding: 0 !important;
+    margin-top: 25px !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 30px !important;
+}
+
+/* 文件夹弹窗按钮 - 等宽居中 */
+#folderModal .folder-confirm-btn,
+#folderModal .folder-cancel-btn {
+    min-width: 120px !important;
+    text-align: center !important;
 }
 
 /* ===== 统计图表样式 ===== */
@@ -3276,6 +3609,12 @@ body {
     color: #f8f9fa !important;
 }
 
+/* 确保筛选面板行背景与 #filterPanel 完全一致 */
+[data-theme="dark"] .filter-top-row,
+[data-theme="dark"] .filter-bottom-row {
+    background-color: #282430 !important;
+}
+
 [data-theme="dark"] .date-range input,
 [data-theme="dark"] .rating-range input,
 [data-theme="dark"] .duration-range input {
@@ -3480,6 +3819,34 @@ body {
     background: transparent !important;
     background-color: transparent !important;
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ===== 新建文件夹弹窗深色模式 ===== */
+[data-theme="dark"] .folder-input {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+[data-theme="dark"] .folder-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(221, 160, 221, 0.2);
+}
+
+[data-theme="dark"] .folder-cancel-btn {
+    color: #adb5bd !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .folder-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 文件夹弹窗按钮容器深色模式 */
+[data-theme="dark"] #folderModal .modal-actions {
+    background: transparent !important;
+    border-top: none !important;
 }
 
 /* 2. 修复导出弹窗 (Export) 的选项卡文字颜色 */
@@ -3708,3 +4075,97 @@ body {
     color: #ffffff !important;
 }
 
+/* =========================================
+   终极全屏沉浸式布局修复补丁 (彻底消灭底边)
+   ========================================= */
+
+/* 1. 锁死整个网页，不准浏览器层面出现滚动条 */
+/* 1. 锁死根节点，不准有任何自带边距 */
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: var(--bg-gradient) !important;
+}
+
+/* 2. 放弃 vh 高度，直接用绝对定位钉死四角！ */
+.app-container {
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;    /* 核心绝杀：强制底边贴死窗口最下方！ */
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: auto !important; /* 放弃指定高度，由 top 和 bottom 直接拉伸 */
+    min-height: 0 !important;
+    max-width: none !important; /* 取消最大宽度限制，彻底全屏 */
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    background: transparent;
+}
+
+/* 3. 修复包裹着侧边栏和主内容的那个“未知层”，强行让它填满中间 */
+.app-header ~ div:not(.app-footer):not(.modal) {
+    flex: 1 !important;
+    display: flex !important;
+    overflow: hidden !important;
+}
+
+/* 4. 让书籍列表区独立滚动，不影响上下两端 */
+.main-content {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding-bottom: 40px !important; /* 底部留点呼吸空间 */
+}
+
+/* 5. 侧边栏独立滚动 */
+#sidebar {
+    height: 100% !important;
+    overflow-y: auto !important;
+    flex-shrink: 0 !important;
+}
+
+/* 6. 状态栏死死钉在最底部 */
+.app-footer {
+    flex-shrink: 0 !important;
+    margin-top: 0 !important; /* 清除刚才加的无效代码 */
+    position: relative;
+    z-index: 100;
+}
+
+/* 强制提升深色模式评分文字亮度 */
+[data-theme="dark"] .book-card .评分文字的类名, 
+[data-theme="dark"] .book-card span:contains("评分") {
+    color: #f8f9fa !important; /* 极浅的灰色，近乎白色 */
+    font-weight: 600 !important;
+    opacity: 0.9;
+}
+
+/* 如果你的评分是用 span 写的，直接用这个更保险 */
+[data-theme="dark"] .book-card {
+    --text-muted: #adb5bd; /* 统一定义深色模式下的次要文字颜色 */
+}
+
+/* =========================================
+   深色模式评分文字高亮 - 最终补丁
+   ========================================= */
+
+/* 1. 针对卡片右上角所有可能的文字容器进行提亮 */
+[data-theme="dark"] .book-card .book-header span,
+[data-theme="dark"] .book-card .book-rating,
+[data-theme="dark"] .book-card [class*="rating"],
+[data-theme="dark"] .book-card [class*="score"] {
+    color: #ffffff !important;      /* 纯白色，保证最高对比度 */
+    font-weight: 700 !important;   /* 加粗，让数字更有存在感 */
+    text-shadow: 0 0 5px rgba(0,0,0,0.5); /* 增加微弱阴影，防止背景太乱 */
+    opacity: 1 !important;         /* 确保没有被设置半透明 */
+}
+
+/* 2. 专门针对“评分：”这三个字及其后面的数字 */
+[data-theme="dark"] .book-card *:contains("评分") {
+    color: #ffe4e1 !important;     /* 使用浅粉白，既清晰又符合你的主题色 */
+}

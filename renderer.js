@@ -372,6 +372,7 @@ class Book {
     rating = null,
     tags = [],
     enableRating = false,
+    folderId = 'all',
     createdAt = new Date().toISOString(),
     updatedAt = new Date().toISOString()
   } = {}) {
@@ -385,6 +386,7 @@ class Book {
     this.rating = rating;
     this.tags = tags;
     this.enableRating = enableRating;
+    this.folderId = folderId;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -404,7 +406,7 @@ class Book {
   }
 
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'folderId'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) this[field] = updates[field];
     });
@@ -433,6 +435,7 @@ class Book {
       startDate: this.startDate, endDate: this.endDate,
       status: this.status, notes: this.notes, rating: this.rating,
       tags: this.tags, enableRating: this.enableRating,
+      folderId: this.folderId,
       createdAt: this.createdAt, updatedAt: this.updatedAt
     };
   }
@@ -446,7 +449,64 @@ class Book {
 class StorageService {
   constructor() {
     this.books = [];
+    this.folders = [];
     // 不在构造函数中调用 loadBooks，由外部控制加载时机
+  }
+
+  // 加载文件夹数据
+  async loadFolders() {
+    try {
+      let foldersData;
+      if (window.electronAPI && typeof window.electronAPI.loadFolders === 'function') {
+        foldersData = await window.electronAPI.loadFolders();
+      } else {
+        const stored = localStorage.getItem('mybook_folders');
+        foldersData = stored ? JSON.parse(stored) : this.getDefaultFolders();
+      }
+      this.folders = foldersData;
+      return this.folders;
+    } catch (error) {
+      console.error('加载文件夹失败:', error);
+      this.folders = this.getDefaultFolders();
+      return this.folders;
+    }
+  }
+
+  // 获取默认文件夹
+  getDefaultFolders() {
+    return [
+      { id: 'all', name: '全部作品', createdAt: new Date().toISOString() }
+    ];
+  }
+
+  // 获取所有文件夹
+  getFolders() {
+    return [...this.folders];
+  }
+
+  // 保存文件夹数据
+  async saveFolders() {
+    try {
+      const foldersData = this.folders;
+      if (window.electronAPI && typeof window.electronAPI.saveFolders === 'function') {
+        await window.electronAPI.saveFolders(foldersData);
+      } else {
+        localStorage.setItem('mybook_folders', JSON.stringify(foldersData));
+      }
+      return true;
+    } catch (error) {
+      console.error('保存文件夹失败:', error);
+      return false;
+    }
+  }
+
+  getAllFolders() {
+    return [...this.folders];
+  }
+
+  getBooksByFolder(folderId) {
+    if (folderId === 'all') return this.books;
+    return this.books.filter(book => book.folderId === folderId);
   }
 
   async loadBooks() {
@@ -824,10 +884,16 @@ class StatsService {
 
   /**
    * 获取所有书籍的统计概览
+   * @param {string} folderId - 文件夹ID，传入则只统计该文件夹下的书籍
    * @returns {Object} 统计概览数据
    */
-  getOverviewStats() {
-    const books = this.storageService.getAllBooks();
+  getOverviewStats(folderId = null) {
+    let books = this.storageService.getAllBooks();
+
+    // 根据文件夹过滤
+    if (folderId && folderId !== 'all') {
+      books = books.filter(book => book.folderId === folderId);
+    }
 
     return {
       totalBooks: books.length,
@@ -1040,8 +1106,14 @@ class StatsService {
    * 获取详细的统计报告
    * @returns {Object} 详细统计报告
    */
-  getDetailedReport() {
-    const books = this.storageService.getAllBooks();
+  getDetailedReport(folderId = null) {
+    let books = this.storageService.getAllBooks();
+
+    // 根据文件夹过滤
+    if (folderId && folderId !== 'all') {
+      books = books.filter(book => book.folderId === folderId);
+    }
+
     const completedBooks = books.filter(book => book.status === '已读完');
 
     return {
@@ -1581,6 +1653,7 @@ class BookApp {
     this.currentSortOrder = 'asc';
     this.isEditing = false;
     this.currentBookId = null;
+    this.currentFolderId = 'all';
 
     // 过滤相关状态
     this.activeFilters = {
@@ -1595,6 +1668,8 @@ class BookApp {
     this.initializeElements();
     this.bindEvents();
     this.initTheme();
+    await this.storageService.loadFolders();
+    this.renderFolders();
     await this.loadBooks();
   }
 
@@ -1786,6 +1861,113 @@ class BookApp {
     document.addEventListener('keydown', (e) => this.handleKeydown(e));
     document.addEventListener('click', (e) => this.handleDocumentClick(e));
     document.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+
+    // 文件夹事件绑定
+    this.initFolderEvents();
+  }
+
+  // 初始化文件夹相关事件
+  initFolderEvents() {
+    // 新建文件夹按钮
+    const addFolderBtn = document.querySelector('.sidebar-add-btn');
+    if (addFolderBtn) {
+      addFolderBtn.addEventListener('click', () => this.createFolder());
+    }
+
+    // 右键删除文件夹
+    document.addEventListener('contextmenu', (e) => {
+      const folderItem = e.target.closest('.sidebar-item');
+      if (folderItem && !folderItem.classList.contains('default')) {
+        e.preventDefault();
+        const folderId = folderItem.dataset.folderId;
+        this.deleteFolder(folderId);
+      }
+    });
+  }
+
+  // 新建文件夹 - 显示模态框
+  createFolder() {
+    const folderModal = document.getElementById('folderModal');
+    const folderNameInput = document.getElementById('folderNameInput');
+    folderNameInput.value = '';
+    folderModal.style.display = 'flex';
+
+    // 隐藏 overlay，避免遮挡输入框
+    if (this.overlay) {
+      this.overlay.style.display = 'none';
+    }
+
+    folderNameInput.focus();
+  }
+
+  // 确认创建文件夹
+  async confirmCreateFolder() {
+    const folderNameInput = document.getElementById('folderNameInput');
+    const name = folderNameInput.value.trim();
+
+    if (!name) {
+      this.showToast('请输入文件夹名称', 'warning');
+      return;
+    }
+
+    const newFolder = {
+      id: 'folder_' + Date.now(),
+      name: name,
+      createdAt: new Date().toISOString()
+    };
+
+    this.storageService.folders.push(newFolder);
+    await this.storageService.saveFolders();
+    this.renderFolders();
+    this.showToast('文件夹创建成功', 'success');
+
+    // 关闭模态框
+    document.getElementById('folderModal').style.display = 'none';
+  }
+
+  // 关闭文件夹模态框
+  closeFolderModal() {
+    document.getElementById('folderModal').style.display = 'none';
+    // 隐藏 overlay
+    if (this.overlay) {
+      this.overlay.style.display = 'none';
+    }
+  }
+
+  // 删除文件夹
+  async deleteFolder(folderId) {
+    if (folderId === 'all') return;
+
+    // 获取该文件夹下的作品数量
+    const booksInFolder = this.storageService.getBooksByFolder(folderId);
+    let confirmMessage = `确定要删除文件夹"${this.storageService.folders.find(f => f.id === folderId)?.name}"吗？`;
+
+    if (booksInFolder.length > 0) {
+      confirmMessage += `\n\n该文件夹下有 ${booksInFolder.length} 部作品，删除后这些作品将被移至"未分类"。`;
+    }
+
+    if (!confirm(confirmMessage)) return;
+
+    // 将该文件夹下的作品移至未分类
+    const allBooks = this.storageService.getAllBooks();
+    for (const book of allBooks) {
+      if (book.folderId === folderId) {
+        await this.storageService.updateBook(book.id, { folderId: 'uncategorized' });
+      }
+    }
+
+    // 删除文件夹
+    this.storageService.folders = this.storageService.folders.filter(f => f.id !== folderId);
+    await this.storageService.saveFolders();
+
+    // 如果当前选中的文件夹被删除，切换到全部作品
+    if (this.currentFolderId === folderId) {
+      this.currentFolderId = 'all';
+    }
+
+    this.renderFolders();
+    this.loadBooks();
+    this.showToast('文件夹已删除', 'success');
   }
 
   async loadBooks() {
@@ -1796,6 +1978,7 @@ class BookApp {
       const books = await this.storageService.loadBooks();
       console.log('书籍加载完成, 数量:', books.length);
       this.renderBooks();
+      this.renderFolders();
       this.updateBookCount();
     } catch (error) {
       console.error('加载书籍失败:', error);
@@ -1808,6 +1991,11 @@ class BookApp {
   // 就是这个函数被 Claude 搞丢了！现在它回来了。
   renderBooks(searchTerm = '') {
     let books = this.storageService.getAllBooks();
+
+    // 根据当前文件夹过滤
+    if (this.currentFolderId && this.currentFolderId !== 'all') {
+      books = books.filter(book => book.folderId === this.currentFolderId);
+    }
 
     // 构建过滤选项，包含搜索关键词
     const filterOptions = {
@@ -2147,7 +2335,7 @@ class BookApp {
   showBookForm(book = null) {
     this.isEditing = !!book;
     this.currentBookId = book ? book.id : null;
-    document.getElementById('formTitle').textContent = this.isEditing ? '编辑书籍' : '添加书籍';
+    document.getElementById('formTitle').textContent = this.isEditing ? '编辑作品' : '添加作品';
 
     // 初始化标签数组
     this.currentTags = book && book.tags ? [...book.tags] : [];
@@ -2299,6 +2487,7 @@ class BookApp {
       endDate: this.endDateInput.value || null,
       status: this.statusSelect.value,
       enableRating: this.enableRatingCheckbox ? this.enableRatingCheckbox.checked : false,
+      folderId: (this.currentFolderId && this.currentFolderId !== 'all') ? this.currentFolderId : 'uncategorized',
       tags: [...this.currentTags]
     };
 
@@ -2306,15 +2495,16 @@ class BookApp {
       if (this.isEditing && this.currentBookId) {
         await this.storageService.updateBook(this.currentBookId, bookData);
         // 🌟 修复为右上角弹窗 showToast
-        this.showToast('书籍更新成功', 'success'); 
+        this.showToast('作品更新成功', 'success');
       } else {
         await this.storageService.addBook(bookData);
         // 🌟 修复为右上角弹窗 showToast
-        this.showToast('书籍添加成功', 'success'); 
+        this.showToast('作品添加成功', 'success');
       }
-      
+
       // 彻底成功后，隐藏表单并刷新列表
       this.hideBookForm();
+      this.renderFolders();
       this.loadBooks(); 
       
     } catch (error) {
@@ -2630,9 +2820,23 @@ class BookApp {
   // 显示统计模态框
   showStatsModal() {
     console.log('显示统计模态框');
+    // 更新标题显示当前文件夹
+    const folderId = this.currentFolderId || 'all';
+    const folderTitle = folderId === 'all' ? '全部作品' : this.getFolderName(folderId);
+    const headerTitle = this.statsModal.querySelector('.modal-header h3');
+    if (headerTitle) {
+      headerTitle.innerHTML = `<i class="fas fa-chart-bar"></i> ${folderTitle} - 阅读统计`;
+    }
     this.statsModal.style.display = 'flex';
     this.overlay.style.display = 'block';
     this.loadStatsData();
+  }
+
+  // 获取文件夹名称
+  getFolderName(folderId) {
+    const folders = this.storageService.getFolders();
+    const folder = folders.find(f => f.id === folderId);
+    return folder ? folder.name : '未知文件夹';
   }
 
   // 关闭统计模态框
@@ -2645,12 +2849,12 @@ class BookApp {
   // 加载统计数据
   async loadStatsData() {
     try {
-      // 先重新加载书籍数据，确保获取最新数据
-      await this.storageService.loadBooks();
+      // 获取当前文件夹ID
+      const folderId = this.currentFolderId || 'all';
 
-      // 获取统计数据
-      const overviewStats = this.statsService.getOverviewStats();
-      const detailedReport = this.statsService.getDetailedReport();
+      // 直接获取当前已有的书籍数据进行统计，不需要重新加载
+      const overviewStats = this.statsService.getOverviewStats(folderId);
+      const detailedReport = this.statsService.getDetailedReport(folderId);
 
       // 更新概览卡片
       this.updateOverviewCards(detailedReport);
@@ -2803,7 +3007,7 @@ class BookApp {
 
       let ratingHtml = '';
       if (activity.type === 'completed' && activity.rating) {
-        const rating = activity.rating.overall || activity.rating;
+        const rating = Number(activity.rating.overall || activity.rating);
         ratingHtml = `
           <div class="activity-rating">
             <i class="fas fa-star"></i>
@@ -2849,7 +3053,8 @@ class BookApp {
   // 导出统计报告
   exportStatsReport() {
     try {
-      const report = this.statsService.getDetailedReport();
+      const folderId = this.currentFolderId || 'all';
+      const report = this.statsService.getDetailedReport(folderId);
       const reportData = {
         title: '阅读统计报告',
         generatedAt: new Date().toISOString(),
@@ -3197,8 +3402,77 @@ class BookApp {
     }
   }
 
+  // 渲染侧边栏文件夹列表
+  renderFolders() {
+    const sidebarMenu = document.querySelector('.sidebar-menu');
+    if (!sidebarMenu) return;
+
+    const folders = this.storageService.getAllFolders();
+    const books = this.storageService.getAllBooks();
+
+    sidebarMenu.innerHTML = '';
+    folders.forEach(folder => {
+      const isDefault = folder.id === 'all';
+      const bookCount = isDefault
+        ? books.length
+        : books.filter(book => book.folderId === folder.id).length;
+
+      const li = document.createElement('li');
+      li.className = `sidebar-item${folder.id === this.currentFolderId ? ' active' : ''}${isDefault ? ' default' : ''}`;
+      li.dataset.folderId = folder.id;
+      li.innerHTML = `
+        <i class="fas fa-folder"></i>
+        <span>${folder.name}</span>
+        <span class="folder-count">${bookCount}</span>
+      `;
+      li.addEventListener('click', () => this.selectFolder(folder.id));
+      sidebarMenu.appendChild(li);
+    });
+  }
+
+  // 选择文件夹
+  selectFolder(folderId) {
+    this.currentFolderId = folderId;
+    this.renderFolders();
+
+    // 根据文件夹筛选书籍
+    let books = this.storageService.getAllBooks();
+    if (folderId !== 'all') {
+      books = books.filter(book => book.folderId === folderId);
+    }
+
+    // 应用搜索和筛选
+    const searchTerm = document.getElementById('globalSearch')?.value || '';
+    if (searchTerm || this.hasActiveFilters()) {
+      const filterOptions = { ...this.activeFilters, keyword: searchTerm };
+      books = FilterService.applyFilters(books, filterOptions);
+    }
+
+    // 排序
+    const sortedBooks = SortService.applyCurrentSort(books, this.currentSortField, this.currentSortOrder);
+
+    // 渲染
+    if (sortedBooks.length === 0) {
+      this.showEmptyState();
+    } else {
+      this.hideEmptyState();
+      this.bookListContainer.innerHTML = '';
+      sortedBooks.forEach(book => {
+        const bookCard = this.createBookCard(book);
+        this.bookListContainer.appendChild(bookCard);
+      });
+    }
+
+    this.updateBookCount();
+  }
+
   updateBookCount() {
-    const count = this.storageService.getAllBooks().length;
+    let count;
+    if (this.currentFolderId === 'all') {
+      count = this.storageService.getAllBooks().length;
+    } else {
+      count = this.storageService.getBooksByFolder(this.currentFolderId).length;
+    }
     this.bookCountElement.textContent = `${count} 本书`;
   }
 
@@ -3487,23 +3761,6 @@ class BookApp {
   // 通用工具方法
   // =========================================
 
-  showToast(message, type = 'info') {
-    this.statusMessageElement.textContent = message;
-    const typeClasses = { 
-      success: 'text-success', 
-      error: 'text-danger', 
-      warning: 'text-warning', 
-      info: 'text-muted' 
-    };
-    this.statusMessageElement.className = typeClasses[type] || 'text-muted';
-    setTimeout(() => {
-      if (this.statusMessageElement.textContent === message) {
-        this.statusMessageElement.textContent = '就绪';
-        this.statusMessageElement.className = 'text-muted';
-      }
-    }, 3000);
-  }
-
   escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -3661,6 +3918,14 @@ class BookApp {
     this.contextMenuTarget = target;
     this.contextMenu.style.display = 'block';
 
+    // 获取书籍信息用于过滤文件夹
+    const bookId = target.getAttribute('data-id');
+    const book = this.storageService.getBookById(bookId);
+    const currentFolderId = book ? book.folderId : null;
+
+    // 生成文件夹子菜单
+    this.renderFolderSubmenu(currentFolderId);
+
     // 设置菜单位置
     const menuWidth = this.contextMenu.offsetWidth;
     const menuHeight = this.contextMenu.offsetHeight;
@@ -3685,6 +3950,88 @@ class BookApp {
     this.bindContextMenuEvents();
   }
 
+  // 渲染文件夹子菜单
+  renderFolderSubmenu(excludeFolderId = null) {
+    const submenu = document.getElementById('folderSubmenu');
+    if (!submenu) return;
+
+    const folders = this.storageService.getAllFolders();
+    submenu.innerHTML = '';
+
+    // 只显示用户创建的文件夹，排除当前书籍所在的文件夹
+    folders.forEach(folder => {
+      if (folder.id === 'all' || folder.id === excludeFolderId) return;
+      const item = document.createElement('li');
+      item.setAttribute('data-folder-id', folder.id);
+      item.innerHTML = `<i class="fas fa-folder"></i> ${folder.name}`;
+      submenu.appendChild(item);
+    });
+
+    // 如果没有可移动的文件夹，显示提示
+    if (submenu.children.length === 0) {
+      const emptyItem = document.createElement('li');
+      emptyItem.style.color = '#999';
+      emptyItem.style.cursor = 'default';
+      emptyItem.innerHTML = '<i class="fas fa-folder"></i> 无其他文件夹';
+      submenu.appendChild(emptyItem);
+      return;
+    }
+
+    // 绑定子菜单项点击事件
+    submenu.querySelectorAll('li').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        const targetFolderId = item.getAttribute('data-folder-id');
+        if (targetFolderId) {
+          this.moveBookToFolder(targetFolderId);
+          this.hideContextMenu();
+        }
+      };
+    });
+  }
+
+  // 移动书籍到指定文件夹
+  async moveBookToFolder(targetFolderId) {
+    if (!this.contextMenuTarget) return;
+
+    const bookId = this.contextMenuTarget.getAttribute('data-id');
+    const book = this.storageService.getBookById(bookId);
+    if (!book) {
+      this.showToast('书籍不存在', 'error');
+      return;
+    }
+
+    // 获取目标文件夹名称
+    const folder = this.storageService.folders.find(f => f.id === targetFolderId);
+    const folderName = folder ? folder.name : targetFolderId;
+
+    try {
+      // 直接更新书籍的 folderId 属性
+      book.folderId = targetFolderId;
+      book.updatedAt = new Date().toISOString();
+
+      // 保存数据
+      const success = await this.storageService.saveBooks();
+      if (!success) {
+        throw new Error('保存失败');
+      }
+
+      this.showToast(`已移动到 "${folderName}"`, 'success');
+
+      // 刷新视图
+      this.renderFolders();
+      this.renderBooks();
+
+      // 如果当前在某个文件夹中，需要刷新当前视图
+      if (this.currentFolderId && this.currentFolderId !== 'all') {
+        this.selectFolder(this.currentFolderId);
+      }
+    } catch (error) {
+      console.error('移动书籍失败:', error);
+      this.showToast('移动失败: ' + error.message, 'error');
+    }
+  }
+
   hideContextMenu() {
     this.contextMenu.style.display = 'none';
     this.contextMenuTarget = null;
@@ -3694,6 +4041,35 @@ class BookApp {
     const menuItems = this.contextMenu.querySelectorAll('li[data-action]');
 
     menuItems.forEach(item => {
+      // 如果是子菜单父项，使用 mouseenter/mouseleave 而不是 onclick
+      if (item.classList.contains('has-submenu')) {
+        // 鼠标悬停时显示子菜单
+        item.addEventListener('mouseenter', (e) => {
+          e.stopPropagation();
+          const submenu = item.querySelector('.submenu');
+          if (submenu) {
+            submenu.style.display = 'block';
+          }
+        });
+
+        // 鼠标离开时隐藏子菜单
+        item.addEventListener('mouseleave', (e) => {
+          e.stopPropagation();
+          const submenu = item.querySelector('.submenu');
+          if (submenu) {
+            submenu.style.display = 'none';
+          }
+        });
+
+        // 点击时不执行任何操作（让子菜单处理点击）
+        item.onclick = (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        };
+        return;
+      }
+
+      // 普通菜单项点击处理
       item.onclick = (e) => {
         e.stopPropagation();
         const action = item.getAttribute('data-action');
@@ -3729,7 +4105,8 @@ class BookApp {
 
   handleDocumentClick(e) {
     // 点击文档其他地方时隐藏右键菜单
-    if (!this.contextMenu.contains(e.target)) {
+    // 使用 closest 确保子菜单点击也被识别为在菜单内
+    if (!this.contextMenu.contains(e.target) && !e.target.closest('.submenu')) {
       this.hideContextMenu();
     }
   }
@@ -3795,6 +4172,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.exportStatsReport = () => {
       window.bookApp.exportStatsReport();
+    };
+
+    // 文件夹全局函数
+    window.closeFolderModal = () => {
+      window.bookApp.closeFolderModal();
+    };
+
+    window.confirmCreateFolder = () => {
+      window.bookApp.confirmCreateFolder();
     };
   }, 100);
 });

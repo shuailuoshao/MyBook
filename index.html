@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的读书记录</title>
+    <title>企画0004</title>
     <link rel="stylesheet" href="styles.css?v=888">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
@@ -12,7 +12,7 @@
     <div class="app-container">
         <!-- 顶部工具栏 -->
         <header class="app-header">
-            <h1><i class="fas fa-book"></i> 我的读书记录</h1>
+            <h1><i class="fas fa-book"></i> 企画0004</h1>
             <div class="toolbar">
                 <div class="toolbar-left">
                     <div class="search-box">
@@ -20,7 +20,7 @@
                         <input type="text" id="globalSearch" placeholder="搜索书名、作者、标签...">
                     </div>
                     <button id="addBookBtn" class="btn-primary">
-                        <i class="fas fa-plus"></i> 添加书籍
+                        <i class="fas fa-plus"></i> 添加作品
                     </button>
                 </div>
                 <div class="data-controls">
@@ -142,12 +142,34 @@
             </div>
         </div>
 
-        <!-- 主要内容区域 -->
-        <main class="main-content">
+        <!-- 主要内容包装层 -->
+        <div class="app-main-wrapper">
+            <!-- 侧边栏 -->
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <h3>文件夹</h3>
+                </div>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-item active">
+                        <i class="fas fa-books"></i>
+                        <span>全部作品</span>
+                    </li>
+                    <li class="sidebar-item">
+                        <i class="fas fa-folder"></i>
+                        <span>测试文件夹</span>
+                    </li>
+                </ul>
+                <button class="sidebar-add-btn">
+                    <i class="fas fa-plus"></i>
+                    <span>新建文件夹</span>
+                </button>
+            </aside>
+            <!-- 主要内容区域 -->
+            <main class="main-content">
             <!-- 添加/编辑书籍表单（默认隐藏） -->
             <section id="bookFormSection" class="form-section" style="display: none;">
                 <div class="form-container">
-                    <h2><i class="fas fa-edit"></i> <span id="formTitle">添加书籍</span></h2>
+                    <h2><i class="fas fa-edit"></i> <span id="formTitle">添加作品</span></h2>
                     <form id="bookForm">
                         <input type="hidden" id="bookId">
                         <div class="form-row">
@@ -179,6 +201,8 @@
                                     <option value="已读完">已读完</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group" style="display: flex; align-items: flex-end;">
                                 <label class="checkbox-label" style="margin-bottom: 0;">
                                     <input type="checkbox" id="enableRating">
@@ -263,22 +287,23 @@
                     <div class="empty-state" id="emptyState">
                         <i class="fas fa-book-open"></i>
                         <h3>暂无书籍记录</h3>
-                        <p>点击"添加书籍"按钮开始记录你的阅读旅程</p>
+                        <p>点击"添加作品"按钮开始记录你的阅读旅程</p>
                     </div>
                 </div>
             </section>
         </main>
+    </div>
 
-        <!-- 底部状态栏 -->
-        <footer class="app-footer">
+    <!-- 底部状态栏 -->
+    <footer class="app-footer">
             <div class="status-info">
                 <span id="statusMessage">就绪</span>
             </div>
             <div class="footer-actions">
                 <span id="appVersion">版本 1.0.0</span>
             </div>
-        </footer>
-    </div>
+    </footer>
+</div>
 
     <!-- 确认删除对话框 -->
     <div id="deleteModal" class="modal" style="display: none;">
@@ -288,6 +313,23 @@
             <div class="modal-actions">
                 <button id="confirmDeleteBtn" class="btn-danger">确认删除</button>
                 <button id="cancelDeleteBtn" class="btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建文件夹模态框 -->
+    <div id="folderModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-folder-plus"></i> 新建文件夹</h3>
+                <button class="close-btn" onclick="closeFolderModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="folderNameInput" class="folder-input" placeholder="请输入文件夹名称">
+            </div>
+            <div class="modal-actions">
+                <button onclick="confirmCreateFolder()" class="btn-primary folder-confirm-btn">确定</button>
+                <button onclick="closeFolderModal()" class="btn-secondary folder-cancel-btn">取消</button>
             </div>
         </div>
     </div>
@@ -606,6 +648,12 @@
             <li data-action="edit"><i class="fas fa-edit"></i> 编辑</li>
             <li data-action="notes"><i class="fas fa-sticky-note"></i> 笔记</li>
             <li data-action="rating"><i class="fas fa-star"></i> 评分</li>
+            <li class="divider"></li>
+            <li class="has-submenu" data-action="move">
+                <i class="fas fa-folder-open"></i> 移动到...
+                <span class="submenu-arrow">▶</span>
+                <ul class="submenu" id="folderSubmenu"></ul>
+            </li>
             <li class="divider"></li>
             <li data-action="delete" class="danger"><i class="fas fa-trash"></i> 删除</li>
         </ul>
