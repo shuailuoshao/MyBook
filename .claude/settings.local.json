@@ -35,7 +35,8 @@
       "Bash(xxd)",
       "Bash(npm install --save-dev electron-builder)",
       "Bash(npm run build)",
-      "Bash(npx electron-builder --win --x64 --dir)"
+      "Bash(npx electron-builder --win --x64 --dir)",
+      "Bash(powershell -Command \"Compress-Archive -Path ''dist\\\\win-unpacked\\\\*'' -DestinationPath ''MyBook书籍管理-便携版.zip'' -Force\")"
     ]
   }
 }
