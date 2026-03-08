@@ -5,16 +5,23 @@ const fs = require('fs').promises;
 // 数据文件路径
 const DATA_DIR = path.join(__dirname, 'data');
 const BOOKS_FILE = path.join(DATA_DIR, 'books.json');
+const JOURNALS_FILE = path.join(DATA_DIR, 'journals.json');
 
 // 确保数据目录存在
 async function ensureDataDirectory() {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
-    // 如果数据文件不存在，创建空数组
+    // 如果书籍数据文件不存在，创建空数组
     try {
       await fs.access(BOOKS_FILE);
     } catch {
       await fs.writeFile(BOOKS_FILE, JSON.stringify([], null, 2), 'utf-8');
+    }
+    // 如果日记数据文件不存在，创建空数组
+    try {
+      await fs.access(JOURNALS_FILE);
+    } catch {
+      await fs.writeFile(JOURNALS_FILE, JSON.stringify([], null, 2), 'utf-8');
     }
   } catch (error) {
     console.error('创建数据目录失败:', error);
@@ -143,6 +150,29 @@ function setupIPCHandlers() {
     } catch (error) {
       console.error('删除书籍失败:', error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // 日记数据操作
+  ipcMain.handle('save-journals', async (event, journals) => {
+    try {
+      await ensureDataDirectory();
+      await atomicWrite(JOURNALS_FILE, JSON.stringify(journals, null, 2));
+      return { success: true };
+    } catch (error) {
+      console.error('保存日记失败:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('load-journals', async () => {
+    try {
+      await ensureDataDirectory();
+      const content = await fs.readFile(JOURNALS_FILE, 'utf-8');
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('加载日记失败:', error);
+      return [];
     }
   });
 

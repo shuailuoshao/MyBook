@@ -203,29 +203,45 @@
       "社会"
     ],
     "enableRating": false,
-    "folderId": "uncategorized",
+    "folderId": "folder_1772897231838",
     "currentProgress": 4,
     "totalLength": 16,
     "progressUnit": "章",
     "createdAt": "2026-03-08T03:12:46.649Z",
-    "updatedAt": "2026-03-08T03:12:46.649Z"
+    "updatedAt": "2026-03-08T09:21:46.270Z"
   },
   {
-    "id": "1772942004254",
-    "title": "测试",
-    "author": "",
-    "startDate": null,
-    "endDate": null,
-    "status": "未开始",
+    "id": "1772956012201",
+    "title": "疯狂动物城2",
+    "author": "迪士尼",
+    "startDate": "2026-01-26",
+    "endDate": "2026-01-26",
+    "status": "已读完",
     "notes": [],
-    "rating": null,
-    "tags": [],
-    "enableRating": false,
-    "folderId": "uncategorized",
-    "currentProgress": 0,
-    "totalLength": 0,
+    "rating": {
+      "totalScore": 54.5,
+      "profile": "标准配置",
+      "ratings": {
+        "人物设计": 1,
+        "世界观": -1,
+        "象征与意象": 1,
+        "登场人物塑造": 1,
+        "阅读前视野": -1,
+        "整体审美": 1
+      },
+      "ratedAt": "2026-03-08T07:47:51.766Z"
+    },
+    "tags": [
+      "电影",
+      "悬疑",
+      "治愈"
+    ],
+    "enableRating": true,
+    "folderId": "folder_1772956219839",
+    "currentProgress": 1,
+    "totalLength": 1,
     "progressUnit": "章",
-    "createdAt": "2026-03-08T03:53:24.254Z",
-    "updatedAt": "2026-03-08T03:53:24.254Z"
+    "createdAt": "2026-03-08T07:46:52.200Z",
+    "updatedAt": "2026-03-08T07:50:28.797Z"
   }
 ]

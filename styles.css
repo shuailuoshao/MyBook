@@ -32,6 +32,9 @@ body {
     --input-bg: linear-gradient(135deg, #fff5f5 0%, #fff0f5 100%);
     --modal-bg: white;
     --shadow-color: rgba(0, 0, 0, 0.1);
+
+    /* 主题阴影 */
+    --theme-shadow-light: rgba(0, 0, 0, 0.1);
 }
 
 /* 消除 body 默认边距，确保全屏无缝对齐 */
@@ -195,13 +198,38 @@ body {
     position: relative;
     z-index: 99;
     margin-top: 0;
-    background: var(--header-bg);
+    /* ===== 撑满全宽的核心修复 ===== */
+    margin-left: -30px;
+    margin-right: -30px;
+    padding-left: 30px;
+    padding-right: 30px;
+    background: var(--header-bg) !important;
+    box-shadow: none !important;
+    border-bottom: none !important;
 }
 
 /* 筛选面板展开时的阴影，增强视觉隔离 */
 .filter-panel:not(.hidden) {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border-bottom: 2px solid var(--primary-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+    border-bottom: 2px solid var(--primary-color) !important;
+}
+
+/* ===== 清理内部冗余背景 ===== */
+.filter-header,
+.filter-content,
+.filter-actions {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* ===== 深色模式适配 ===== */
+[data-theme="dark"] .filter-panel {
+    background: #282430 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .filter-panel:not(.hidden) {
+    border-bottom: 2px solid var(--primary-color) !important;
 }
 
 .app-header h1 {
@@ -995,7 +1023,7 @@ body {
     background: var(--card-bg);
     border-radius: 12px;
     padding: 15px;
-    box-shadow: 0 4px 12px var(--shadow-color);
+    box-shadow: 0 4px 12px -2px var(--theme-shadow-light, rgba(0, 0, 0, 0.1));
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     position: relative;
@@ -1009,8 +1037,8 @@ body {
 
 .book-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    border-color: #3498db;
+    box-shadow: 0 8px 25px var(--theme-shadow-light, rgba(0, 0, 0, 0.15)) !important;
+    border-color: var(--theme-border, #3498db) !important;
 }
 
 .book-card::before {
@@ -1018,21 +1046,61 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 6px;
+    width: 7px;
     height: 100%;
-    background: #3498db;
+    background: var(--theme-border, #3498db) !important;
+    border-radius: 4px 0 0 4px;
 }
 
 .book-card.阅读中::before {
-    background: #f39c12;
+    background: var(--theme-border, #f39c12) !important;
 }
 
 .book-card.已读完::before {
-    background: #2ecc71;
+    background: var(--theme-border, #FF1744) !important;
 }
 
 .book-card.未开始::before {
-    background: #95a5a6;
+    background: var(--theme-border, #27ae60) !important;
+}
+
+/* 右上角状态标签 */
+.book-status {
+    background: var(--theme-sub, rgba(52, 152, 219, 0.1));
+    color: var(--theme-border, #3498db) !important;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.book-status.status-已读完 {
+    background: var(--theme-sub, rgba(255, 23, 68, 0.1));
+    color: var(--theme-border, #FF1744) !important;
+}
+
+.book-status.status-阅读中 {
+    background: var(--theme-sub, rgba(243, 156, 18, 0.1));
+    color: var(--theme-border, #f39c12) !important;
+}
+
+.book-status.status-未开始 {
+    background: var(--theme-sub, rgba(39, 174, 96, 0.1));
+    color: var(--theme-border, #27ae60) !important;
+}
+
+/* 进度条颜色 */
+.book-progress .progress-fill {
+    background-color: var(--theme-progress, #3498db) !important;
+}
+
+/* 主题阴影 */
+:root {
+    --theme-shadow-light: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+    --theme-shadow-light: rgba(0, 0, 0, 0.3);
 }
 
 /* 书籍卡片进度条 */
@@ -1051,7 +1119,7 @@ body {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #b564c9, #d192e8);
+    background: linear-gradient(90deg, var(--theme-main, #b564c9), var(--theme-main, #d192e8));
     border-radius: 3px;
     transition: width 0.3s ease;
 }
@@ -1066,11 +1134,11 @@ body {
 
 /* 已完成状态进度条 */
 .book-progress.completed .progress-fill {
-    background: linear-gradient(90deg, #28a745, #34ce57);
+    background: linear-gradient(90deg, var(--theme-main, #28a745), var(--theme-main, #34ce57));
 }
 
 .book-progress.completed .progress-text {
-    color: #28a745;
+    color: var(--theme-main, #28a745);
     font-weight: 600;
 }
 
@@ -1121,18 +1189,21 @@ body {
 }
 
 .status-未开始 {
-    background: #f8f9fa;
-    color: #6c757d;
+    background: var(--theme-sub, rgba(39, 174, 96, 0.12));
+    color: var(--theme-main, #27ae60);
+    font-weight: 700 !important;
 }
 
 .status-阅读中 {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--theme-sub, rgba(243, 156, 18, 0.12));
+    color: var(--theme-main, #d68910);
+    font-weight: 700 !important;
 }
 
 .status-已读完 {
-    background: #d4edda;
-    color: #155724;
+    background: var(--theme-sub, rgba(255, 23, 68, 0.1));
+    color: var(--theme-main, #FF1744);
+    font-weight: 700 !important;
 }
 
 .book-dates {
@@ -1320,8 +1391,12 @@ body {
 
 .modal-actions {
     display: flex;
-    gap: 15px;
-    justify-content: flex-end;
+    gap: 24px;
+    justify-content: center;
+    background: transparent !important;
+    border-top: none;
+    margin-top: 25px;
+    padding: 10px 0;
 }
 
 .overlay {
@@ -2615,7 +2690,7 @@ body {
     justify-content: center;
     gap: 15px;
     padding: 15px 25px;
-    background: #f8f9fa;
+    background: transparent !important;
 }
 
 .filter-actions .btn-primary,
@@ -3021,17 +3096,75 @@ body {
 
 .modal-actions {
     display: flex;
-    justify-content: flex-end;
-    gap: 15px;
+    justify-content: center;
+    gap: 24px;
     padding: 15px 25px;
-    border-top: 1px solid #e9ecef;
-    background: #f8f9fa;
+    background: transparent !important;
+    border-top: none;
     border-radius: 0 0 12px 12px;
 }
 
 .modal-actions .btn-primary,
 .modal-actions .btn-secondary {
     min-width: 100px;
+}
+
+/* ===== 删除确认模态框按钮样式重构 ===== */
+
+/* 取消按钮 - 幽灵按钮样式 */
+.modal-actions .btn-secondary,
+#cancelJournalDeleteBtn,
+#cancelDeleteBtn {
+    background: transparent !important;
+    border: 1px solid #dcdfe6;
+    color: #606266;
+    box-shadow: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.modal-actions .btn-secondary:hover,
+#cancelJournalDeleteBtn:hover,
+#cancelDeleteBtn:hover {
+    background: #f4f4f5 !important;
+    color: #909399;
+    border-color: #dcdfe6;
+}
+
+/* 确认删除按钮 - 柔和的危险色 */
+.modal-actions .btn-danger,
+#confirmJournalDeleteBtn,
+#confirmDeleteBtn {
+    background: #ff4d4f !important;
+    border: none;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(255, 77, 79, 0.25) !important;
+    transition: all 0.3s ease;
+}
+
+.modal-actions .btn-danger:hover,
+#confirmJournalDeleteBtn:hover,
+#confirmDeleteBtn:hover {
+    background: #ff7875 !important;
+    box-shadow: 0 6px 16px rgba(255, 77, 79, 0.4) !important;
+    transform: translateY(-1px);
+}
+
+/* 深色模式取消按钮 */
+[data-theme="dark"] .modal-actions .btn-secondary,
+[data-theme="dark"] #cancelJournalDeleteBtn,
+[data-theme="dark"] #cancelDeleteBtn {
+    border-color: #555;
+    color: #aaa;
+}
+
+[data-theme="dark"] .modal-actions .btn-secondary:hover,
+[data-theme="dark"] #cancelJournalDeleteBtn:hover,
+[data-theme="dark"] #cancelDeleteBtn:hover {
+    background: #333 !important;
+    border-color: #666;
+    color: #ccc;
 }
 
 /* ===== 新建文件夹弹窗专用样式 ===== */
@@ -4344,6 +4477,15 @@ html, body {
     color: #2ecc71;
 }
 
+/* 深色模式未开始状态进度条 */
+[data-theme="dark"] .book-progress.not-started .progress-bar {
+    border-color: #555;
+}
+
+[data-theme="dark"] .book-progress.not-started .progress-text {
+    color: #6c757d;
+}
+
 /* 深色模式进度输入 */
 [data-theme="dark"] .progress-num,
 [data-theme="dark"] .progress-unit-select {
@@ -4697,4 +4839,626 @@ html, body {
 [data-theme=”dark”] .diff-highlight-cell {
     color: #f1c40f;
     background: rgba(241, 196, 15, 0.2);
+}
+
+/* =========================================
+   每日记录模块样式
+   ========================================= */
+
+/* 分段控制器容器 - header左侧区域 */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.header-left h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 分段控制器 (Segmented Control) */
+.view-switcher {
+    display: inline-flex;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px;
+    border-radius: 12px;
+    align-items: center;
+}
+
+.view-switcher-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #666;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.view-switcher-btn:hover:not(.active) {
+    color: #333;
+}
+
+.view-switcher-btn.active {
+    background-color: #ffffff;
+    color: #333;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 每日记录区域 */
+.journal-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.journal-section .section-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+    color: var(--text-color);
+}
+
+/* 每日记录侧边栏 */
+.journal-sidebar .sidebar-section {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.journal-sidebar .sidebar-section h4 {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.journal-sidebar .sidebar-menu .sidebar-item {
+    padding: 8px 12px;
+}
+
+/* 心情筛选标签 */
+.mood-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.mood-tag {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.mood-tag:hover {
+    border-color: var(--primary-color);
+    background: rgba(181, 100, 201, 0.1);
+}
+
+.mood-tag.active {
+    background: var(--primary-gradient);
+    color: #4a2c4a;
+    border-color: var(--primary-color);
+}
+
+/* 日记网格布局 */
+.journal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* 日记卡片 */
+.journal-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+    min-height: 180px;
+}
+
+.journal-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.journal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.journal-date {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.journal-mood {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.journal-mood.完美 { background: #fff3cd; color: #856404; }
+.journal-mood.充实 { background: #d4edda; color: #155724; }
+.journal-mood.平淡 { background: #e9ecef; color: #495057; }
+.journal-mood.疲惫 { background: #ffe5d0; color: #c85a17; }
+.journal-mood.糟糕 { background: #f8d7da; color: #721c24; }
+
+.journal-preview {
+    flex: 1;
+    color: var(--text-color);
+    opacity: 0.85;
+    line-height: 1.7;
+    max-height: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    font-size: 0.95rem;
+}
+
+.journal-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+}
+
+.journal-actions button {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.journal-actions button:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.journal-actions button.delete:hover {
+    background: #e74c3c;
+    border-color: #e74c3c;
+}
+
+/* 日记编辑模态框 */
+.journal-modal {
+    max-width: 600px;
+    width: 95%;
+}
+
+.journal-modal .form-group {
+    margin-bottom: 20px;
+}
+
+.journal-modal .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.journal-modal input[type="date"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+}
+
+.journal-modal textarea {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+    line-height: 1.7;
+    resize: vertical;
+    min-height: 200px;
+    pointer-events: auto !important;
+    cursor: text !important;
+}
+
+.journal-modal textarea:focus,
+.journal-modal input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(181, 100, 201, 0.2);
+}
+
+/* 心情选择器 */
+.mood-selector {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.mood-btn {
+    padding: 10px 16px;
+    border: 2px solid var(--border-color);
+    background: var(--card-bg);
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.mood-btn:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.mood-btn.selected {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: #4a2c4a;
+    font-weight: 600;
+}
+
+/* 日记统计模态框 */
+.journal-stats-modal {
+    max-width: 700px;
+    width: 95%;
+}
+
+/* ===== 双屏翻页布局 ===== */
+.journal-stats-modal .stats-viewport {
+    height: 480px;
+    overflow: hidden;
+    position: relative;
+}
+
+.journal-stats-modal .stats-track {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.journal-stats-modal .stats-page {
+    height: 100%;
+    min-height: 480px;
+    width: 100%;
+    padding: 0 5px;
+    box-sizing: border-box;
+}
+
+.journal-stats-modal .stats-page-1 {
+    padding-bottom: 10px;
+}
+
+.journal-stats-modal .stats-page-2 {
+    padding-top: 10px;
+}
+
+/* 分页指示器 */
+.journal-stats-modal .stats-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 0;
+}
+
+.journal-stats-modal .pagination-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ddd;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.journal-stats-modal .pagination-dot.active {
+    background: var(--primary-color);
+    transform: scale(1.2);
+}
+
+.journal-stats-modal .pagination-dot:hover:not(.active) {
+    background: #bbb;
+}
+
+.journal-stats-modal .modal-header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 关闭按钮样式 */
+.journal-stats-modal .close-stats-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #999;
+    cursor: pointer;
+    padding: 5px 10px;
+    transition: color 0.2s;
+}
+
+.journal-stats-modal .close-stats-btn:hover {
+    color: #333;
+}
+
+.journal-stats-modal .modal-body {
+    padding: 20px;
+}
+
+/* 统计卡片容器 - 横向排列 */
+.journal-stats-modal .stats-cards-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* 统计卡片 - 上下排版 */
+.journal-stats-modal .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 数据值 - 上方 */
+.journal-stats-modal .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    line-height: 1.2;
+    margin-bottom: 8px;
+    white-space: nowrap;
+}
+
+/* 心情值 - 特殊处理Emoji */
+.journal-stats-modal .stat-value.mood-value {
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+/* 标签说明 - 下方 */
+.journal-stats-modal .stat-label {
+    font-size: 0.85rem;
+    color: #666;
+    white-space: nowrap;
+}
+
+/* 深色模式关闭按钮 */
+[data-theme="dark"] .journal-stats-modal .close-stats-btn {
+    color: #aaa;
+}
+
+[data-theme="dark"] .journal-stats-modal .close-stats-btn:hover {
+    color: #fff;
+}
+
+[data-theme="dark"] .journal-stats-modal .stat-label {
+    color: #aaa;
+}
+
+/* 日历热力图样式 */
+.journal-stats-modal .heatmap-section {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.journal-stats-modal .heatmap-section h4 {
+    margin: 0 0 15px 0;
+    font-size: 1rem;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+[data-theme="dark"] .journal-stats-modal .heatmap-section {
+    border-top-color: #444;
+}
+
+[data-theme="dark"] .journal-stats-modal .heatmap-section h4 {
+    color: #eee;
+}
+
+/* 日记阅读模态框（只读模式） */
+.journal-view-content {
+    max-width: 700px;
+    width: 95%;
+}
+
+.journal-view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.journal-view-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+
+.journal-view-body {
+    white-space: pre-wrap;
+    line-height: 1.8;
+    padding: 20px 0;
+    font-size: 1.05rem;
+    color: #333;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* 心情徽章 */
+.mood-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+/* 深色模式阅读模态框 */
+[data-theme="dark"] .journal-view-header {
+    border-bottom-color: #444;
+}
+
+[data-theme="dark"] .journal-view-header h3 {
+    color: #eee;
+}
+
+[data-theme="dark"] .journal-view-body {
+    color: #ddd;
+}
+
+[data-theme="dark"] .journal-view-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+[data-theme="dark"] .journal-view-body::-webkit-scrollbar-track {
+    background: #333;
+}
+
+[data-theme="dark"] .journal-view-body::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+/* ===== 日记阅读模态框按钮样式 ===== */
+
+/* 移除浅灰色背景框 */
+#journalViewModal .modal-actions {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin-top: 20px;
+    padding: 10px 0 0 0 !important;
+    display: flex;
+    justify-content: center;
+}
+
+/* 关闭按钮 - 幽灵按钮样式 */
+#closeJournalViewBtn {
+    background: transparent !important;
+    border: 1px solid #dcdfe6;
+    color: #606266;
+    box-shadow: none;
+    font-weight: 500;
+    padding: 6px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#closeJournalViewBtn:hover {
+    background: #f4f4f5 !important;
+    color: #909399;
+    border-color: #dcdfe6;
+}
+
+/* 深色模式关闭按钮 */
+[data-theme="dark"] #closeJournalViewBtn {
+    border-color: #555;
+    color: #aaa;
+}
+
+[data-theme="dark"] #closeJournalViewBtn:hover {
+    background: #333 !important;
+    border-color: #666;
+    color: #ccc;
+}
+
+/* 深色模式分段控制器 */
+[data-theme="dark"] .view-switcher {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .view-switcher-btn {
+    color: #aaa;
+}
+
+[data-theme="dark"] .view-switcher-btn:hover:not(.active) {
+    color: #fff;
+}
+
+[data-theme="dark"] .view-switcher-btn.active {
+    background-color: #2d2d2d;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .journal-card {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme=”dark”] .journal-actions {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme=”dark”] .journal-actions button {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme=”dark”] .mood-btn {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme=”dark”] .journal-modal input[type="date"],
+[data-theme=”dark”] .journal-modal textarea {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e9ecef;
 }

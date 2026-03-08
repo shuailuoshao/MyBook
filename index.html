@@ -12,8 +12,22 @@
     <div class="app-container">
         <!-- 顶部工具栏 -->
         <header class="app-header">
-            <h1><i class="fas fa-book"></i> 企画0004</h1>
-            <div class="toolbar">
+            <div class="header-left">
+                <h1><i class="fas fa-book"></i> 企画0004</h1>
+                <!-- 视图切换分段控制器 -->
+                <div class="view-switcher">
+                    <button id="viewKnowledge" class="view-switcher-btn active" onclick="switchView('knowledge')">
+                        <i class="fas fa-book"></i> 知识库
+                    </button>
+                    <button id="viewJournal" class="view-switcher-btn" onclick="switchView('journal')">
+                        <i class="fas fa-pen"></i> 每日记录
+                    </button>
+                </div>
+                <button id="themeToggleBtn" class="btn-secondary theme-toggle-global" title="切换主题">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+            </div>
+            <div class="toolbar kb-toolbar">
                 <div class="toolbar-left">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
@@ -24,9 +38,6 @@
                     </button>
                 </div>
                 <div class="data-controls">
-                    <button id="themeToggleBtn" class="btn-secondary" title="切换主题">
-                        <i class="fas fa-moon" id="themeIcon"></i>
-                    </button>
                     <button id="statsBtn" class="btn-secondary" title="查看统计">
                         <i class="fas fa-chart-bar"></i> 统计
                     </button>
@@ -145,10 +156,26 @@
             </div>
         </div>
 
+            <!-- 每日记录工具栏（默认隐藏） -->
+            <div class="toolbar journal-toolbar" style="display: none;">
+                <div class="toolbar-left">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="journalSearch" placeholder="搜索日记...">
+                    </div>
+                </div>
+                <div class="data-controls">
+                    <button id="journalStatsBtn" class="btn-secondary" title="日记统计">
+                        <i class="fas fa-chart-bar"></i> 统计
+                    </button>
+                </div>
+            </div>
+        </header>
+
         <!-- 主要内容包装层 -->
         <div class="app-main-wrapper">
-            <!-- 侧边栏 -->
-            <aside id="sidebar" class="sidebar">
+            <!-- 知识库侧边栏 -->
+            <aside id="sidebar" class="sidebar kb-sidebar">
                 <div class="sidebar-header">
                     <h3>文件夹</h3>
                 </div>
@@ -166,6 +193,26 @@
                     <i class="fas fa-plus"></i>
                     <span>新建文件夹</span>
                 </button>
+            </aside>
+
+            <!-- 每日记录侧边栏 -->
+            <aside id="journalSidebar" class="sidebar journal-sidebar" style="display: none;">
+                <div class="sidebar-section">
+                    <h4><i class="fas fa-calendar-alt"></i> 年月归档</h4>
+                    <ul class="sidebar-menu" id="journalArchiveList">
+                        <li class="sidebar-item active"><span>全部</span></li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h4><i class="fas fa-heart"></i> 心情筛选</h4>
+                    <div class="mood-filter" id="journalMoodFilter">
+                        <span class="mood-tag" data-mood="完美">🌟 完美</span>
+                        <span class="mood-tag" data-mood="充实">😊 充实</span>
+                        <span class="mood-tag" data-mood="平淡">😐 平淡</span>
+                        <span class="mood-tag" data-mood="疲惫">😮‍💨 疲惫</span>
+                        <span class="mood-tag" data-mood="糟糕">🌧️ 糟糕</span>
+                    </div>
+                </div>
             </aside>
             <!-- 主要内容区域 -->
             <main class="main-content">
@@ -262,16 +309,16 @@
                 </div>
             </section>
 
-            <!-- 书籍列表区域 -->
-            <section class="book-list-section">
+            <!-- 作品列表区域 -->
+            <section id="bookListSection" class="book-list-section">
                 <div class="section-header">
-                    <h2><i class="fas fa-list"></i> 书籍列表</h2>
+                    <h2><i class="fas fa-list"></i> 作品列表</h2>
                     <div class="list-info">
-                        <span id="bookCount">0 本书</span>
+                        <span id="bookCount">0 本</span>
                     </div>
                 </div>
                 <div id="bookListContainer" class="book-list-container">
-                    <!-- 书籍列表将通过JavaScript动态生成 -->
+                    <!-- 作品列表将通过JavaScript动态生成 -->
                     <!--
                     书籍卡片模板示例：
                     <div class="book-card">
@@ -307,6 +354,23 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 每日记录区域 -->
+            <section id="journalContainer" class="journal-section" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-pen"></i> 每日记录</h2>
+                    <button id="addJournalBtn2" class="btn-primary" onclick="openJournalModal()">
+                        <i class="fas fa-plus"></i> 写日记
+                    </button>
+                </div>
+                <div id="journalList" class="journal-grid">
+                    <div class="empty-state" id="journalEmptyState">
+                        <i class="fas fa-book-open"></i>
+                        <h3>暂无日记记录</h3>
+                        <p>点击"写日记"按钮开始记录你的每日点滴</p>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -327,8 +391,8 @@
             <h3><i class="fas fa-exclamation-triangle"></i> 确认删除</h3>
             <p id="deleteMessage">确定要删除这本书吗？此操作无法撤销。</p>
             <div class="modal-actions">
-                <button id="confirmDeleteBtn" class="btn-danger">确认删除</button>
                 <button id="cancelDeleteBtn" class="btn-secondary">取消</button>
+                <button id="confirmDeleteBtn" class="btn-danger">确认删除</button>
             </div>
         </div>
     </div>
@@ -648,6 +712,115 @@
                     <i class="fas fa-sync-alt"></i> 刷新统计
                 </button>
                 <button class="btn-secondary" onclick="closeStatsModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日记编辑模态框 -->
+    <div id="journalModal" class="modal" style="display: none;">
+        <div class="modal-content journal-modal">
+            <div class="modal-header">
+                <h3 id="journalModalTitle"><i class="fas fa-pen"></i> 写日记</h3>
+                <button class="close-btn" onclick="closeJournalModal()">×</button>
+            </div>
+            <form id="journalForm">
+                <input type="hidden" id="journalId">
+                <div class="form-group">
+                    <label for="journalDate">日期</label>
+                    <input type="date" id="journalDate" required>
+                </div>
+                <div class="form-group">
+                    <label>今日心情</label>
+                    <div class="mood-selector">
+                        <button type="button" class="mood-btn" data-mood="完美">🌟 完美</button>
+                        <button type="button" class="mood-btn" data-mood="充实">😊 充实</button>
+                        <button type="button" class="mood-btn" data-mood="平淡">😐 平淡</button>
+                        <button type="button" class="mood-btn" data-mood="疲惫">😮‍💨 疲惫</button>
+                        <button type="button" class="mood-btn" data-mood="糟糕">🌧️ 糟糕</button>
+                    </div>
+                    <input type="hidden" id="journalMood" required>
+                </div>
+                <div class="form-group">
+                    <label for="journalContent">今日记录</label>
+                    <textarea id="journalContent" rows="10" placeholder="记录今天的点点滴滴..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeJournalModal()">取消</button>
+                    <button type="submit" class="btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 日记统计模态框 -->
+    <div id="journalStatsModal" class="modal" style="display: none;">
+        <div class="modal-content journal-stats-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-chart-pie"></i> 日记统计</h3>
+                <button class="close-stats-btn" onclick="closeJournalStatsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- 双屏翻页容器 -->
+            <div class="stats-viewport" id="statsViewport">
+                <div class="stats-track" id="statsTrack">
+                    <!-- 第一页：数据卡片 + 饼图 -->
+                    <div class="stats-page stats-page-1">
+                        <div class="stats-cards-container">
+                            <div class="stat-card">
+                                <div class="stat-value" id="journalTotalDays">0</div>
+                                <div class="stat-label">累计记录天数</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="journalTotalChars">0</div>
+                                <div class="stat-label">总记录字数</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value mood-value" id="journalTopMood">-</div>
+                                <div class="stat-label">最常心情</div>
+                            </div>
+                        </div>
+                        <div id="journalMoodChart" style="width: 100%; height: 280px;"></div>
+                    </div>
+                    <!-- 第二页：日历热力图 -->
+                    <div class="stats-page stats-page-2">
+                        <div class="heatmap-section">
+                            <h4><i class="fas fa-calendar-alt"></i> 日记日历</h4>
+                            <div id="journalHeatmap" style="width: 100%; height: 380px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 分页指示器 -->
+            <div class="stats-pagination" id="statsPagination">
+                <span class="pagination-dot active" data-page="0"></span>
+                <span class="pagination-dot" data-page="1"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日记删除确认模态框 -->
+    <div id="journalDeleteModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3><i class="fas fa-exclamation-triangle"></i> 删除确认</h3>
+            <p>确定要删除这篇日记吗？此操作无法撤销。</p>
+            <div class="modal-actions">
+                <button id="cancelJournalDeleteBtn" class="btn-secondary">取消</button>
+                <button id="confirmJournalDeleteBtn" class="btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日记阅读模态框（只读模式） -->
+    <div id="journalViewModal" class="modal" style="display: none;">
+        <div class="modal-content journal-view-content">
+            <div class="journal-view-header">
+                <h3 id="viewJournalDate"></h3>
+                <div id="viewJournalMood" class="mood-badge"></div>
+            </div>
+            <div id="viewJournalText" class="journal-view-body"></div>
+            <div class="modal-actions">
+                <button id="closeJournalViewBtn">关闭</button>
             </div>
         </div>
     </div>

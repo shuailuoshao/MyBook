@@ -22,6 +22,39 @@ const DEFAULT_RATING_PROFILE = {
 const DEFAULT_PROFILE_NAME = "标准配置";
 
 // =========================================
+// 日记数据模型
+// =========================================
+class JournalEntry {
+    constructor(data = {}) {
+        this.id = data.id || this.generateId();
+        this.date = data.date || new Date().toISOString().split('T')[0];
+        this.content = data.content || '';
+        this.mood = data.mood || '';
+        this.createdAt = data.createdAt || new Date().toISOString();
+        this.updatedAt = data.updatedAt || new Date().toISOString();
+    }
+
+    generateId() {
+        return 'journal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            date: this.date,
+            content: this.content,
+            mood: this.mood,
+            createdAt: this.createdAt,
+            updatedAt: this.updatedAt
+        };
+    }
+
+    static fromJSON(json) {
+        return new JournalEntry(json);
+    }
+}
+
+// =========================================
 // 评分相关全局函数（在class外，供HTML onclick调用）
 // =========================================
 let ratingApp = null;
@@ -941,7 +974,7 @@ class StatsService {
     return {
       labels: Object.keys(stats),
       data: Object.values(stats),
-      colors: ['#e74c3c', '#f39c12', '#2ecc71'] // 红色、橙色、绿色
+      colors: ['#FF1744', '#FFB300', '#2E7D32'] // 红色系(金读完)、金色系(阅读中)、绿色系(未开始)
     };
   }
 
@@ -1670,6 +1703,14 @@ class BookApp {
     this.currentBookId = null;
     this.currentFolderId = 'all';
 
+    // 日记相关状态
+    this.journals = [];
+    this.currentView = 'knowledge'; // knowledge | journal
+    this.currentMoodFilter = null; // 当前心情筛选
+    this.currentJournalToDelete = null; // 待删除的日记ID
+    this.statsCurrentPage = 0; // 统计模态框当前页码
+    this._statsWheelHandler = null; // 滚轮事件处理函数
+
     // 过滤相关状态
     this.activeFilters = {
       status: [],
@@ -1686,6 +1727,7 @@ class BookApp {
     await this.storageService.loadFolders();
     this.renderFolders();
     await this.loadBooks();
+    await this.loadJournals();
   }
 
   initializeElements() {
@@ -1852,6 +1894,46 @@ class BookApp {
     this.compareResults = document.getElementById('compareResults');
     this.compareRatingBtn.addEventListener('click', () => this.showCompareModal());
 
+    // 日记表单事件
+    const journalForm = document.getElementById('journalForm');
+    journalForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveJournalFromForm();
+    });
+
+    // 心情选择器事件
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('journalMood').value = btn.dataset.mood;
+      });
+    });
+
+    // 心情筛选按钮事件（侧边栏）
+    document.querySelectorAll('.mood-filter .mood-tag').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mood = btn.dataset.mood;
+        if (this.currentMoodFilter === mood) {
+          // 取消筛选
+          this.currentMoodFilter = null;
+          btn.classList.remove('active');
+        } else {
+          // 应用筛选
+          this.currentMoodFilter = mood;
+          document.querySelectorAll('.mood-filter .mood-tag').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        }
+        this.renderJournalList();
+      });
+    });
+
+    // 日记统计按钮事件
+    const journalStatsBtn = document.getElementById('journalStatsBtn');
+    if (journalStatsBtn) {
+      journalStatsBtn.addEventListener('click', () => this.showJournalStats());
+    }
+
     this.fileDropArea.addEventListener('click', () => this.importFile.click());
     this.fileDropArea.addEventListener('dragover', (e) => this.handleDragOver(e));
     this.fileDropArea.addEventListener('drop', (e) => this.handleFileDrop(e));
@@ -1869,12 +1951,39 @@ class BookApp {
     this.confirmDeleteBtn.addEventListener('click', () => this.confirmDelete());
     this.cancelDeleteBtn.addEventListener('click', () => this.hideDeleteModal());
 
+    // 日记删除确认按钮事件绑定
+    const confirmJournalDeleteBtn = document.getElementById('confirmJournalDeleteBtn');
+    const cancelJournalDeleteBtn = document.getElementById('cancelJournalDeleteBtn');
+    if (confirmJournalDeleteBtn) {
+      confirmJournalDeleteBtn.addEventListener('click', () => this.confirmDeleteJournal());
+    }
+    if (cancelJournalDeleteBtn) {
+      cancelJournalDeleteBtn.addEventListener('click', () => this.hideJournalDeleteModal());
+    }
+
+    // 日记阅读模态框关闭按钮事件绑定
+    const closeJournalViewBtn = document.getElementById('closeJournalViewBtn');
+    if (closeJournalViewBtn) {
+      closeJournalViewBtn.addEventListener('click', () => this.closeJournalViewModal());
+    }
+
     this.closeNotesModalBtn.addEventListener('click', () => this.hideNotesModal());
     this.importNotesBtn.addEventListener('click', () => this.importNotes());
     this.noteSearchInput.addEventListener('input', () => this.handleNoteSearch());
     this.saveNoteBtn.addEventListener('click', () => this.saveNote());
+    // 点击overlay时关闭所有模态框
     this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) this.hideNotesModal();
+      if (e.target === this.overlay) {
+        this.hideNotesModal();
+        this.closeJournalModal();
+        this.closeJournalStatsModal();
+        this.hideJournalDeleteModal();
+        this.closeJournalViewModal();
+        this.hideFilterPanel();
+        this.hideCompareModal();
+        // 隐藏overlay
+        this.overlay.style.display = 'none';
+      }
     });
 
     this.startDateInput.addEventListener('change', () => this.handleDateChange());
@@ -2012,6 +2121,776 @@ class BookApp {
       this.showToast('加载书籍失败', 'error');
     } finally {
       this.hideLoading();
+    }
+  }
+
+  // 加载日记
+  async loadJournals() {
+    try {
+      let journalsData;
+      if (window.electronAPI && typeof window.electronAPI.loadJournals === 'function') {
+        journalsData = await window.electronAPI.loadJournals();
+      } else {
+        const stored = localStorage.getItem('mybook_journals');
+        journalsData = stored ? JSON.parse(stored) : [];
+      }
+      this.journals = journalsData.map(j => JournalEntry.fromJSON(j));
+      return this.journals;
+    } catch (error) {
+      console.error('加载日记失败:', error);
+      this.journals = [];
+      return [];
+    }
+  }
+
+  // 保存日记
+  async saveJournals() {
+    try {
+      const data = this.journals.map(j => j.toJSON());
+      if (window.electronAPI && typeof window.electronAPI.saveJournals === 'function') {
+        await window.electronAPI.saveJournals(data);
+      } else {
+        localStorage.setItem('mybook_journals', JSON.stringify(data));
+      }
+      return true;
+    } catch (error) {
+      console.error('保存日记失败:', error);
+      return false;
+    }
+  }
+
+  // 视图切换
+  switchView(viewName) {
+    const bookSection = document.getElementById('bookListSection');
+    const journalSection = document.getElementById('journalContainer');
+    const viewKnowledge = document.getElementById('viewKnowledge');
+    const viewJournal = document.getElementById('viewJournal');
+    const kbSidebar = document.querySelector('.kb-sidebar');
+    const journalSidebar = document.getElementById('journalSidebar');
+    const kbToolbar = document.querySelector('.kb-toolbar');
+    const journalToolbar = document.querySelector('.journal-toolbar');
+
+    console.log('switchView called:', viewName, { kbSidebar, journalSidebar, kbToolbar, journalToolbar });
+
+    this.currentView = viewName;
+
+    if (viewName === 'journal') {
+      // 隐藏知识库模块
+      if (kbSidebar) kbSidebar.style.display = 'none';
+      if (kbToolbar) kbToolbar.style.display = 'none';
+      if (bookSection) bookSection.style.display = 'none';
+
+      // 显示日记模块
+      if (journalSidebar) journalSidebar.style.display = 'block';
+      if (journalToolbar) journalToolbar.style.display = 'flex';
+      if (journalSection) journalSection.style.display = 'block';
+
+      // 更新切换按钮状态
+      if (viewKnowledge) viewKnowledge.classList.remove('active');
+      if (viewJournal) viewJournal.classList.add('active');
+
+      this.renderJournalList();
+    } else {
+      // 隐藏日记模块
+      if (journalSidebar) journalSidebar.style.display = 'none';
+      if (journalToolbar) journalToolbar.style.display = 'none';
+      if (journalSection) journalSection.style.display = 'none';
+
+      // 显示知识库模块
+      if (kbSidebar) kbSidebar.style.display = 'block';
+      if (kbToolbar) kbToolbar.style.display = 'flex';
+      if (bookSection) bookSection.style.display = 'block';
+
+      // 更新切换按钮状态
+      if (viewJournal) viewJournal.classList.remove('active');
+      if (viewKnowledge) viewKnowledge.classList.add('active');
+    }
+  }
+
+  // 渲染日记列表
+  renderJournalList() {
+    const container = document.getElementById('journalList');
+    const emptyState = document.getElementById('journalEmptyState');
+
+    console.log('renderJournalList called, journals:', this.journals.length, 'moodFilter:', this.currentMoodFilter);
+
+    // 强制确保container存在
+    if (!container) {
+      console.error('journalList container not found');
+      return;
+    }
+
+    // 如果没有日记数据，直接显示空状态
+    if (!this.journals || this.journals.length === 0) {
+      container.innerHTML = '';
+      if (emptyState) {
+        container.appendChild(emptyState);
+        emptyState.style.display = 'block';
+      }
+      return;
+    }
+
+    // 按心情严格筛选
+    let filteredJournals = this.journals;
+    if (this.currentMoodFilter) {
+      filteredJournals = this.journals.filter(j => j.mood === this.currentMoodFilter);
+      console.log('Filtered journals:', filteredJournals.length);
+    }
+
+    // 筛选后为空，显示空状态提示
+    if (!filteredJournals || filteredJournals.length === 0) {
+      container.innerHTML = '';
+      if (emptyState) {
+        container.appendChild(emptyState);
+        emptyState.style.display = 'block';
+      }
+      return;
+    }
+
+    // 隐藏空状态元素
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+
+    // 按日期倒序排列
+    const sorted = [...filteredJournals].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    container.innerHTML = sorted.map(journal => {
+      const date = new Date(journal.date);
+      const dateStr = `${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
+      const moodEmoji = this.getMoodEmoji(journal.mood);
+
+      return `
+        <div class="journal-card" data-id="${journal.id}" onclick="openJournalView('${journal.id}')">
+          <div class="journal-header">
+            <span class="journal-date">${dateStr}</span>
+            <span class="journal-mood ${journal.mood}">${moodEmoji} ${journal.mood}</span>
+          </div>
+          <div class="journal-preview">${this.escapeHtml(journal.content)}</div>
+          <div class="journal-actions">
+            <button onclick="event.stopPropagation(); editJournal('${journal.id}')"><i class="fas fa-edit"></i> 编辑</button>
+            <button class="delete" onclick="event.stopPropagation(); deleteJournal('${journal.id}')"><i class="fas fa-trash"></i> 删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 获取星期几
+  getWeekday(date) {
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return weekdays[date.getDay()];
+  }
+
+  // 获取心情Emoji
+  getMoodEmoji(mood) {
+    const emojis = {
+      '完美': '🌟', '充实': '😊', '平淡': '😐',
+      '疲惫': '😮‍💨', '糟糕': '🌧️'
+    };
+    return emojis[mood] || '😐';
+  }
+
+  // 显示日记统计
+  showJournalStats() {
+    const total = this.journals.length;
+    if (total === 0) {
+      this.showToast('暂无日记记录', 'warning');
+      return;
+    }
+
+    // 统计各心情数量
+    const moodCounts = {};
+    let totalChars = 0;
+    this.journals.forEach(j => {
+      if (j.mood) {
+        moodCounts[j.mood] = (moodCounts[j.mood] || 0) + 1;
+      }
+      if (j.content) {
+        totalChars += j.content.length;
+      }
+    });
+
+    // 找出最常心情
+    let maxMood = null;
+    let maxCount = 0;
+    Object.entries(moodCounts).forEach(([mood, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        maxMood = mood;
+      }
+    });
+
+    // 更新DOM元素
+    document.getElementById('journalTotalDays').textContent = total;
+    document.getElementById('journalTotalChars').textContent = totalChars;
+    document.getElementById('journalTopMood').textContent = this.getMoodEmoji(maxMood) + ' ' + maxMood;
+
+    // 显示模态框
+    const modal = document.getElementById('journalStatsModal');
+    modal.style.display = 'flex';
+    document.getElementById('overlay').style.display = 'block';
+
+    // 重置到第一页
+    this.resetStatsPage();
+
+    // 绑定滚轮切换事件
+    this.bindStatsWheelEvent();
+
+    // ===== 修复：确保模态框完全显示后再渲染图表 =====
+    // 饼图渲染 - 延迟150ms确保DOM已撑开
+    setTimeout(() => {
+      const chartDom = document.getElementById('journalMoodChart');
+      if (!chartDom || this.journalStatsChart) return;
+
+      // 获取当前心情统计数据（确保在正确作用域内）
+      const currentMoodCounts = {};
+      let currentTotalChars = 0;
+      this.journals.forEach(j => {
+        if (j.mood) {
+          currentMoodCounts[j.mood] = (currentMoodCounts[j.mood] || 0) + 1;
+        }
+        if (j.content) {
+          currentTotalChars += j.content.length;
+        }
+      });
+
+      const moodColors = {
+        '完美': '#f1c40f',
+        '充实': '#27ae60',
+        '平淡': '#95a5a6',
+        '疲惫': '#e67e22',
+        '糟糕': '#e74c3c'
+      };
+
+      const chartData = Object.entries(currentMoodCounts).map(([mood, count]) => ({
+        name: this.getMoodEmoji(mood) + ' ' + mood,
+        value: count,
+        itemStyle: { color: moodColors[mood] || '#999' }
+      }));
+
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          formatter: '{b}: {c}次 ({d}%)'
+        },
+        legend: {
+          bottom: 0,
+          data: chartData.map(d => d.name)
+        },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '45%'],
+          data: chartData,
+          label: {
+            show: true,
+            formatter: '{b}: {c}'
+          }
+        }]
+      };
+
+      this.journalStatsChart = echarts.init(chartDom);
+      this.journalStatsChart.setOption(option);
+
+      // 修复：强制resize确保在display:block后能正确渲染
+      this.journalStatsChart.resize();
+    }, 100);
+
+    // 渲染热力图 - 延迟350ms确保模态框完全显示并过渡动画完成
+    // 保存journals引用确保在正确作用域内
+    const journalsForHeatmap = this.journals;
+    setTimeout(() => {
+      const heatmapDom = document.getElementById('journalHeatmap');
+      if (!heatmapDom || !journalsForHeatmap.length) return;
+
+      // 销毁已存在的热力图
+      if (this.journalHeatmapChart) {
+        this.journalHeatmapChart.dispose();
+      }
+
+      // ===== 第一步：修复日期格式 =====
+      // 确保日期为严格的 YYYY-MM-DD 格式
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      // 处理热力图数据：[日期字符串YYYY-MM-DD, 字数, 心情, ID]
+      const heatmapData = journalsForHeatmap.map(j => {
+        const charCount = j.content ? j.content.length : 0;
+        // 确保日期格式正确
+        const formattedDate = formatDate(j.date || j.createdAt || new Date().toISOString());
+        return [formattedDate, charCount, j.mood, j.id];
+      }).filter(item => item[0] && item[0] !== 'NaN-NaN-NaN');
+
+      console.log('Heatmap data:', heatmapData);
+
+      // 获取当前年份
+      const currentYear = new Date().getFullYear();
+
+      // 心情emoji映射
+      const moodEmojiMap = {
+        '完美': '🌟',
+        '充实': '😊',
+        '平淡': '😐',
+        '疲惫': '😮‍💨',
+        '糟糕': '😢'
+      };
+
+      // 计算最大字数用于visualMap
+      const maxCharCount = Math.max(...heatmapData.map(d => d[1]), 100);
+
+      // ===== 第二步：重构 ECharts 视觉配置 =====
+      const heatmapOption = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderColor: '#ddd',
+          borderWidth: 1,
+          padding: [10, 14],
+          textStyle: {
+            color: '#333'
+          },
+          formatter: function(params) {
+            if (!params.data) return '';
+            const [date, charCount, mood, id] = params.data;
+            const emoji = moodEmojiMap[mood] || '📝';
+            return `<div style="font-size: 13px; line-height: 1.8;">
+                      <b style="font-size: 14px;">${date}</b><br/>
+                      <span style="margin-right: 4px;">${emoji}</span> 心情: ${mood || '未记录'}<br/>
+                      <span style="margin-right: 4px;">📝</span> 字数: <b>${charCount}</b> 字
+                    </div>`;
+          }
+        },
+        visualMap: {
+          type: 'continuous',
+          min: 0,
+          max: maxCharCount,
+          calculable: true,
+          orient: 'horizontal',
+          left: 'center',
+          bottom: 0,
+          inRange: {
+            color: ['#f3e5f5', '#ce93d8', '#ab47bc', '#8e24aa', '#6a1b9a']
+          },
+          textStyle: {
+            color: '#666'
+          }
+        },
+        calendar: {
+          range: [String(currentYear - 1) + '-12-31', String(currentYear) + '-12-31'],
+          top: 35,
+          left: 45,
+          right: 20,
+          bottom: 55,
+          cellSize: ['auto', 16],
+          yearLabel: { show: false },
+          monthLabel: {
+            nameMap: 'zh-CN',
+            color: '#666',
+            fontSize: 11
+          },
+          dayLabel: {
+            nameMap: 'zh-CN',
+            firstDay: 1,
+            color: '#666',
+            fontSize: 10
+          },
+          itemStyle: {
+            color: '#f5f5f5',
+            borderColor: '#ffffff',
+            borderWidth: 2
+          },
+          splitLine: {
+            show: false
+          }
+        },
+        series: [{
+          type: 'heatmap',
+          coordinateSystem: 'calendar',
+          data: heatmapData,
+          label: {
+            show: false
+          },
+          itemStyle: {
+            color: function(params) {
+              const charCount = params.data[1];
+              if (charCount === 0) return '#f5f5f5';
+              if (charCount < 30) return '#f3e5f5';
+              if (charCount < 60) return '#e1bee7';
+              if (charCount < 100) return '#ce93d8';
+              if (charCount < 150) return '#ba68c8';
+              return '#ab47bc';
+            }
+          }
+        }]
+      };
+
+      this.journalHeatmapChart = echarts.init(heatmapDom);
+      this.journalHeatmapChart.setOption(heatmapOption);
+
+      // 修复：强制resize确保渲染正确
+      this.journalHeatmapChart.resize();
+
+      // ===== 第三步：打通点击跳转逻辑 =====
+      // 先清除可能重复绑定的事件
+      this.journalHeatmapChart.off('click');
+
+      // 绑定点击事件：跳转到对应日记
+      this.journalHeatmapChart.on('click', (params) => {
+        if (!params || !params.value || !params.value[3]) return;
+        const journalId = params.value[3];
+        if (journalId) {
+          // 1. 重置翻页状态到第一页
+          this.resetStatsPage();
+          // 2. 关闭统计模态框和遮罩
+          this.closeJournalStatsModal();
+          // 3. 打开日记阅读视图
+          this.openJournalView(journalId);
+        }
+      });
+    }, 350);
+  }
+
+  // 重置统计页面到第一页
+  resetStatsPage() {
+    const track = document.getElementById('statsTrack');
+    const dots = document.querySelectorAll('.pagination-dot');
+    if (track) {
+      track.style.transform = 'translateY(0)';
+    }
+    dots.forEach((dot, index) => {
+      dot.classList.toggle('active', index === 0);
+    });
+    this.statsCurrentPage = 0;
+  }
+
+  // 绑定滚轮切换事件
+  bindStatsWheelEvent() {
+    const viewport = document.getElementById('statsViewport');
+    const track = document.getElementById('statsTrack');
+    const dots = document.querySelectorAll('.pagination-dot');
+
+    if (!viewport) return;
+
+    // 移除之前的事件监听器，防止重复绑定
+    viewport.removeEventListener('wheel', this._statsWheelHandler);
+
+    // 创建带防抖的滚动处理函数
+    this._statsWheelHandler = (e) => {
+      // 防止默认滚动
+      e.preventDefault();
+
+      if (e.deltaY > 0 && this.statsCurrentPage === 0) {
+        // 向下滚动，从第一页切到第二页
+        this.statsCurrentPage = 1;
+        if (track) track.style.transform = 'translateY(-480px)';
+        dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index === 1);
+        });
+        // 切换到第二页后，调用resize确保热力图正确渲染
+        setTimeout(() => {
+          if (this.journalHeatmapChart) {
+            this.journalHeatmapChart.resize();
+          }
+        }, 350);
+      } else if (e.deltaY < 0 && this.statsCurrentPage === 1) {
+        // 向上滚动，从第二页切回第一页
+        this.statsCurrentPage = 0;
+        if (track) track.style.transform = 'translateY(0)';
+        dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index === 0);
+        });
+        // 切回第一页后，调用resize确保饼图正确渲染
+        setTimeout(() => {
+          if (this.journalStatsChart) {
+            this.journalStatsChart.resize();
+          }
+        }, 350);
+      }
+    };
+
+    // 添加事件监听器
+    viewport.addEventListener('wheel', this._statsWheelHandler, { passive: false });
+
+    // 绑定分页指示器点击事件
+    dots.forEach((dot) => {
+      dot.addEventListener('click', (e) => {
+        const page = parseInt(e.target.dataset.page);
+        this.statsCurrentPage = page;
+        if (track) track.style.transform = `translateY(-${page * 480}px)`;
+        dots.forEach((d, index) => {
+          d.classList.toggle('active', index === page);
+        });
+        // 切换到第二页时调用resize
+        if (page === 1 && this.journalHeatmapChart) {
+          setTimeout(() => {
+            this.journalHeatmapChart.resize();
+          }, 350);
+        }
+        // 切换回第一页时调用resize
+        if (page === 0 && this.journalStatsChart) {
+          setTimeout(() => {
+            this.journalStatsChart.resize();
+          }, 350);
+        }
+      });
+    });
+  }
+
+  // 关闭日记统计模态框
+  closeJournalStatsModal() {
+    document.getElementById('journalStatsModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+
+    // 移除滚轮事件监听器
+    const viewport = document.getElementById('statsViewport');
+    if (viewport && this._statsWheelHandler) {
+      viewport.removeEventListener('wheel', this._statsWheelHandler);
+      this._statsWheelHandler = null;
+    }
+
+    // 重置页面状态
+    this.resetStatsPage();
+    this.statsCurrentPage = 0;
+
+    // 销毁热力图实例，防止内存泄漏
+    if (this.journalHeatmapChart) {
+      this.journalHeatmapChart.dispose();
+      this.journalHeatmapChart = null;
+    }
+  }
+
+  // 打开日记阅读模态框（只读模式）
+  openJournalView(journalId) {
+    const journal = this.journals.find(j => j.id === journalId);
+    if (!journal) return;
+
+    const date = new Date(journal.date);
+    const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
+    const moodEmoji = this.getMoodEmoji(journal.mood);
+
+    document.getElementById('viewJournalDate').textContent = dateStr;
+    document.getElementById('viewJournalMood').textContent = `${moodEmoji} ${journal.mood}`;
+    document.getElementById('viewJournalText').textContent = journal.content;
+
+    document.getElementById('journalViewModal').style.display = 'flex';
+    document.getElementById('overlay').style.display = 'block';
+  }
+
+  // 关闭日记阅读模态框
+  closeJournalViewModal() {
+    document.getElementById('journalViewModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+  }
+
+  // 显示日记删除确认模态框
+  showJournalDeleteModal(journalId) {
+    this.currentJournalToDelete = journalId;
+    document.getElementById('journalDeleteModal').style.display = 'flex';
+    document.getElementById('overlay').style.display = 'block';
+  }
+
+  // 隐藏日记删除确认模态框
+  hideJournalDeleteModal() {
+    this.currentJournalToDelete = null;
+    document.getElementById('journalDeleteModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+  }
+
+  // 执行确认删除日记
+  async confirmDeleteJournal() {
+    if (!this.currentJournalToDelete) return;
+
+    const journalId = this.currentJournalToDelete;
+    const index = this.journals.findIndex(j => j.id === journalId);
+
+    if (index !== -1) {
+      this.journals.splice(index, 1);
+      try {
+        await this.saveJournals();
+      } catch (e) {
+        console.error('Save journals error:', e);
+      }
+
+      // 清理可能的遮罩层残留
+      const overlay = document.getElementById('overlay');
+      if (overlay) overlay.style.display = 'none';
+
+      // 清理textarea状态
+      const contentInput = document.getElementById('journalContent');
+      if (contentInput) {
+        contentInput.disabled = false;
+        contentInput.readOnly = false;
+        contentInput.style.pointerEvents = 'auto';
+      }
+
+      this.renderJournalList();
+      this.showToast('日记已删除', 'success');
+    }
+
+    // 隐藏模态框
+    this.hideJournalDeleteModal();
+  }
+
+  // 打开日记模态框
+  openJournalModal(journalId = null) {
+    const modal = document.getElementById('journalModal');
+    const form = document.getElementById('journalForm');
+    const idInput = document.getElementById('journalId');
+    const dateInput = document.getElementById('journalDate');
+    const contentInput = document.getElementById('journalContent');
+    const moodInput = document.getElementById('journalMood');
+    const title = document.getElementById('journalModalTitle');
+
+    // ====== BUG修复：强制重置textarea状态，防止无法输入 ======
+    if (contentInput) {
+      contentInput.readOnly = false;
+      contentInput.disabled = false;
+      contentInput.style.pointerEvents = 'auto';
+      contentInput.style.cursor = 'text';
+      // 先blur再focus，确保焦点正确
+      contentInput.blur();
+    }
+
+    // 强制隐藏所有可能的遮罩层残留
+    const overlay = document.getElementById('overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    // 重置心情按钮选择状态
+    document.querySelectorAll('.mood-btn').forEach(btn => btn.classList.remove('selected'));
+
+    if (journalId) {
+      // 编辑模式
+      const journal = this.journals.find(j => j.id === journalId);
+      if (!journal) return;
+
+      title.innerHTML = '<i class="fas fa-edit"></i> 编辑日记';
+      idInput.value = journal.id;
+      dateInput.value = journal.date;
+      contentInput.value = journal.content;
+      moodInput.value = journal.mood;
+
+      // 选中对应的心情按钮
+      const moodBtn = document.querySelector(`.mood-btn[data-mood="${journal.mood}"]`);
+      if (moodBtn) moodBtn.classList.add('selected');
+    } else {
+      // 新建模式
+      title.innerHTML = '<i class="fas fa-pen"></i> 写日记';
+      form.reset();
+      idInput.value = '';
+      dateInput.value = new Date().toISOString().split('T')[0];
+      moodInput.value = '';
+      if (contentInput) {
+        contentInput.value = '';
+      }
+    }
+
+    modal.style.display = 'flex';
+    document.getElementById('overlay').style.display = 'block';
+
+    // 延迟设置焦点，确保modal完全渲染后再聚焦
+    setTimeout(() => {
+      if (contentInput) {
+        contentInput.focus();
+      }
+    }, 100);
+  }
+
+  // 关闭日记模态框
+  closeJournalModal() {
+    document.getElementById('journalModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+  }
+
+  // 保存日记
+  async saveJournalFromForm() {
+    console.log('saveJournalFromForm called');
+    const id = document.getElementById('journalId').value;
+    const date = document.getElementById('journalDate').value;
+    const content = document.getElementById('journalContent').value;
+    const mood = document.getElementById('journalMood').value;
+    console.log('Form data:', { id, date, content, mood });
+
+    if (!date || !mood) {
+      this.showToast('请选择日期和心情', 'warning');
+      return;
+    }
+
+    if (id) {
+      // 更新现有日记
+      const journal = this.journals.find(j => j.id === id);
+      if (journal) {
+        journal.date = date;
+        journal.content = content;
+        journal.mood = mood;
+        journal.updatedAt = new Date().toISOString();
+      }
+    } else {
+      // 创建新日记
+      const newJournal = new JournalEntry({
+        date,
+        content,
+        mood
+      });
+      this.journals.push(newJournal);
+    }
+
+    console.log('Journals array:', this.journals);
+    await this.saveJournals();
+    this.closeJournalModal();
+    this.renderJournalList();
+    this.showToast('日记保存成功', 'success');
+  }
+
+  // 删除日记
+  async deleteJournal(journalId) {
+    const index = this.journals.findIndex(j => j.id === journalId);
+    if (index !== -1) {
+      this.journals.splice(index, 1);
+      console.log('After delete, journals count:', this.journals.length);
+      try {
+        await this.saveJournals();
+      } catch (e) {
+        console.error('Save journals error:', e);
+      }
+
+      // ====== BUG修复：彻底清理遮罩层和焦点 ======
+      // 1. 强制隐藏overlay，防止遮挡
+      const overlay = document.getElementById('overlay');
+      if (overlay) {
+        overlay.style.display = 'none';
+      }
+
+      // 2. 强制重置textarea状态，防止无法输入
+      const contentInput = document.getElementById('journalContent');
+      if (contentInput) {
+        contentInput.disabled = false;
+        contentInput.readOnly = false;
+        contentInput.style.pointerEvents = 'auto';
+        contentInput.style.cursor = 'text';
+      }
+
+      // 3. 渲染列表
+      this.renderJournalList();
+
+      // 4. 恢复焦点到输入框（如果有打开的日记表单）
+      const journalModal = document.getElementById('journalModal');
+      if (journalModal && journalModal.style.display === 'block' && contentInput) {
+        // 先blur再focus，确保焦点正确恢复
+        contentInput.blur();
+        setTimeout(() => {
+          contentInput.focus();
+        }, 50);
+      }
+
+      this.showToast('日记已删除', 'success');
     }
   }
 
@@ -2268,10 +3147,140 @@ class BookApp {
     return count;
   }
 
+  // 获取书籍卡片主题颜色
+  getCardThemeColor(status, tags) {
+    // 定义极限色差红色系库（8种剧烈视觉反差的色值）
+    const colorPalettes = {
+      '已读完': [
+        { main: '#FF0000', bg: 'rgba(255, 0, 0, 0.12)', name: '大红' },          // 最正的视觉中心
+        { main: '#680000', bg: 'rgba(104, 0, 0, 0.08)', name: '深酒红' },       // 极深，适合严肃题材
+        { main: '#FF69B4', bg: 'rgba(255, 105, 180, 0.15)', name: '热力粉' },   // 高饱和冷调粉
+        { main: '#FF4500', bg: 'rgba(255, 69, 0, 0.1)', name: '橘红' },         // 极暖调，偏向橘色
+        { main: '#C71585', bg: 'rgba(199, 21, 133, 0.12)', name: '梅紫红' },    // 带紫调的深粉
+        { main: '#FF7F50', bg: 'rgba(255, 127, 80, 0.15)', name: '珊瑚色' },    // 明亮的浅暖红
+        { main: '#DC143C', bg: 'rgba(220, 20, 60, 0.1)', name: '绯红' },       // 经典的高质感红
+        { main: '#FFB6C1', bg: 'rgba(255, 182, 193, 0.2)', name: '浅玫瑰' }     // 极浅的粉色，形成明度反差
+      ],
+      '阅读中': [
+        { main: '#FFB300', bg: 'rgba(255, 179, 0, 0.12)', name: '琥珀金' },     // 琥珀金
+        { main: '#FFF176', bg: 'rgba(255, 241, 118, 0.25)', name: '柠檬黄' },  // 柠檬黄
+        { main: '#F57C00', bg: 'rgba(245, 124, 0, 0.1)', name: '深橙金' },      // 深橙金
+        { main: '#FFE082', bg: 'rgba(255, 224, 130, 0.2)', name: '香槟金' },    // 香槟金
+        { main: '#FFD54F', bg: 'rgba(255, 213, 79, 0.15)', name: '暖黄色' }    // 暖黄色
+      ],
+      '未开始': [
+        { main: '#2E7D32', bg: 'rgba(46, 125, 50, 0.1)', name: '森林绿' },      // 森林绿
+        { main: '#A5D6A7', bg: 'rgba(165, 214, 167, 0.2)', name: '薄荷绿' },   // 薄荷绿
+        { main: '#00C853', bg: 'rgba(0, 200, 83, 0.1)', name: '翡翠绿' },       // 翡翠绿
+        { main: '#C8E6C9', bg: 'rgba(200, 230, 201, 0.2)', name: '浅草绿' },   // 浅草绿
+        { main: '#8BC34A', bg: 'rgba(139, 195, 74, 0.12)', name: '青柠色' }    // 青柠色
+      ]
+    };
+
+    // 默认色板（未开始）
+    const defaultPalette = colorPalettes['未开始'];
+
+    // 获取对应状态的色系
+    const palette = colorPalettes[status] || defaultPalette;
+
+    // 如果没有标签，使用默认第一个颜色
+    if (!tags || !Array.isArray(tags) || tags.length === 0) {
+      const theme = palette[0];
+      return {
+        main: theme.main,
+        bg: theme.bg,
+        shadow: this.hexToRgba(theme.main, 0.3),
+        border: this.darkenColor(theme.main, 0.3)
+      };
+    }
+
+    // 提取第一个标签
+    const firstTag = tags[0];
+    // 使用hash函数计算稳定索引（8种颜色，更分散）
+    const hash = this.hashString(firstTag);
+    const colorIndex = hash % 8; // 8种颜色
+
+    const theme = palette[colorIndex];
+
+    // 动态计算配套颜色
+    const mainColor = theme.main;
+    const isLightColor = this.isLightColor(mainColor);
+
+    // 计算左侧装饰条颜色（带立体感）
+    let borderColor = mainColor;
+    if (isLightColor) {
+      borderColor = this.darkenColor(mainColor, 0.3); // 浅色调暗30%
+    }
+
+    // 计算右上角标签背景色（极淡版本）
+    const bgColor = this.hexToRgba(mainColor, 0.12);
+
+    // 计算进度条颜色（高饱和度）
+    const progressColor = mainColor;
+
+    return {
+      main: mainColor,
+      bg: bgColor,
+      shadow: this.hexToRgba(mainColor, 0.3),
+      border: borderColor,
+      progress: progressColor
+    };
+  }
+
+  // 判断颜色是否为浅色
+  isLightColor(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    // 计算亮度
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128;
+  }
+
+  // Hash函数：将字符串转换为均匀分布的数字
+  hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    return Math.abs(hash);
+  }
+
+  // Hex转RGBA
+  hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  // 颜色变暗
+  darkenColor(hex, amount) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    r = Math.round(r * (1 - amount));
+    g = Math.round(g * (1 - amount));
+    b = Math.round(b * (1 - amount));
+
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
   createBookCard(book) {
     const card = document.createElement('div');
     card.className = `book-card ${book.status}`;
     card.dataset.id = book.id;
+
+    // 获取动态主题颜色
+    const theme = this.getCardThemeColor(book.status, book.tags);
+    card.style.setProperty('--theme-main', theme.main);
+    card.style.setProperty('--theme-sub', theme.bg);
+    card.style.setProperty('--theme-shadow', theme.shadow);
+    card.style.setProperty('--theme-border', theme.border);
+    card.style.setProperty('--theme-progress', theme.progress);
 
     const readingDuration = book.getReadingDuration();
     const durationText = readingDuration ? `${readingDuration} 天` : '-';
@@ -3154,7 +4163,7 @@ class BookApp {
       this.compareRadarChart.dispose();
     }
 
-    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+    const colors = ['#FF1744', '#3498db', '#2E7D32', '#FFB300', '#B71C1C', '#1abc9c', '#FF80AB', '#34495e'];
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const layers = ['作者层面', '文本层面', '读者层面'];
 
@@ -3915,7 +4924,7 @@ class BookApp {
     } else {
       count = this.storageService.getBooksByFolder(this.currentFolderId).length;
     }
-    this.bookCountElement.textContent = `${count} 本书`;
+    this.bookCountElement.textContent = `${count} 本`;
   }
 
   showEmptyState() {
@@ -4250,7 +5259,7 @@ class BookApp {
     return `
       <div class="book-progress ${isCompleted ? 'completed' : ''}">
         <div class="progress-bar">
-          <div class="progress-fill" style="width: ${progressPercent}%"></div>
+          <div class="progress-fill" style="width: ${progressPercent}%; background-color: var(--theme-progress)"></div>
         </div>
         <span class="progress-text">${progressText}</span>
       </div>
@@ -4705,6 +5714,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.confirmCreateFolder = () => {
       window.bookApp.confirmCreateFolder();
+    };
+
+    // 日记全局函数
+    window.switchView = (viewName) => {
+      window.bookApp.switchView(viewName);
+    };
+
+    window.openJournalModal = (journalId = null) => {
+      window.bookApp.openJournalModal(journalId);
+    };
+
+    window.closeJournalModal = () => {
+      window.bookApp.closeJournalModal();
+    };
+
+    window.closeJournalStatsModal = () => {
+      window.bookApp.closeJournalStatsModal();
+    };
+
+    window.editJournal = (journalId) => {
+      window.bookApp.openJournalModal(journalId);
+    };
+
+    window.openJournalView = (journalId) => {
+      window.bookApp.openJournalView(journalId);
+    };
+
+    window.deleteJournal = (journalId) => {
+      // 显示自定义确认模态框，不再使用原生confirm
+      window.bookApp.showJournalDeleteModal(journalId);
     };
   }, 100);
 });
