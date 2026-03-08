@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"d:\\\\学习\\\\MyBook\\\\renderer.js\"*)",
+      "Bash(node -c renderer.js)",
+      "Bash(timeout 5 npm start)",
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
+      "Bash(node -c /d/学习/MyBook/renderer.js)",
+      "Bash(node -c /d/学习/MyBook/main.js)",
+      "Bash(node -c /d/学习/MyBook/preload.js)",
+      "Bash(ls -la /d/学习/MyBook/renderer*.js)",
+      "Bash(node -c -e \"require\\(''fs''\\).readFileSync\\(''styles.css'', ''utf8''\\)\")",
+      "Bash(ls -la d:/学习/MyBook/*.js)",
+      "Bash(node -c d:/学习/MyBook/renderer-new.js)",
+      "Bash(node -c d:/学习/MyBook/renderer_temp.js)",
+      "Bash(npm install chart.js)",
+      "Bash(npm start)",
+      "Bash(npm list electron)",
+      "Bash(npx electron --version)",
+      "Bash(node -e \"console.log\\(require\\(''electron''\\)\\)\")",
+      "Bash(node test_electron.js)",
+      "Bash(ls -la main*.js)",
+      "Bash(rm main.js)",
+      "Bash(cp main_backup.js main.js)",
+      "Bash(npm list electron --depth=0)",
+      "Bash(node --version)",
+      "Bash(npx electron debug_main.js)",
+      "Bash(npx electron .)",
+      "Bash(npx electron main_minimal.js)",
+      "Bash(where electron)",
+      "Bash(npm uninstall electron)",
+      "Bash(npm install electron@latest --save-dev)",
+      "Bash(ls -la *.js *.html *.css)",
+      "Bash(xxd -l 20 \"d:\\\\study_and_try\\\\MyBook\\\\MyBook\\\\styles.css\")",
+      "Bash(xxd)",
+      "Bash(npm install --save-dev electron-builder)",
+      "Bash(npm run build)",
+      "Bash(npx electron-builder --win --x64 --dir)",
+      "Bash(powershell -Command \"Compress-Archive -Path ''dist\\\\win-unpacked\\\\*'' -DestinationPath ''MyBook书籍管理-便携版.zip'' -Force\")"
+    ]
+  }
+}

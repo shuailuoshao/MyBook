@@ -1,0 +1,37 @@
+# Node.js modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Data directory (optional - uncomment if you want to ignore books.json)
+# data/
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+*_backup
+*_temp
+*_temp.js
+
+# Text document in Chinese
+新建\ 文本文档.txt
+
+*.exe
+*.zip
