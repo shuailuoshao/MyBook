@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadBooks: () => ipcRenderer.invoke('load-books'),
   deleteBook: (bookId) => ipcRenderer.invoke('delete-book', bookId),
 
+  // 日记操作
+  saveJournals: (journals) => ipcRenderer.invoke('save-journals', journals),
+  loadJournals: () => ipcRenderer.invoke('load-journals'),
+
   // 工具函数
   showMessage: (title, message) => ipcRenderer.send('show-message', { title, message }),
 

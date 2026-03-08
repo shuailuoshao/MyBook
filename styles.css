@@ -1143,14 +1143,25 @@ body {
     color: #6c757d;
 }
 
-/* 书籍列表容器 */
+/* 书籍列表容器 - 响应式网格布局 */
 .book-list-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 15px;
+    /* 初始状态：普通窗口下两列 */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
     margin-top: 20px;
     scroll-margin-top: 100px;
     align-items: stretch;
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 宽屏/全屏状态：三列布局 */
+@media (min-width: 1200px) {
+    .book-list-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 /* 书籍卡片 */
@@ -1163,11 +1174,12 @@ body {
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    max-width: 500px;
     display: flex;
     flex-direction: column;
     min-height: 180px;
     height: 100%;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .book-card:hover {
@@ -1311,12 +1323,18 @@ body {
     font-weight: 700;
     color: #2c3e50;
     margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .book-author {
     font-size: 0.9rem;
     color: #6c757d;
     font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .book-status {
@@ -5114,8 +5132,9 @@ html, body {
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     min-height: 180px;
+    contain: layout style paint;
 }
 
 .journal-card:hover {
@@ -5362,6 +5381,7 @@ html, body {
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 10px;
+    min-height: 80px;
 }
 
 .journal-image-thumb {

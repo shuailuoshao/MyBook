@@ -501,8 +501,17 @@ class Book {
 class StorageService {
   constructor() {
     this.books = [];
+    this.bookMap = new Map();  // O(1) 查询索引
     this.folders = [];
     // 不在构造函数中调用 loadBooks，由外部控制加载时机
+  }
+
+  // 重建书籍 Map 索引
+  _rebuildBookMap() {
+    this.bookMap.clear();
+    for (const book of this.books) {
+      this.bookMap.set(book.id, book);
+    }
   }
 
   // 加载文件夹数据
@@ -575,6 +584,7 @@ class StorageService {
       }
       log('StorageService: 加载到的数据:', booksData);
       this.books = booksData.map(book => Book.fromJSON(book));
+      this._rebuildBookMap();  // 重建索引
       return this.books;
     } catch (error) {
       console.error('加载书籍失败:', error);
@@ -609,7 +619,7 @@ class StorageService {
   }
 
   getAllBooks() { return [...this.books]; }
-  getBookById(id) { return this.books.find(book => book.id === id); }
+  getBookById(id) { return this.bookMap.get(id) || null; }
 
   async addBook(bookData) {
     const book = new Book(bookData);
@@ -618,17 +628,19 @@ class StorageService {
     
     // 🌟 必须先放进数组！
     this.books.push(book);
-    
+    this.bookMap.set(book.id, book);  // 同步更新索引
+
     // 🌟 然后连同新书一起保存到硬盘
     const success = await this.saveBooks();
-    
+
     if (!success) {
       // 如果硬盘保存失败，把刚刚放进去的书拿出来（数据回滚）
       this.books.pop();
+      this.bookMap.delete(book.id);  // 回滚索引
       console.error('addBook: 保存失败，书籍已从内存中移除');
       throw new Error('本地保存失败，请检查文件权限或数据格式');
     }
-    
+
     return book;
   }
 
@@ -661,15 +673,18 @@ class StorageService {
     if (bookIndex === -1) throw new Error('书籍不存在');
     const deletedBook = this.books[bookIndex];
     this.books.splice(bookIndex, 1);
+    this.bookMap.delete(id);  // 同步更新索引
     try {
       const success = await this.saveBooks();
       if (!success) {
         this.books.splice(bookIndex, 0, deletedBook);
+        this.bookMap.set(id, deletedBook);  // 回滚索引
         throw new Error('删除书籍失败');
       }
       return true;
     } catch (error) {
       this.books.splice(bookIndex, 0, deletedBook);
+      this.bookMap.set(id, deletedBook);  // 回滚索引
       throw error;
     }
   }
@@ -1679,6 +1694,24 @@ class BookApp {
   constructor() {
     // 构造函数为空，初始化在 init() 方法中完成
 
+    // 缓存视图切换相关 DOM 元素（性能优化）
+    this.domCache = {
+      bookSection: null,
+      journalSection: null,
+      viewKnowledge: null,
+      viewJournal: null,
+      kbSidebar: null,
+      journalSidebar: null,
+      kbToolbar: null,
+      journalToolbar: null,
+      journalList: null,
+      journalEmptyState: null
+    };
+
+    // 缓存日记排序结果（避免重复排序）
+    this._sortedJournals = null;
+    this._journalsHash = '';
+
     // 题材与状态称谓映射表
     this.statusLabels = {
       '书籍类': {
@@ -1798,6 +1831,7 @@ class BookApp {
     this.isFilterPanelOpen = false;
 
     this.initializeElements();
+    this._initDomCache();  // 初始化 DOM 缓存
     this.bindEvents();
     this.initTheme();
     await this.storageService.loadFolders();
@@ -1918,6 +1952,20 @@ class BookApp {
 
     // 日记图片上传
     this.journalImageInput = document.getElementById('journalImageInput');
+  }
+
+  // 初始化 DOM 缓存（性能优化）
+  _initDomCache() {
+    this.domCache.bookSection = document.getElementById('bookListSection');
+    this.domCache.journalSection = document.getElementById('journalContainer');
+    this.domCache.viewKnowledge = document.getElementById('viewKnowledge');
+    this.domCache.viewJournal = document.getElementById('viewJournal');
+    this.domCache.kbSidebar = document.querySelector('.kb-sidebar');
+    this.domCache.journalSidebar = document.getElementById('journalSidebar');
+    this.domCache.kbToolbar = document.querySelector('.kb-toolbar');
+    this.domCache.journalToolbar = document.querySelector('.journal-toolbar');
+    this.domCache.journalList = document.getElementById('journalList');
+    this.domCache.journalEmptyState = document.getElementById('journalEmptyState');
   }
 
   bindEvents() {
@@ -2280,58 +2328,96 @@ class BookApp {
     }
   }
 
-  // 视图切换
+  // 视图切换（使用 DOM 缓存优化）
   switchView(viewName) {
-    const bookSection = document.getElementById('bookListSection');
-    const journalSection = document.getElementById('journalContainer');
-    const viewKnowledge = document.getElementById('viewKnowledge');
-    const viewJournal = document.getElementById('viewJournal');
-    const kbSidebar = document.querySelector('.kb-sidebar');
-    const journalSidebar = document.getElementById('journalSidebar');
-    const kbToolbar = document.querySelector('.kb-toolbar');
-    const journalToolbar = document.querySelector('.journal-toolbar');
+    // 使用缓存的 DOM 引用
+    const c = this.domCache;
 
-    log('switchView called:', viewName, { kbSidebar, journalSidebar, kbToolbar, journalToolbar });
+    log('switchView called:', viewName);
 
     this.currentView = viewName;
 
     if (viewName === 'journal') {
-      // 隐藏知识库模块
-      if (kbSidebar) kbSidebar.style.display = 'none';
-      if (kbToolbar) kbToolbar.style.display = 'none';
-      if (bookSection) bookSection.style.display = 'none';
+      // 步骤1：立即执行 DOM 显示切换（视觉快速响应）
+      if (c.kbSidebar) c.kbSidebar.style.display = 'none';
+      if (c.kbToolbar) c.kbToolbar.style.display = 'none';
+      if (c.bookSection) c.bookSection.style.display = 'none';
 
       // 显示日记模块
-      if (journalSidebar) journalSidebar.style.display = 'block';
-      if (journalToolbar) journalToolbar.style.display = 'flex';
-      if (journalSection) journalSection.style.display = 'block';
+      if (c.journalSidebar) c.journalSidebar.style.display = 'block';
+      if (c.journalToolbar) c.journalToolbar.style.display = 'flex';
+      if (c.journalSection) c.journalSection.style.display = 'block';
 
       // 更新切换按钮状态
-      if (viewKnowledge) viewKnowledge.classList.remove('active');
-      if (viewJournal) viewJournal.classList.add('active');
+      if (c.viewKnowledge) c.viewKnowledge.classList.remove('active');
+      if (c.viewJournal) c.viewJournal.classList.add('active');
 
-      this.renderJournalList();
+      // 步骤2：异步执行渲染（不阻塞 UI）
+      requestAnimationFrame(() => {
+        this.renderJournalList();
+      });
     } else {
       // 隐藏日记模块
-      if (journalSidebar) journalSidebar.style.display = 'none';
-      if (journalToolbar) journalToolbar.style.display = 'none';
-      if (journalSection) journalSection.style.display = 'none';
+      if (c.journalSidebar) c.journalSidebar.style.display = 'none';
+      if (c.journalToolbar) c.journalToolbar.style.display = 'none';
+      if (c.journalSection) c.journalSection.style.display = 'none';
 
       // 显示知识库模块
-      if (kbSidebar) kbSidebar.style.display = 'block';
-      if (kbToolbar) kbToolbar.style.display = 'flex';
-      if (bookSection) bookSection.style.display = 'block';
+      if (c.kbSidebar) c.kbSidebar.style.display = 'block';
+      if (c.kbToolbar) c.kbToolbar.style.display = 'flex';
+      if (c.bookSection) c.bookSection.style.display = 'block';
 
       // 更新切换按钮状态
-      if (viewJournal) viewJournal.classList.remove('active');
-      if (viewKnowledge) viewKnowledge.classList.add('active');
+      if (c.viewJournal) c.viewJournal.classList.remove('active');
+      if (c.viewKnowledge) c.viewKnowledge.classList.add('active');
     }
   }
 
-  // 渲染日记列表
+  // 获取排序后的日记（带缓存）
+  _getSortedJournals() {
+    // 生成当前状态的哈希值
+    const currentHash = JSON.stringify({
+      journals: this.journals.map(j => j.id),  // 只用 ID 减少计算量
+      filter: this.currentMoodFilter,
+      search: this.currentJournalSearchTerm
+    });
+
+    if (this._journalsHash !== currentHash) {
+      // 数据变化，重新排序
+      this._journalsHash = currentHash;
+      let filtered = this.journals;
+
+      if (this.currentMoodFilter) {
+        filtered = filtered.filter(j => j.mood === this.currentMoodFilter);
+      }
+      if (this.currentJournalSearchTerm) {
+        const term = this.currentJournalSearchTerm.toLowerCase();
+        filtered = filtered.filter(j =>
+          (j.content && j.content.toLowerCase().includes(term)) ||
+          j.date.includes(term)
+        );
+      }
+
+      this._sortedJournals = [...filtered].sort((a, b) =>
+        new Date(b.date) - new Date(a.date)
+      );
+    }
+
+    return this._sortedJournals || [];
+  }
+
+  // 清除日记缓存（数据变化时调用）
+  _invalidateJournalCache() {
+    this._sortedJournals = null;
+    this._journalsHash = '';
+  }
+
+  // 渲染日记列表（完全异步优化）
   renderJournalList() {
-    const container = document.getElementById('journalList');
-    const emptyState = document.getElementById('journalEmptyState');
+    // 使用缓存的 DOM 引用
+    const container = this.domCache.journalList;
+    const emptyState = this.domCache.journalEmptyState;
+    const BATCH_SIZE = 20;
 
     log('renderJournalList called, journals:', this.journals.length, 'moodFilter:', this.currentMoodFilter);
 
@@ -2348,27 +2434,15 @@ class BookApp {
         container.appendChild(emptyState);
         emptyState.style.display = 'block';
       }
+      this._invalidateJournalCache();
       return;
     }
 
-    // 按心情严格筛选
-    let filteredJournals = this.journals;
-    if (this.currentMoodFilter) {
-      filteredJournals = this.journals.filter(j => j.mood === this.currentMoodFilter);
-      log('Filtered journals:', filteredJournals.length);
-    }
-
-    // 按关键词搜索过滤
-    if (this.currentJournalSearchTerm) {
-      const term = this.currentJournalSearchTerm.toLowerCase();
-      filteredJournals = filteredJournals.filter(j =>
-        (j.content && j.content.toLowerCase().includes(term)) ||
-        j.date.includes(term)
-      );
-    }
+    // 获取排序后的日记（使用缓存）
+    const sorted = this._getSortedJournals();
 
     // 筛选后为空，显示空状态提示
-    if (!filteredJournals || filteredJournals.length === 0) {
+    if (!sorted || sorted.length === 0) {
       container.innerHTML = '';
       if (emptyState) {
         container.appendChild(emptyState);
@@ -2382,75 +2456,115 @@ class BookApp {
       emptyState.style.display = 'none';
     }
 
-    // 按日期倒序排列
-    const sorted = [...filteredJournals].sort((a, b) => new Date(b.date) - new Date(a.date));
+    // 清空容器
+    container.innerHTML = '';
 
-    container.innerHTML = sorted.map(journal => {
-      const date = new Date(journal.date);
-      const dateStr = `${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
-      const moodEmoji = this.getMoodEmoji(journal.mood);
+    // 使用 setTimeout 让出主线程
+    setTimeout(() => {
+      // 立即渲染前 20 条，保证视觉响应
+      const initialBatch = sorted.slice(0, BATCH_SIZE);
+      container.innerHTML = this._renderJournalCards(initialBatch);
 
-      // 获取关联作品信息
-      const relatedBooksHtml = journal.relatedBookIds && journal.relatedBookIds.length > 0
-        ? journal.relatedBookIds.map(bookId => {
-            const book = this.storageService.getBookById(bookId);
-            if (!book) return '';
-            const firstTag = book.tags && book.tags.length > 0 ? book.tags[0] : '';
-            // 继承作品的动态主题色
-            const theme = this.getCardThemeColor(book.status, book.tags);
-            return `<span class="journal-related-book"
-                style="background: ${theme.bg}; color: ${theme.main}; border: 1px solid ${theme.border}"
-                onclick="event.stopPropagation(); window.jumpToBook('${bookId}')">
-                <i class="fas fa-link"></i> [${firstTag}] ${this.escapeHtml(book.title)}
-            </span>`;
-          }).join('')
-        : '';
+      // 异步渲染剩余条目
+      if (sorted.length > BATCH_SIZE) {
+        const remaining = sorted.slice(BATCH_SIZE);
+        requestAnimationFrame(() => {
+          this._renderRemainingJournals(remaining, container);
+        });
+      }
+    }, 0);
+  }
 
-      // 获取图片信息（支持 dataUrl 和路径两种格式）
-      const imagesHtml = journal.images && journal.images.length > 0
-        ? journal.images.map(imgData => {
-            let imgSrc = '';
-            let imgKey = '';
-            // 处理对象格式（dataUrl 或 path）
-            if (typeof imgData === 'object') {
-              if (imgData.dataUrl) {
-                imgSrc = imgData.dataUrl;
-                imgKey = imgData.dataUrl;
-              } else if (imgData.path) {
-                imgSrc = imgData.path;
-                if (/^[a-zA-Z]:\\/.test(imgSrc)) {
-                  imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-                }
-                imgKey = imgData.path;
-              }
-            } else {
-              // 字符串格式（旧数据）
-              imgSrc = imgData;
+  // 渲染单批日记卡片
+  _renderJournalCards(journals) {
+    return journals.map(journal => this._renderJournalCard(journal)).join('');
+  }
+
+  // 渲染单条日记卡片
+  _renderJournalCard(journal) {
+    const date = new Date(journal.date);
+    const dateStr = `${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
+    const moodEmoji = this.getMoodEmoji(journal.mood);
+
+    // 获取关联作品信息（使用已优化的 bookMap）
+    const relatedBooksHtml = journal.relatedBookIds && journal.relatedBookIds.length > 0
+      ? journal.relatedBookIds.map(bookId => {
+          const book = this.storageService.getBookById(bookId);
+          if (!book) return '';
+          const firstTag = book.tags && book.tags.length > 0 ? book.tags[0] : '';
+          // 继承作品的动态主题色
+          const theme = this.getCardThemeColor(book.status, book.tags);
+          return `<span class="journal-related-book"
+              style="background: ${theme.bg}; color: ${theme.main}; border: 1px solid ${theme.border}"
+              onclick="event.stopPropagation(); window.jumpToBook('${bookId}')">
+              <i class="fas fa-link"></i> [${firstTag}] ${this.escapeHtml(book.title)}
+          </span>`;
+        }).join('')
+      : '';
+
+    // 获取图片信息（支持 dataUrl 和路径两种格式）
+    const imagesHtml = journal.images && journal.images.length > 0
+      ? journal.images.map(imgData => {
+          let imgSrc = '';
+          let imgKey = '';
+          // 处理对象格式（dataUrl 或 path）
+          if (typeof imgData === 'object') {
+            if (imgData.dataUrl) {
+              imgSrc = imgData.dataUrl;
+              imgKey = imgData.dataUrl;
+            } else if (imgData.path) {
+              imgSrc = imgData.path;
               if (/^[a-zA-Z]:\\/.test(imgSrc)) {
                 imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
               }
-              imgKey = imgData;
+              imgKey = imgData.path;
             }
-            return `<img src="${imgSrc}" class="journal-image-thumb" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
-          }).join('')
-        : '';
+          } else {
+            // 字符串格式（旧数据）
+            imgSrc = imgData;
+            if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+              imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+            }
+            imgKey = imgData;
+          }
+          return `<img src="${imgSrc}" class="journal-image-thumb" loading="lazy" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
+        }).join('')
+      : '';
 
-      return `
-        <div class="journal-card" data-id="${journal.id}" onclick="openJournalView('${journal.id}')">
-          <div class="journal-header">
-            <span class="journal-date">${dateStr}</span>
-            <span class="journal-mood ${journal.mood}">${moodEmoji} ${journal.mood}</span>
-          </div>
-          <div class="journal-preview">${this.escapeHtml(journal.content)}</div>
-          ${imagesHtml ? `<div class="journal-images">${imagesHtml}</div>` : ''}
-          ${relatedBooksHtml ? `<div class="journal-related-books">${relatedBooksHtml}</div>` : ''}
-          <div class="journal-actions">
-            <button onclick="event.stopPropagation(); editJournal('${journal.id}')"><i class="fas fa-edit"></i> 编辑</button>
-            <button class="delete" onclick="event.stopPropagation(); deleteJournal('${journal.id}')"><i class="fas fa-trash"></i> 删除</button>
-          </div>
+    return `
+      <div class="journal-card" data-id="${journal.id}" onclick="openJournalView('${journal.id}')">
+        <div class="journal-header">
+          <span class="journal-date">${dateStr}</span>
+          <span class="journal-mood ${journal.mood}">${moodEmoji} ${journal.mood}</span>
         </div>
-      `;
-    }).join('');
+        <div class="journal-preview">${this.escapeHtml(journal.content)}</div>
+        ${imagesHtml ? `<div class="journal-images">${imagesHtml}</div>` : ''}
+        ${relatedBooksHtml ? `<div class="journal-related-books">${relatedBooksHtml}</div>` : ''}
+        <div class="journal-actions">
+          <button onclick="event.stopPropagation(); editJournal('${journal.id}')"><i class="fas fa-edit"></i> 编辑</button>
+          <button class="delete" onclick="event.stopPropagation(); deleteJournal('${journal.id}')"><i class="fas fa-trash"></i> 删除</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // 异步渲染剩余日记
+  _renderRemainingJournals(remaining, container) {
+    const BATCH = 10;
+    let index = 0;
+
+    const renderBatch = () => {
+      const batch = remaining.slice(index, index + BATCH);
+      const html = this._renderJournalCards(batch);
+      container.insertAdjacentHTML('beforeend', html);
+      index += BATCH;
+
+      if (index < remaining.length) {
+        requestAnimationFrame(renderBatch);
+      }
+    };
+
+    requestAnimationFrame(renderBatch);
   }
 
   // 获取星期几
@@ -2896,7 +3010,7 @@ class BookApp {
             }
             imgKey = imgData;
           }
-          return `<img src="${imgSrc}" class="journal-image-thumb" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
+          return `<img src="${imgSrc}" class="journal-image-thumb" loading="lazy" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
         }).join('')
       : '';
 
@@ -3257,6 +3371,7 @@ class BookApp {
         images: imagesToSave
       });
       this.journals.push(newJournal);
+      this._invalidateJournalCache();  // 清除缓存
     }
 
     log('Journals array:', this.journals);
@@ -3271,6 +3386,7 @@ class BookApp {
     const index = this.journals.findIndex(j => j.id === journalId);
     if (index !== -1) {
       this.journals.splice(index, 1);
+      this._invalidateJournalCache();  // 清除缓存
       log('After delete, journals count:', this.journals.length);
       try {
         await this.saveJournals();
@@ -4799,7 +4915,7 @@ class BookApp {
         const bookRatings = book.rating && book.rating.ratings ? book.rating.ratings : {};
         const dims = profile[layer] || [];
         const values = {};
-        dims.forEach((d, i) => {
+        dims.forEach((d) => {
           const rating = bookRatings[d.name];
           values[d.name] = (rating !== undefined && rating !== null) ? rating : 0;
         });
@@ -4818,26 +4934,48 @@ class BookApp {
           const layerIdx = params.seriesIndex;
           const layerName = layers[layerIdx];
           const dims = profile[layerName] || [];
+          const booksData = tooltipData[layerIdx];
 
-          let html = `<div style="font-weight:bold;margin-bottom:5px;border-bottom:1px solid #ddd;padding-bottom:3px;">${layerName}</div>`;
+          // 边框颜色淡化
+          const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+          const borderColorStrong = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
 
-          // 为每本书生成一列数据
-          tooltipData[layerIdx].forEach(bookData => {
-            const scoreColor = bookData.color;
-            html += `<div style="margin-bottom:8px;">`;
-            html += `<div style="color:${scoreColor};font-weight:bold;margin-bottom:3px;">${bookData.name}</div>`;
-            dims.forEach((d, i) => {
+          // 紧凑表格样式
+          const tableStyle = `style="width:auto;border-collapse:collapse;font-size:10px;line-height:1.2;"`;
+          const tdStyle = `style="padding:2px 4px;text-align:center;border-bottom:1px solid ${borderColor};width:60px;"`;
+          const dimCellStyle = `style="padding:2px 4px;text-align:left;border-bottom:1px solid ${borderColor};color:${isDark ? '#999' : '#666'};white-space:nowrap;"`;
+
+          // 标题居中 11px
+          let html = `<div style="font-weight:bold;font-size:11px;text-align:center;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid ${borderColorStrong};">${layerName}</div>`;
+          html += `<table ${tableStyle}>`;
+
+          // 表头行：第一列是维度名称，后面是每本书的名称（带颜色+加粗）
+          html += `<tr>`;
+          // 评价维度列 - 灰色
+          html += `<th style="padding:2px 4px;text-align:center;border-bottom:1px solid ${borderColorStrong};background:${isDark ? '#2a2a2a' : '#f8f8f8'};font-weight:bold;color:${isDark ? '#aaa' : '#666'};">评价维度</th>`;
+          // 作品列 - 使用作品对应的雷达图颜色
+          booksData.forEach(bookData => {
+            html += `<th style="padding:2px 4px;text-align:center;border-bottom:1px solid ${borderColorStrong};background:${isDark ? '#2a2a2a' : '#f8f8f8'};font-weight:bold;color:${bookData.color};">${bookData.name}</th>`;
+          });
+          html += `</tr>`;
+
+          // 数据行：每个维度一行，每列显示对应作品的分值
+          dims.forEach((d) => {
+            html += `<tr>`;
+            // 第一列：维度名称
+            html += `<td ${dimCellStyle}>${d.name}</td>`;
+            // 后续列：每个作品在该维度的分值
+            booksData.forEach(bookData => {
               const score = bookData.values[d.name];
-              const scoreText = score > 0 ? '+' + score : score;
-              const displayColor = score > 0 ? '#28a745' : (score < 0 ? '#dc3545' : '#6c757d');
-              html += `<div style="display:flex;justify-content:space-between;gap:15px;margin:2px 0;">
-                <span style="opacity:0.8;">${d.name}</span>
-                <span style="color:${displayColor};font-weight:bold;">${scoreText}</span>
-              </div>`;
+              const scoreText = score > 0 ? '+' + score : (score === 0 ? '0' : score);
+              // 得分颜色：+1绿色，0灰色，-1红色
+              const displayColor = score > 0 ? '#2ecc71' : (score < 0 ? '#e74c3c' : '#95a5a6');
+              html += `<td style="padding:2px 4px;text-align:center;border-bottom:1px solid ${borderColor};width:60px;color:${displayColor};font-weight:bold;">${scoreText}</td>`;
             });
-            html += `</div>`;
+            html += `</tr>`;
           });
 
+          html += `</table>`;
           return html;
         }
       },
