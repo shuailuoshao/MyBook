@@ -31,7 +31,7 @@
                 <div class="toolbar-left">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="globalSearch" placeholder="搜索书名、作者、标签...">
+                        <input type="text" id="globalSearch" placeholder="搜索作品名、作者、标签...">
                     </div>
                     <button id="addBookBtn" class="btn-primary">
                         <i class="fas fa-plus"></i> 添加作品
@@ -53,11 +53,11 @@
                 </div>
                 <div class="sort-controls">
                     <select id="sortField" class="form-select">
-                        <option value="title">按书名排序</option>
+                        <option value="title">按作品名排序</option>
                         <option value="author">按作者排序</option>
                         <option value="startDate">按开始时间排序</option>
                         <option value="endDate">按结束时间排序</option>
-                        <option value="status">按阅读状态排序</option>
+                        <option value="status">按完成状态排序</option>
                         <option value="rating">按综合评分排序</option>
                         <option value="rating.authorScore">按作者层面得分排序</option>
                         <option value="rating.textScore">按文本层面得分排序</option>
@@ -91,7 +91,7 @@
                 <div class="filter-top-row">
                     <!-- 状态筛选 -->
                     <div class="filter-group">
-                        <label class="filter-label">阅读状态</label>
+                        <label class="filter-label">完成状态</label>
                         <div class="checkbox-group" id="filterStatusGroup">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="filterStatus" value="未开始" data-status="unstarted"> <span class="filter-status-label" data-status="unstarted">未开始</span>
@@ -224,8 +224,8 @@
                         <input type="hidden" id="bookId">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="title">书名 *</label>
-                                <input type="text" id="title" required placeholder="请输入书名">
+                                <label for="title">作品名 *</label>
+                                <input type="text" id="title" required placeholder="请输入作品名">
                             </div>
                             <div class="form-group">
                                 <label for="author">作者</label>
@@ -244,15 +244,15 @@
                         </div>
                         <div class="form-row status-progress-row">
                             <div class="form-group status-group">
-                                <label for="status">阅读状态</label>
+                                <label for="status">完成状态</label>
                                 <select id="status" class="form-select">
                                     <option value="未开始">未开始</option>
-                                    <option value="阅读中">阅读中</option>
-                                    <option value="已读完">已读完</option>
+                                    <option value="阅读中">进行中</option>
+                                    <option value="已读完">已完成</option>
                                 </select>
                             </div>
                             <div class="form-group progress-group">
-                                <label>阅读进度</label>
+                                <label>当前进度</label>
                                 <div class="progress-inputs">
                                     <input type="number" id="currentProgress" min="0" placeholder="当前" class="progress-num">
                                     <span class="progress-separator">/</span>
@@ -324,7 +324,7 @@
                     <div class="book-card">
                         <div class="book-header">
                             <div>
-                                <h3 class="book-title">书名</h3>
+                                <h3 class="book-title">作品名</h3>
                                 <p class="book-author">作者</p>
                             </div>
                             <span class="book-status status-未开始">未开始</span>
@@ -547,6 +547,7 @@
             <div class="modal-body">
                 <div class="import-file-area">
                     <input type="file" id="importFile" accept=".json,.csv" style="display: none;">
+                    <input type="file" id="journalImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
                     <div class="file-drop-area" id="fileDropArea">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <p>点击选择文件或拖放到此处</p>
@@ -626,7 +627,7 @@
                     <div class="charts-grid">
                         <div class="chart-card">
                             <div class="chart-header">
-                                <h4><i class="fas fa-chart-pie"></i> 阅读状态分布</h4>
+                                <h4><i class="fas fa-chart-pie"></i> 完成状态分布</h4>
                             </div>
                             <div class="chart-container">
                                 <canvas id="readingStatusChart"></canvas>
@@ -725,25 +726,47 @@
             </div>
             <form id="journalForm">
                 <input type="hidden" id="journalId">
-                <div class="form-group">
-                    <label for="journalDate">日期</label>
-                    <input type="date" id="journalDate" required>
-                </div>
-                <div class="form-group">
-                    <label>今日心情</label>
-                    <div class="mood-selector">
-                        <button type="button" class="mood-btn" data-mood="完美">🌟 完美</button>
-                        <button type="button" class="mood-btn" data-mood="充实">😊 充实</button>
-                        <button type="button" class="mood-btn" data-mood="平淡">😐 平淡</button>
-                        <button type="button" class="mood-btn" data-mood="疲惫">😮‍💨 疲惫</button>
-                        <button type="button" class="mood-btn" data-mood="糟糕">🌧️ 糟糕</button>
+                <!-- 滚动内容区 -->
+                <div class="modal-body-scroll">
+                    <!-- 顶部元信息并排 -->
+                    <div class="journal-meta-grid">
+                        <div class="form-group">
+                            <label for="journalDate">日期</label>
+                            <input type="date" id="journalDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>今日心情</label>
+                            <div class="mood-selector">
+                                <button type="button" class="mood-btn" data-mood="完美">🌟 完美</button>
+                                <button type="button" class="mood-btn" data-mood="充实">😊 充实</button>
+                                <button type="button" class="mood-btn" data-mood="平淡">😐 平淡</button>
+                                <button type="button" class="mood-btn" data-mood="疲惫">😮‍💨 疲惫</button>
+                                <button type="button" class="mood-btn" data-mood="糟糕">🌧️ 糟糕</button>
+                            </div>
+                            <input type="hidden" id="journalMood" required>
+                        </div>
                     </div>
-                    <input type="hidden" id="journalMood" required>
+                    <div class="form-group">
+                        <label for="journalContent">今日记录</label>
+                        <textarea id="journalContent" rows="10" placeholder="记录今天的点点滴滴..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>关联作品</label>
+                        <div class="related-books-input-wrapper">
+                            <input type="text" id="relatedBookSearch" placeholder="搜索作品..." autocomplete="off">
+                            <div id="relatedBookSuggestions" class="suggestions-dropdown"></div>
+                        </div>
+                        <div id="selectedRelatedBooks" class="selected-tags-container"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>添加图片</label>
+                        <button type="button" id="journalAddImageBtn" class="action-btn" onclick="window.bookApp.handleJournalImageUpload()">
+                            <i class="fas fa-image"></i> 插入图片
+                        </button>
+                        <div id="journalImagesPreview" class="image-preview-grid"></div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="journalContent">今日记录</label>
-                    <textarea id="journalContent" rows="10" placeholder="记录今天的点点滴滴..."></textarea>
-                </div>
+                <!-- 底部固定按钮区 -->
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeJournalModal()">取消</button>
                     <button type="submit" class="btn-primary">保存</button>

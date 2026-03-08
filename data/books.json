@@ -243,25 +243,5 @@
     "progressUnit": "章",
     "createdAt": "2026-03-08T07:46:52.200Z",
     "updatedAt": "2026-03-08T07:50:28.797Z"
-  },
-  {
-    "id": "1772972717878",
-    "title": "测试",
-    "author": "",
-    "startDate": null,
-    "endDate": null,
-    "status": "阅读中",
-    "notes": [],
-    "rating": null,
-    "tags": [
-      "Galgame"
-    ],
-    "enableRating": false,
-    "folderId": "uncategorized",
-    "currentProgress": 0,
-    "totalLength": 0,
-    "progressUnit": "章",
-    "createdAt": "2026-03-08T12:25:17.878Z",
-    "updatedAt": "2026-03-08T12:25:24.205Z"
   }
 ]

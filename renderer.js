@@ -22,6 +22,12 @@ const DEFAULT_RATING_PROFILE = {
 const DEFAULT_PROFILE_NAME = "标准配置";
 
 // =========================================
+// 调试开关 - 上线前设为 false
+// =========================================
+const DEBUG = false;
+const log = DEBUG ? console.log.bind(console) : () => {};
+
+// =========================================
 // 日记数据模型
 // =========================================
 class JournalEntry {
@@ -30,6 +36,8 @@ class JournalEntry {
         this.date = data.date || new Date().toISOString().split('T')[0];
         this.content = data.content || '';
         this.mood = data.mood || '';
+        this.relatedBookIds = data.relatedBookIds || [];  // 关联作品ID数组
+        this.images = data.images || [];  // 图片路径数组
         this.createdAt = data.createdAt || new Date().toISOString();
         this.updatedAt = data.updatedAt || new Date().toISOString();
     }
@@ -44,6 +52,8 @@ class JournalEntry {
             date: this.date,
             content: this.content,
             mood: this.mood,
+            relatedBookIds: this.relatedBookIds,
+            images: this.images,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt
         };
@@ -114,7 +124,7 @@ class ExportService {
   // 导出为 CSV
   static exportToCSV(books) {
     const headers = [
-      '书名', '作者', '阅读状态', '开始日期', '结束日期',
+      '作品名', '作者', '完成状态', '开始日期', '结束日期',
       '阅读时长(天)', '综合评分', '标签', '笔记数量', '创建时间', '更新时间'
     ];
 
@@ -177,7 +187,7 @@ class ExportService {
 
         // 验证必要字段
         if (!book.title || book.title.trim() === '') {
-          throw new Error('书籍缺少书名');
+          throw new Error('作品缺少作品名');
         }
 
         if (!['未开始', '阅读中', '已读完'].includes(book.status)) {
@@ -229,7 +239,7 @@ class ExportService {
         // 转换 CSV 数据为 Book 格式
         const book = {
           id: Date.now().toString() + i + Math.random().toString(36).substring(2, 9),
-          title: bookData['书名'] || '',
+          title: bookData['作品名'] || bookData['书名'] || '',
           author: bookData['作者'] || '',
           startDate: bookData['开始日期'] || null,
           endDate: bookData['结束日期'] || null,
@@ -244,7 +254,7 @@ class ExportService {
 
         // 验证必要字段
         if (!book.title || book.title.trim() === '') {
-          throw new Error(`第 ${i + 1} 行缺少书名`);
+          throw new Error(`第 ${i + 1} 行缺少作品名`);
         }
 
         importedBooks.push(book);
@@ -277,7 +287,7 @@ class ExportService {
     data.books.forEach((book, index) => {
       // 检查必要字段
       if (!book.title || book.title.trim() === '') {
-        errors.push(`第 ${index + 1} 本书缺少书名`);
+        errors.push(`第 ${index + 1} 个作品缺少作品名`);
       }
 
       // 检查状态有效性
@@ -318,7 +328,7 @@ class ExportService {
     const skippedBooks = [];
 
     newBooks.forEach(newBook => {
-      // 检查是否已存在（基于书名和作者）
+      // 检查是否已存在（基于作品名和作者）
       const isDuplicate = existingBooks.some(existingBook =>
         existingBook.title === newBook.title &&
         existingBook.author === newBook.author
@@ -432,7 +442,7 @@ class Book {
 
   validate() {
     const errors = [];
-    if (!this.title || this.title.trim() === '') errors.push('书名不能为空');
+    if (!this.title || this.title.trim() === '') errors.push('作品名不能为空');
     if (this.startDate && this.endDate) {
       const start = new Date(this.startDate);
       const end = new Date(this.endDate);
@@ -554,16 +564,16 @@ class StorageService {
   async loadBooks() {
     try {
       let booksData;
-      console.log('StorageService: 检查 electronAPI...', window.electronAPI ? '可用' : '不可用');
+      log('StorageService: 检查 electronAPI...', window.electronAPI ? '可用' : '不可用');
       if (window.electronAPI && typeof window.electronAPI.loadBooks === 'function') {
-        console.log('StorageService: 使用 electronAPI 加载...');
+        log('StorageService: 使用 electronAPI 加载...');
         booksData = await window.electronAPI.loadBooks();
       } else {
-        console.log('StorageService: 使用 localStorage 加载...');
+        log('StorageService: 使用 localStorage 加载...');
         const stored = localStorage.getItem('mybook_books');
         booksData = stored ? JSON.parse(stored) : [];
       }
-      console.log('StorageService: 加载到的数据:', booksData);
+      log('StorageService: 加载到的数据:', booksData);
       this.books = booksData.map(book => Book.fromJSON(book));
       return this.books;
     } catch (error) {
@@ -577,18 +587,18 @@ class StorageService {
     try {
       const booksData = this.books.map(book => {
         const json = book.toJSON();
-        console.log('StorageService: 单本书JSON:', JSON.stringify(json));
+        log('StorageService: 单本书JSON:', JSON.stringify(json));
         return json;
       });
-      console.log('StorageService: 保存书籍, 数量:', booksData.length);
+      log('StorageService: 保存书籍, 数量:', booksData.length);
       if (window.electronAPI && typeof window.electronAPI.saveBooks === 'function') {
-        console.log('StorageService: 使用 electronAPI 保存...');
+        log('StorageService: 使用 electronAPI 保存...');
         const result = await window.electronAPI.saveBooks(booksData);
-        console.log('StorageService: 保存结果:', result);
-        console.log('StorageService: result.success =', result.success, typeof result.success);
+        log('StorageService: 保存结果:', result);
+        log('StorageService: result.success =', result.success, typeof result.success);
         return result.success === true;
       } else {
-        console.log('StorageService: 使用 localStorage 保存...');
+        log('StorageService: 使用 localStorage 保存...');
         localStorage.setItem('mybook_books', JSON.stringify(booksData));
         return true;
       }
@@ -818,7 +828,7 @@ class FilterService {
     });
   }
 
-  // 按书名/作者关键词搜索
+  // 按作品名/作者关键词搜索
   static filterByKeyword(books, keyword) {
     if (!keyword || keyword.trim() === '') return books;
 
@@ -1706,8 +1716,14 @@ class BookApp {
     // 将数据库中的状态值映射到内部状态值
     const statusMap = {
       '已读完': 'completed',
+      '已完成': 'completed',
       '阅读中': 'reading',
+      '进行中': 'reading',
       '未开始': 'unstarted',
+      '已看完': 'completed',
+      '观看中': 'reading',
+      '已玩完': 'completed',
+      '游玩中': 'reading',
       'completed': 'completed',
       'reading': 'reading',
       'unstarted': 'unstarted'
@@ -1737,7 +1753,7 @@ class BookApp {
           window.electronAPI.openDevTools();
         } else {
           // 浏览器模式
-          console.log('浏览器模式，请按 F12 打开开发者工具');
+          log('浏览器模式，请按 F12 打开开发者工具');
         }
       }
       // F12 快捷键
@@ -1749,7 +1765,7 @@ class BookApp {
           window.openDevTools();
         } else {
           // 尝试浏览器方式
-          console.log('开发者工具');
+          log('开发者工具');
         }
       }
     });
@@ -1765,6 +1781,8 @@ class BookApp {
     this.journals = [];
     this.currentView = 'knowledge'; // knowledge | journal
     this.currentMoodFilter = null; // 当前心情筛选
+    this.currentJournalSearchTerm = ''; // 当前日记搜索关键词
+    this.currentJournalImages = []; // 当前日记图片数组
     this.currentJournalToDelete = null; // 待删除的日记ID
     this.statsCurrentPage = 0; // 统计模态框当前页码
     this._statsWheelHandler = null; // 滚轮事件处理函数
@@ -1897,9 +1915,41 @@ class BookApp {
     this.previewContent = document.getElementById('previewContent');
     this.importMerge = document.getElementById('importMerge');
     this.confirmImportBtn = document.getElementById('confirmImportBtn');
+
+    // 日记图片上传
+    this.journalImageInput = document.getElementById('journalImageInput');
   }
 
   bindEvents() {
+    // 日记图片上传 - 绑定 file input 事件
+    if (this.journalImageInput) {
+      this.journalImageInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+          const readFileAsDataURL = (file) => {
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target.result);
+              reader.readAsDataURL(file);
+            });
+          };
+
+          Promise.all(Array.from(files).map(readFileAsDataURL)).then((dataUrls) => {
+            dataUrls.forEach((dataUrl) => {
+              const imageData = {
+                dataUrl: dataUrl,
+                name: files[dataUrls.indexOf(dataUrl)].name,
+                path: files[dataUrls.indexOf(dataUrl)].path || files[dataUrls.indexOf(dataUrl)].name
+              };
+              this.currentJournalImages.push(imageData);
+            });
+            this.renderJournalImagesPreview();
+          });
+        }
+        // 注意：不要在这里清空 input value，否则会导致选择框重复弹出
+      });
+    }
+
     // 滚动监听 - Header 粘性效果增强
     window.addEventListener('scroll', () => {
       const header = document.querySelector('.app-header');
@@ -1990,6 +2040,19 @@ class BookApp {
     const journalStatsBtn = document.getElementById('journalStatsBtn');
     if (journalStatsBtn) {
       journalStatsBtn.addEventListener('click', () => this.showJournalStats());
+    }
+
+    // 日记搜索框防抖事件
+    const journalSearch = document.getElementById('journalSearch');
+    if (journalSearch) {
+      let journalSearchTimeout;
+      journalSearch.addEventListener('input', (e) => {
+        clearTimeout(journalSearchTimeout);
+        journalSearchTimeout = setTimeout(() => {
+          this.currentJournalSearchTerm = e.target.value.trim();
+          this.renderJournalList();
+        }, 300);
+      });
     }
 
     this.fileDropArea.addEventListener('click', () => this.importFile.click());
@@ -2166,11 +2229,11 @@ class BookApp {
 
   async loadBooks() {
     this.showLoading();
-    console.log('开始加载书籍...');
-    console.log('electronAPI 可用:', !!window.electronAPI);
+    log('开始加载书籍...');
+    log('electronAPI 可用:', !!window.electronAPI);
     try {
       const books = await this.storageService.loadBooks();
-      console.log('书籍加载完成, 数量:', books.length);
+      log('书籍加载完成, 数量:', books.length);
       this.renderBooks();
       this.renderFolders();
       this.updateBookCount();
@@ -2228,7 +2291,7 @@ class BookApp {
     const kbToolbar = document.querySelector('.kb-toolbar');
     const journalToolbar = document.querySelector('.journal-toolbar');
 
-    console.log('switchView called:', viewName, { kbSidebar, journalSidebar, kbToolbar, journalToolbar });
+    log('switchView called:', viewName, { kbSidebar, journalSidebar, kbToolbar, journalToolbar });
 
     this.currentView = viewName;
 
@@ -2270,7 +2333,7 @@ class BookApp {
     const container = document.getElementById('journalList');
     const emptyState = document.getElementById('journalEmptyState');
 
-    console.log('renderJournalList called, journals:', this.journals.length, 'moodFilter:', this.currentMoodFilter);
+    log('renderJournalList called, journals:', this.journals.length, 'moodFilter:', this.currentMoodFilter);
 
     // 强制确保container存在
     if (!container) {
@@ -2292,7 +2355,16 @@ class BookApp {
     let filteredJournals = this.journals;
     if (this.currentMoodFilter) {
       filteredJournals = this.journals.filter(j => j.mood === this.currentMoodFilter);
-      console.log('Filtered journals:', filteredJournals.length);
+      log('Filtered journals:', filteredJournals.length);
+    }
+
+    // 按关键词搜索过滤
+    if (this.currentJournalSearchTerm) {
+      const term = this.currentJournalSearchTerm.toLowerCase();
+      filteredJournals = filteredJournals.filter(j =>
+        (j.content && j.content.toLowerCase().includes(term)) ||
+        j.date.includes(term)
+      );
     }
 
     // 筛选后为空，显示空状态提示
@@ -2318,6 +2390,51 @@ class BookApp {
       const dateStr = `${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
       const moodEmoji = this.getMoodEmoji(journal.mood);
 
+      // 获取关联作品信息
+      const relatedBooksHtml = journal.relatedBookIds && journal.relatedBookIds.length > 0
+        ? journal.relatedBookIds.map(bookId => {
+            const book = this.storageService.getBookById(bookId);
+            if (!book) return '';
+            const firstTag = book.tags && book.tags.length > 0 ? book.tags[0] : '';
+            // 继承作品的动态主题色
+            const theme = this.getCardThemeColor(book.status, book.tags);
+            return `<span class="journal-related-book"
+                style="background: ${theme.bg}; color: ${theme.main}; border: 1px solid ${theme.border}"
+                onclick="event.stopPropagation(); window.jumpToBook('${bookId}')">
+                <i class="fas fa-link"></i> [${firstTag}] ${this.escapeHtml(book.title)}
+            </span>`;
+          }).join('')
+        : '';
+
+      // 获取图片信息（支持 dataUrl 和路径两种格式）
+      const imagesHtml = journal.images && journal.images.length > 0
+        ? journal.images.map(imgData => {
+            let imgSrc = '';
+            let imgKey = '';
+            // 处理对象格式（dataUrl 或 path）
+            if (typeof imgData === 'object') {
+              if (imgData.dataUrl) {
+                imgSrc = imgData.dataUrl;
+                imgKey = imgData.dataUrl;
+              } else if (imgData.path) {
+                imgSrc = imgData.path;
+                if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+                  imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+                }
+                imgKey = imgData.path;
+              }
+            } else {
+              // 字符串格式（旧数据）
+              imgSrc = imgData;
+              if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+                imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+              }
+              imgKey = imgData;
+            }
+            return `<img src="${imgSrc}" class="journal-image-thumb" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
+          }).join('')
+        : '';
+
       return `
         <div class="journal-card" data-id="${journal.id}" onclick="openJournalView('${journal.id}')">
           <div class="journal-header">
@@ -2325,6 +2442,8 @@ class BookApp {
             <span class="journal-mood ${journal.mood}">${moodEmoji} ${journal.mood}</span>
           </div>
           <div class="journal-preview">${this.escapeHtml(journal.content)}</div>
+          ${imagesHtml ? `<div class="journal-images">${imagesHtml}</div>` : ''}
+          ${relatedBooksHtml ? `<div class="journal-related-books">${relatedBooksHtml}</div>` : ''}
           <div class="journal-actions">
             <button onclick="event.stopPropagation(); editJournal('${journal.id}')"><i class="fas fa-edit"></i> 编辑</button>
             <button class="delete" onclick="event.stopPropagation(); deleteJournal('${journal.id}')"><i class="fas fa-trash"></i> 删除</button>
@@ -2479,14 +2598,35 @@ class BookApp {
       };
 
       // 处理热力图数据：[日期字符串YYYY-MM-DD, 字数, 心情, ID]
+      // ===== 第一步：防御性提取日期字段 =====
       const heatmapData = journalsForHeatmap.map(j => {
         const charCount = j.content ? j.content.length : 0;
-        // 确保日期格式正确
-        const formattedDate = formatDate(j.date || j.createdAt || new Date().toISOString());
-        return [formattedDate, charCount, j.mood, j.id];
-      }).filter(item => item[0] && item[0] !== 'NaN-NaN-NaN');
 
-      console.log('Heatmap data:', heatmapData);
+        // 动态获取日期：优先使用 date，其次 createdAt，最后尝试 id（可能存储日期戳）
+        const rawDate = j.date || j.createdAt || j.id;
+
+        // 转换为标准 Date 对象
+        const d = new Date(rawDate);
+
+        // 关键拦截：如果日期无效，直接返回 null
+        if (isNaN(d.getTime())) {
+          console.warn('无效日期:', rawDate, j);
+          return null;
+        }
+
+        // 强制组装 YYYY-MM-DD 格式，使用 padStart 补齐前导零
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+
+        return [formattedDate, charCount, j.mood, j.id];
+      }).filter(Boolean); // 过滤掉 null 值
+
+      log('Heatmap data:', heatmapData);
+
+      // ===== 第三步：测试探针（用于验证渲染逻辑） =====
+  
 
       // 获取当前年份
       const currentYear = new Date().getFullYear();
@@ -2504,89 +2644,68 @@ class BookApp {
       const maxCharCount = Math.max(...heatmapData.map(d => d[1]), 100);
 
       // ===== 第二步：重构 ECharts 视觉配置 =====
+      // ===== 彻底重构后的 ECharts 热力图配置 =====
       const heatmapOption = {
-        backgroundColor: 'transparent',
         tooltip: {
           trigger: 'item',
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           borderColor: '#ddd',
           borderWidth: 1,
           padding: [10, 14],
-          textStyle: {
-            color: '#333'
-          },
           formatter: function(params) {
-            if (!params.data) return '';
-            const [date, charCount, mood, id] = params.data;
-            const emoji = moodEmojiMap[mood] || '📝';
-            return `<div style="font-size: 13px; line-height: 1.8;">
-                      <b style="font-size: 14px;">${date}</b><br/>
-                      <span style="margin-right: 4px;">${emoji}</span> 心情: ${mood || '未记录'}<br/>
-                      <span style="margin-right: 4px;">📝</span> 字数: <b>${charCount}</b> 字
+            if (!params.data) return '没有记录';
+            const date = params.data[0];
+            const charCount = params.data[1];
+            const mood = params.data[2] || '无';
+            return `<div style="font-size: 13px; color: #333;">
+                      <b>${date}</b><br/>
+                      心情: ${mood}<br/>
+                      字数: <b>${charCount}</b> 字
                     </div>`;
           }
         },
+        // 将连续型渐变改为分段型（Piecewise），类似 GitHub 绿格子，更稳定更清晰
         visualMap: {
-          type: 'continuous',
-          min: 0,
-          max: maxCharCount,
-          calculable: true,
+          type: 'piecewise',
+          dimension: 1, // 👈 关键修复：强制读取数组的第2项（字数）来映射颜色
           orient: 'horizontal',
           left: 'center',
           bottom: 0,
-          inRange: {
-            color: ['#f3e5f5', '#ce93d8', '#ab47bc', '#8e24aa', '#6a1b9a']
+          pieces: [
+            { min: 1, max: 50, color: '#f3e5f5', label: '1-50字' },
+            { min: 51, max: 200, color: '#ce93d8', label: '51-200字' },
+            { min: 201, max: 500, color: '#ab47bc', label: '201-500字' },
+            { min: 501, color: '#6a1b9a', label: '500字以上' }
+          ],
+          outOfRange: {
+            color: '#f5f5f5' // 0字或没数据的格子颜色
           },
-          textStyle: {
-            color: '#666'
-          }
+          textStyle: { color: '#666' },
+          itemWidth: 14,
+          itemHeight: 14
         },
         calendar: {
-          range: [String(currentYear - 1) + '-12-31', String(currentYear) + '-12-31'],
-          top: 35,
-          left: 45,
-          right: 20,
-          bottom: 55,
-          cellSize: ['auto', 16],
-          yearLabel: { show: false },
-          monthLabel: {
-            nameMap: 'zh-CN',
-            color: '#666',
-            fontSize: 11
-          },
-          dayLabel: {
-            nameMap: 'zh-CN',
-            firstDay: 1,
-            color: '#666',
-            fontSize: 10
-          },
+          range: currentYear.toString(), // 确保是如 '2026' 的字符串
+          top: 40,
+          left: 30,
+          right: 30,
+          bottom: 60,
+          cellSize: ['auto', 16], // 宽度自适应防止挤压，高度固定16px
           itemStyle: {
             color: '#f5f5f5',
-            borderColor: '#ffffff',
-            borderWidth: 2
+            borderWidth: 2,
+            borderColor: '#ffffff' // 白色缝隙
           },
-          splitLine: {
-            show: false
-          }
+          splitLine: { show: false }, // 隐藏多余的分割线
+          yearLabel: { show: false },
+          monthLabel: { nameMap: 'zh-CN', color: '#999', fontSize: 12 },
+          dayLabel: { nameMap: 'zh-CN', color: '#999', fontSize: 10 }
         },
         series: [{
           type: 'heatmap',
           coordinateSystem: 'calendar',
-          data: heatmapData,
-          label: {
-            show: false
-          },
-          itemStyle: {
-            color: function(params) {
-              const charCount = params.data[1];
-              if (charCount === 0) return '#f5f5f5';
-              if (charCount < 30) return '#f3e5f5';
-              if (charCount < 60) return '#e1bee7';
-              if (charCount < 100) return '#ce93d8';
-              if (charCount < 150) return '#ba68c8';
-              return '#ab47bc';
-            }
-          }
+          calendarIndex: 0, // 强制绑定到第一个日历坐标系
+          data: heatmapData // 接收 [ ['2026-03-08', 999, '心情', 'ID'] ] 格式
         }]
       };
 
@@ -2736,7 +2855,54 @@ class BookApp {
 
     document.getElementById('viewJournalDate').textContent = dateStr;
     document.getElementById('viewJournalMood').textContent = `${moodEmoji} ${journal.mood}`;
-    document.getElementById('viewJournalText').textContent = journal.content;
+
+    // 获取关联作品信息
+    const relatedBooksHtml = journal.relatedBookIds && journal.relatedBookIds.length > 0
+      ? journal.relatedBookIds.map(bookId => {
+          const book = this.storageService.getBookById(bookId);
+          if (!book) return '';
+          const firstTag = book.tags && book.tags.length > 0 ? book.tags[0] : '';
+          const theme = this.getCardThemeColor(book.status, book.tags);
+          return `<span class="journal-related-book"
+              style="background: ${theme.bg}; color: ${theme.main}; border: 1px solid ${theme.border}"
+              onclick="event.stopPropagation(); window.jumpToBook('${bookId}')">
+              <i class="fas fa-link"></i> [${firstTag}] ${this.escapeHtml(book.title)}
+          </span>`;
+        }).join('')
+      : '';
+
+    // 获取图片信息（支持 dataUrl 和路径两种格式）
+    const imagesHtml = journal.images && journal.images.length > 0
+      ? journal.images.map(imgData => {
+          let imgSrc = '';
+          let imgKey = '';
+          // 处理对象格式（dataUrl 或 path）
+          if (typeof imgData === 'object') {
+            if (imgData.dataUrl) {
+              imgSrc = imgData.dataUrl;
+              imgKey = imgData.dataUrl;
+            } else if (imgData.path) {
+              imgSrc = imgData.path;
+              if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+                imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+              }
+              imgKey = imgData.path;
+            }
+          } else {
+            // 字符串格式（旧数据）
+            imgSrc = imgData;
+            if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+              imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+            }
+            imgKey = imgData;
+          }
+          return `<img src="${imgSrc}" class="journal-image-thumb" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
+        }).join('')
+      : '';
+
+    document.getElementById('viewJournalText').innerHTML = this.escapeHtml(journal.content) +
+      (imagesHtml ? `<div class="journal-images">${imagesHtml}</div>` : '') +
+      (relatedBooksHtml ? `<div class="journal-related-books">${relatedBooksHtml}</div>` : '');
 
     document.getElementById('journalViewModal').style.display = 'flex';
     document.getElementById('overlay').style.display = 'block';
@@ -2838,6 +3004,14 @@ class BookApp {
       // 选中对应的心情按钮
       const moodBtn = document.querySelector(`.mood-btn[data-mood="${journal.mood}"]`);
       if (moodBtn) moodBtn.classList.add('selected');
+
+      // 加载已关联的作品
+      this.currentRelatedBookIds = journal.relatedBookIds || [];
+      this.renderSelectedRelatedBooks();
+
+      // 加载已有图片
+      this.currentJournalImages = journal.images ? [...journal.images] : [];
+      this.renderJournalImagesPreview();
     } else {
       // 新建模式
       title.innerHTML = '<i class="fas fa-pen"></i> 写日记';
@@ -2848,7 +3022,20 @@ class BookApp {
       if (contentInput) {
         contentInput.value = '';
       }
+      // 初始化关联作品
+      this.currentRelatedBookIds = [];
+      this.renderSelectedRelatedBooks();
+
+      // 初始化图片数组
+      this.currentJournalImages = [];
+      this.renderJournalImagesPreview();
     }
+
+    // 设置关联作品搜索事件
+    this.setupRelatedBookSearch();
+
+    // 设置图片插入按钮事件
+    this.setupJournalImageUpload();
 
     modal.style.display = 'flex';
     document.getElementById('overlay').style.display = 'block';
@@ -2861,6 +3048,159 @@ class BookApp {
     }, 100);
   }
 
+  // 设置关联作品搜索功能
+  setupRelatedBookSearch() {
+    const searchInput = document.getElementById('relatedBookSearch');
+    const suggestionsDiv = document.getElementById('relatedBookSuggestions');
+
+    if (!searchInput || !suggestionsDiv) return;
+
+    // 清空之前的事件监听器（通过克隆节点实现）
+    const newSearchInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+
+    newSearchInput.addEventListener('input', (e) => {
+      const keyword = e.target.value.trim();
+      if (keyword.length < 1) {
+        suggestionsDiv.classList.remove('show');
+        return;
+      }
+
+      // 搜索作品
+      const allBooks = this.storageService.getAllBooks() || [];
+      const matchedBooks = allBooks.filter(book =>
+        book.title.toLowerCase().includes(keyword.toLowerCase()) ||
+        (book.author && book.author.toLowerCase().includes(keyword.toLowerCase()))
+      ).slice(0, 10);
+
+      if (matchedBooks.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="suggestion-item">未找到匹配的作品</div>';
+      } else {
+        suggestionsDiv.innerHTML = matchedBooks.map(book => `
+          <div class="suggestion-item" data-id="${book.id}" onclick="window.bookApp.selectRelatedBook('${book.id}')">
+            <div class="book-title">${this.escapeHtml(book.title)}</div>
+            <div class="book-author">${this.escapeHtml(book.author || '未知作者')}</div>
+          </div>
+        `).join('');
+      }
+      suggestionsDiv.classList.add('show');
+    });
+
+    // 点击外部关闭建议框
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.related-books-input-wrapper')) {
+        suggestionsDiv.classList.remove('show');
+      }
+    });
+  }
+
+  // 设置图片上传按钮事件（仅处理按钮点击，事件在 bindEvents 中绑定）
+  setupJournalImageUpload() {
+    // 事件绑定已在 bindEvents 中完成，这里只需要确保按钮可用
+  }
+
+  // 处理图片上传点击
+  handleJournalImageUpload() {
+    const fileInput = document.getElementById('journalImageInput');
+    if (fileInput) {
+      fileInput.click();
+    }
+  }
+
+  // 渲染图片预览
+  renderJournalImagesPreview() {
+    const container = document.getElementById('journalImagesPreview');
+    if (!container) return;
+
+    container.innerHTML = this.currentJournalImages.map((imgData, index) => {
+      // 处理对象格式或字符串格式（兼容旧数据）
+      let imgSrc = '';
+
+      if (typeof imgData === 'object') {
+        // 优先使用 dataUrl（最可靠）
+        if (imgData.dataUrl) {
+          imgSrc = imgData.dataUrl;
+        } else if (imgData.blobUrl) {
+          imgSrc = imgData.blobUrl;
+        } else if (imgData.path) {
+          // 尝试转换路径为 file URL
+          imgSrc = imgData.path;
+          if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+            imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+          }
+        }
+      } else {
+        // 字符串格式（旧数据）
+        imgSrc = imgData;
+        if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+          imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
+        }
+      }
+
+      return `<div class="image-preview-item" data-index="${index}">
+        <img src="${imgSrc}" alt="预览">
+        <button type="button" class="remove-image-btn" onclick="window.removeJournalImage(${index})">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  // 删除图片
+  removeJournalImage(index) {
+    if (index >= 0 && index < this.currentJournalImages.length) {
+      this.currentJournalImages.splice(index, 1);
+      this.renderJournalImagesPreview();
+    }
+  }
+
+  // 选择关联作品
+  selectRelatedBook(bookId) {
+    if (!this.currentRelatedBookIds) {
+      this.currentRelatedBookIds = [];
+    }
+
+    // 避免重复选择
+    if (!this.currentRelatedBookIds.includes(bookId)) {
+      this.currentRelatedBookIds.push(bookId);
+      this.renderSelectedRelatedBooks();
+    }
+
+    // 清空搜索框和建议
+    const searchInput = document.getElementById('relatedBookSearch');
+    const suggestionsDiv = document.getElementById('relatedBookSuggestions');
+    if (searchInput) searchInput.value = '';
+    if (suggestionsDiv) suggestionsDiv.classList.remove('show');
+  }
+
+  // 移除关联作品
+  removeRelatedBook(bookId) {
+    if (!this.currentRelatedBookIds) return;
+
+    this.currentRelatedBookIds = this.currentRelatedBookIds.filter(id => id !== bookId);
+    this.renderSelectedRelatedBooks();
+  }
+
+  // 渲染已选择的关联作品
+  renderSelectedRelatedBooks() {
+    const container = document.getElementById('selectedRelatedBooks');
+    if (!container) return;
+
+    if (!this.currentRelatedBookIds || this.currentRelatedBookIds.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = this.currentRelatedBookIds.map(bookId => {
+      const book = this.storageService.getBookById(bookId);
+      if (!book) return '';
+      return `
+        <span class="selected-tag">
+          ${this.escapeHtml(book.title)}
+          <span class="remove-btn" onclick="window.bookApp.removeRelatedBook('${bookId}')">&times;</span>
+        </span>
+      `;
+    }).join('');
+  }
+
   // 关闭日记模态框
   closeJournalModal() {
     document.getElementById('journalModal').style.display = 'none';
@@ -2869,17 +3209,32 @@ class BookApp {
 
   // 保存日记
   async saveJournalFromForm() {
-    console.log('saveJournalFromForm called');
+    log('saveJournalFromForm called');
     const id = document.getElementById('journalId').value;
     const date = document.getElementById('journalDate').value;
     const content = document.getElementById('journalContent').value;
     const mood = document.getElementById('journalMood').value;
-    console.log('Form data:', { id, date, content, mood });
+    log('Form data:', { id, date, content, mood });
 
     if (!date || !mood) {
       this.showToast('请选择日期和心情', 'warning');
       return;
     }
+
+    // 提取图片数据（优先使用 dataUrl 用于持久化存储）
+    const extractImageData = (img) => {
+      if (typeof img === 'object') {
+        // 如果有 dataUrl 则使用 dataUrl（可持久化）
+        if (img.dataUrl) {
+          return { dataUrl: img.dataUrl, name: img.name };
+        }
+        // 否则使用 path（兼容旧数据）
+        return { path: img.path, name: img.name };
+      }
+      // 字符串格式（旧数据）
+      return img;
+    };
+    const imagesToSave = (this.currentJournalImages || []).map(extractImageData);
 
     if (id) {
       // 更新现有日记
@@ -2888,6 +3243,8 @@ class BookApp {
         journal.date = date;
         journal.content = content;
         journal.mood = mood;
+        journal.relatedBookIds = this.currentRelatedBookIds || [];
+        journal.images = imagesToSave;
         journal.updatedAt = new Date().toISOString();
       }
     } else {
@@ -2895,12 +3252,14 @@ class BookApp {
       const newJournal = new JournalEntry({
         date,
         content,
-        mood
+        mood,
+        relatedBookIds: this.currentRelatedBookIds || [],
+        images: imagesToSave
       });
       this.journals.push(newJournal);
     }
 
-    console.log('Journals array:', this.journals);
+    log('Journals array:', this.journals);
     await this.saveJournals();
     this.closeJournalModal();
     this.renderJournalList();
@@ -2912,7 +3271,7 @@ class BookApp {
     const index = this.journals.findIndex(j => j.id === journalId);
     if (index !== -1) {
       this.journals.splice(index, 1);
-      console.log('After delete, journals count:', this.journals.length);
+      log('After delete, journals count:', this.journals.length);
       try {
         await this.saveJournals();
       } catch (e) {
@@ -3380,7 +3739,7 @@ class BookApp {
           <div class="date-value">${book.getFormattedEndDate()}</div>
         </div>
         <div class="date-item">
-          <div class="date-label">阅读时长</div>
+          <div class="date-label">记录时长</div>
           <div class="date-value">${durationText}</div>
         </div>
       </div>
@@ -3452,7 +3811,9 @@ class BookApp {
       // 将数据库中的显示文本转换为内部值
       const displayToInternal = {
         '已读完': 'completed',
+        '已完成': 'completed',
         '阅读中': 'reading',
+        '进行中': 'reading',
         '未开始': 'unstarted',
         '已看完': 'completed',
         '观看中': 'reading',
@@ -3521,8 +3882,8 @@ class BookApp {
   // 更新状态标签称谓
   updateStatusLabels() {
     // 获取第一个书籍的题材作为参考（如果存在）
-    const firstBook = this.books[0];
-    const referenceGenre = firstBook ? firstBook.tags[0] : 'default';
+    const firstBook = this.books && this.books.length > 0 ? this.books[0] : null;
+    const referenceGenre = firstBook && firstBook.tags && firstBook.tags.length > 0 ? firstBook.tags[0] : 'default';
 
     // 更新统计面板中的状态标签
     const completedLabel = document.getElementById('completedLabel');
@@ -3556,7 +3917,9 @@ class BookApp {
     // 将显示文本映射到内部值
     const displayToInternal = {
       '已读完': 'completed',
+      '已完成': 'completed',
       '阅读中': 'reading',
+      '进行中': 'reading',
       '未开始': 'unstarted',
       '已看完': 'completed',
       '观看中': 'reading',
@@ -3727,13 +4090,18 @@ class BookApp {
       currentProgress = totalLength;
     }
 
-    // 将内部状态值转换回显示文本以保持数据库兼容性
-    const internalToDisplay = {
-      'completed': '已读完',
-      'reading': '阅读中',
-      'unstarted': '未开始'
-    };
-    const displayStatus = internalToDisplay[status] || status;
+    // 获取当前题材以确定正确的显示文本
+    const firstTag = this.currentTags.length > 0 ? this.currentTags[0] : this.formatTags[0];
+    let category = 'default';
+    for (const [cat, genres] of Object.entries(this.genreCategories)) {
+      if (genres.includes(firstTag)) {
+        category = cat;
+        break;
+      }
+    }
+
+    // 根据题材获取对应的显示文本
+    const displayStatus = this.getStatusLabel(firstTag, status);
 
     const bookData = {
       title: this.titleInput.value.trim(),
@@ -3782,7 +4150,39 @@ class BookApp {
   }
 
   viewBook(bookId) {
-    console.log('查看书籍:', bookId);
+    log('查看书籍:', bookId);
+  }
+
+  // 从日记跳转至作品详情
+  jumpToBook(bookId) {
+    // 1. 查找作品
+    const book = this.storageService.getBookById(bookId);
+    if (!book) {
+      this.showToast('该作品已不存在', 'warning');
+      return;
+    }
+
+    // 2. 切换到知识库视图
+    this.switchView('knowledge');
+
+    // 3. 关闭日记相关弹窗
+    this.hideAllModals();
+    this.closeJournalViewModal();
+
+    // 4. 清除筛选条件
+    this.clearFilters();
+
+    // 5. 切换到全部作品
+    this.currentFolderId = 'all';
+
+    // 6. 设置搜索框
+    if (this.globalSearchInput) {
+      this.globalSearchInput.value = book.title;
+    }
+
+    // 7. 渲染
+    this.renderBooks(book.title);
+    this.renderFolders();
   }
 
   showNotesModal(book) {
@@ -4108,14 +4508,14 @@ class BookApp {
 
   // 显示导出模态框
   showExportModal() {
-    console.log('显示导出模态框');
+    log('显示导出模态框');
     this.exportModal.style.display = 'flex';
     this.overlay.style.display = 'block';
   }
 
   // 显示统计模态框
   showStatsModal() {
-    console.log('显示统计模态框');
+    log('显示统计模态框');
     // 更新标题显示当前文件夹
     const folderId = this.currentFolderId || 'all';
     const folderTitle = folderId === 'all' ? '全部作品' : this.getFolderName(folderId);
@@ -4492,7 +4892,7 @@ class BookApp {
       // 更新详细报告
       this.updateDetailedReport(detailedReport);
 
-      console.log('统计数据加载完成');
+      log('统计数据加载完成');
     } catch (error) {
       console.error('加载统计数据失败:', error);
       this.showToast('加载统计数据失败', 'error');
@@ -4675,7 +5075,7 @@ class BookApp {
 
   // 刷新统计
   refreshStats() {
-    console.log('刷新统计数据');
+    log('刷新统计数据');
     this.loadStatsData();
     this.showToast('统计数据已刷新', 'success');
   }
@@ -4834,10 +5234,10 @@ class BookApp {
 
   // 确认导出
   async confirmExport() {
-    console.log('开始导出流程');
+    log('开始导出流程');
     try {
       const format = document.querySelector('input[name="exportFormat"]:checked').value;
-      console.log('导出格式:', format);
+      log('导出格式:', format);
       const books = this.storageService.getAllBooks();
 
       if (books.length === 0) {
@@ -4867,33 +5267,33 @@ class BookApp {
       }
 
       // 显示保存对话框
-      console.log('调用showSaveDialog API');
+      log('调用showSaveDialog API');
       const result = await window.electronAPI.showSaveDialog({
         defaultPath: `mybook_export_${new Date().toISOString().split('T')[0]}.${fileExtension}`,
         filters: [{ name: `${fileExtension.toUpperCase()} 文件`, extensions: [fileExtension] }]
       });
-      console.log('showSaveDialog结果:', result);
+      log('showSaveDialog结果:', result);
 
       if (!result.success || !result.filePath) {
-        console.log('用户取消了保存对话框');
+        log('用户取消了保存对话框');
         return; // 用户取消
       }
 
       // 保存文件
-      console.log('调用exportData API');
+      log('调用exportData API');
       const exportResult = await window.electronAPI.exportData({
         format,
         data: exportData,
         filePath: result.filePath
       });
-      console.log('exportData结果:', exportResult);
+      log('exportData结果:', exportResult);
 
       if (exportResult.success) {
-        console.log('导出成功');
+        log('导出成功');
         this.showToast(`数据已导出到 ${result.filePath}`, 'success');
         this.closeExportModal();
       } else {
-        console.log('导出失败:', exportResult.error);
+        log('导出失败:', exportResult.error);
         this.showToast(`导出失败: ${exportResult.error}`, 'error');
       }
 
@@ -5923,6 +6323,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.deleteJournal = (journalId) => {
       // 显示自定义确认模态框，不再使用原生confirm
       window.bookApp.showJournalDeleteModal(journalId);
+    };
+
+    window.jumpToBook = (bookId) => {
+      window.bookApp.jumpToBook(bookId);
+    };
+
+    window.removeJournalImage = (index) => {
+      window.bookApp.removeJournalImage(index);
+    };
+
+    window.viewJournalImage = (imgPath) => {
+      // 如果是 dataUrl 格式，在新窗口中打开显示
+      if (imgPath && imgPath.startsWith('data:image')) {
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(`<img src="${imgPath}" style="max-width:100%;height:auto;">`);
+          newWindow.document.close();
+        }
+        return;
+      }
+      // 用系统默认应用打开图片（仅适用于文件路径）
+      if (window.electronAPI && window.electronAPI.openExternal) {
+        window.electronAPI.openExternal(imgPath);
+      }
     };
   }, 100);
 });

@@ -68,7 +68,9 @@
       "Bash(cmd /c \"set ELECTRON_RUN_AS_NODE=0 && start /b node_modules\\\\electron\\\\dist\\\\electron.exe .\")",
       "Bash(cmd /c \"set ELECTRON_RUN_AS_NODE=0& start /wait node_modules\\\\electron\\\\dist\\\\electron.exe .\")",
       "Bash(cmd /c \"set ELECTRON_RUN_AS_NODE=0& start cmd /k node_modules\\\\electron\\\\dist\\\\electron.exe .\")",
-      "Bash(powershell -ExecutionPolicy Bypass -File start_fixed.ps1)"
+      "Bash(powershell -ExecutionPolicy Bypass -File start_fixed.ps1)",
+      "Bash(\"./node_modules/.bin/electron\" --version)",
+      "Bash(node node_modules/electron/cli.js --version)"
     ]
   }
 }
