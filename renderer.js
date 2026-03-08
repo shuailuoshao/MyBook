@@ -373,6 +373,9 @@ class Book {
     tags = [],
     enableRating = false,
     folderId = 'all',
+    currentProgress = 0,
+    totalLength = 0,
+    progressUnit = '章',
     createdAt = new Date().toISOString(),
     updatedAt = new Date().toISOString()
   } = {}) {
@@ -387,6 +390,9 @@ class Book {
     this.tags = tags;
     this.enableRating = enableRating;
     this.folderId = folderId;
+    this.currentProgress = currentProgress;
+    this.totalLength = totalLength;
+    this.progressUnit = progressUnit;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -406,7 +412,7 @@ class Book {
   }
 
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'folderId'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'folderId', 'currentProgress', 'totalLength', 'progressUnit'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) this[field] = updates[field];
     });
@@ -436,6 +442,9 @@ class Book {
       status: this.status, notes: this.notes, rating: this.rating,
       tags: this.tags, enableRating: this.enableRating,
       folderId: this.folderId,
+      currentProgress: this.currentProgress,
+      totalLength: this.totalLength,
+      progressUnit: this.progressUnit,
       createdAt: this.createdAt, updatedAt: this.updatedAt
     };
   }
@@ -533,13 +542,18 @@ class StorageService {
 
   async saveBooks() {
     try {
-      const booksData = this.books.map(book => book.toJSON());
-      console.log('StorageService: 保存书籍, 数据:', booksData);
+      const booksData = this.books.map(book => {
+        const json = book.toJSON();
+        console.log('StorageService: 单本书JSON:', JSON.stringify(json));
+        return json;
+      });
+      console.log('StorageService: 保存书籍, 数量:', booksData.length);
       if (window.electronAPI && typeof window.electronAPI.saveBooks === 'function') {
         console.log('StorageService: 使用 electronAPI 保存...');
         const result = await window.electronAPI.saveBooks(booksData);
         console.log('StorageService: 保存结果:', result);
-        return result.success;
+        console.log('StorageService: result.success =', result.success, typeof result.success);
+        return result.success === true;
       } else {
         console.log('StorageService: 使用 localStorage 保存...');
         localStorage.setItem('mybook_books', JSON.stringify(booksData));
@@ -568,7 +582,8 @@ class StorageService {
     if (!success) {
       // 如果硬盘保存失败，把刚刚放进去的书拿出来（数据回滚）
       this.books.pop();
-      throw new Error('本地保存失败，请检查文件权限');
+      console.error('addBook: 保存失败，书籍已从内存中移除');
+      throw new Error('本地保存失败，请检查文件权限或数据格式');
     }
     
     return book;
@@ -1681,6 +1696,9 @@ class BookApp {
     this.startDateInput = document.getElementById('startDate');
     this.endDateInput = document.getElementById('endDate');
     this.statusSelect = document.getElementById('status');
+    this.currentProgressInput = document.getElementById('currentProgress');
+    this.totalLengthInput = document.getElementById('totalLength');
+    this.progressUnitSelect = document.getElementById('progressUnit');
     this.enableRatingCheckbox = document.getElementById('enableRating');
 
     // 标签相关元素
@@ -1826,6 +1844,14 @@ class BookApp {
 
     // 统计事件
     this.statsBtn.addEventListener('click', () => this.showStatsModal());
+
+    // 评分对比事件
+    this.compareRatingBtn = document.getElementById('compareRatingBtn');
+    this.compareRatingModal = document.getElementById('compareRatingModal');
+    this.compareBookList = document.getElementById('compareBookList');
+    this.compareResults = document.getElementById('compareResults');
+    this.compareRatingBtn.addEventListener('click', () => this.showCompareModal());
+
     this.fileDropArea.addEventListener('click', () => this.importFile.click());
     this.fileDropArea.addEventListener('dragover', (e) => this.handleDragOver(e));
     this.fileDropArea.addEventListener('drop', (e) => this.handleFileDrop(e));
@@ -1854,6 +1880,7 @@ class BookApp {
     this.startDateInput.addEventListener('change', () => this.handleDateChange());
     this.endDateInput.addEventListener('change', () => this.handleDateChange());
     this.statusSelect.addEventListener('change', () => this.handleStatusChange());
+    this.totalLengthInput.addEventListener('input', () => this.handleTotalLengthChange());
 
     // 新增事件监听器
     this.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
@@ -2262,6 +2289,11 @@ class BookApp {
          </button>`
       : '';
 
+    // 荣誉徽章（仅已读完状态显示）
+    const honorBadge = book.status === '已读完'
+      ? `<div class="honor-badge">🏆 已读完</div>`
+      : '';
+
     card.innerHTML = `
       <div class="book-header">
         <div>
@@ -2285,17 +2317,21 @@ class BookApp {
           <div class="date-value">${durationText}</div>
         </div>
       </div>
-      <div class="book-actions">
-        <button class="action-btn edit" data-action="edit" data-id="${book.id}">
-          <i class="fas fa-edit"></i> 编辑
-        </button>
-        <button class="action-btn delete" data-action="delete" data-id="${book.id}">
-          <i class="fas fa-trash"></i> 删除
-        </button>
-        <button class="action-btn notes" data-action="notes" data-id="${book.id}">
-          <i class="fas fa-sticky-note"></i> 笔记
-        </button>
-        ${ratingButtonHtml}
+      ${this.renderProgressBar(book)}
+      <div class="book-footer">
+        ${honorBadge}
+        <div class="book-actions">
+          <button class="action-btn edit" data-action="edit" data-id="${book.id}">
+            <i class="fas fa-edit"></i> 编辑
+          </button>
+          <button class="action-btn delete" data-action="delete" data-id="${book.id}">
+            <i class="fas fa-trash"></i> 删除
+          </button>
+          <button class="action-btn notes" data-action="notes" data-id="${book.id}">
+            <i class="fas fa-sticky-note"></i> 笔记
+          </button>
+          ${ratingButtonHtml}
+        </div>
       </div>
     `;
 
@@ -2347,6 +2383,9 @@ class BookApp {
       this.startDateInput.value = book.startDate ? book.startDate.split('T')[0] : '';
       this.endDateInput.value = book.endDate ? book.endDate.split('T')[0] : '';
       this.statusSelect.value = book.status;
+      this.currentProgressInput.value = book.currentProgress || 0;
+      this.totalLengthInput.value = book.totalLength || '';
+      this.progressUnitSelect.value = book.progressUnit || '章';
       this.enableRatingCheckbox.checked = book.enableRating === true;
     } else {
       this.bookIdInput.value = '';
@@ -2355,6 +2394,9 @@ class BookApp {
       this.startDateInput.value = '';
       this.endDateInput.value = '';
       this.statusSelect.value = '未开始';
+      this.currentProgressInput.value = '';
+      this.totalLengthInput.value = '';
+      this.progressUnitSelect.value = '章';
       this.enableRatingCheckbox.checked = false;
     }
 
@@ -2365,8 +2407,19 @@ class BookApp {
     // 渲染类型标签
     this.renderGenreTags();
 
+    // 状态联动逻辑：初始化进度输入框状态
+    this.handleStatusChange();
+
     this.bookFormSection.style.display = 'block';
     this.titleInput.focus();
+  }
+
+  // 总计输入变化时，同步更新当前进度（仅在已读完状态下）
+  handleTotalLengthChange() {
+    const status = this.statusSelect.value;
+    if (status === '已读完' && this.totalLengthInput.value && parseInt(this.totalLengthInput.value) > 0) {
+      this.currentProgressInput.value = this.totalLengthInput.value;
+    }
   }
 
   hideBookForm() {
@@ -2480,15 +2533,39 @@ class BookApp {
 
   async handleFormSubmit(e) {
     e.preventDefault();
+
+    // 获取现有书籍数据（如果是编辑模式）
+    let existingBook = null;
+    if (this.isEditing && this.currentBookId) {
+      existingBook = this.storageService.getBookById(this.currentBookId);
+    }
+
+    // 处理进度数据
+    let currentProgress = parseInt(this.currentProgressInput.value) || 0;
+    let totalLength = parseInt(this.totalLengthInput.value) || 0;
+    const status = this.statusSelect.value;
+
+    // 已读完状态：确保当前进度等于总计
+    if (status === '已读完' && totalLength > 0) {
+      currentProgress = totalLength;
+    }
+
     const bookData = {
       title: this.titleInput.value.trim(),
       author: this.authorInput.value.trim(),
       startDate: this.startDateInput.value || null,
       endDate: this.endDateInput.value || null,
-      status: this.statusSelect.value,
+      status: status,
+      currentProgress: currentProgress,
+      totalLength: totalLength,
+      progressUnit: this.progressUnitSelect.value,
       enableRating: this.enableRatingCheckbox ? this.enableRatingCheckbox.checked : false,
       folderId: (this.currentFolderId && this.currentFolderId !== 'all') ? this.currentFolderId : 'uncategorized',
-      tags: [...this.currentTags]
+      tags: [...this.currentTags],
+      // 保留原有字段
+      notes: existingBook ? (existingBook.notes || []) : [],
+      rating: existingBook ? existingBook.rating : null,
+      createdAt: existingBook ? existingBook.createdAt : new Date().toISOString()
     };
 
     try {
@@ -2796,6 +2873,8 @@ class BookApp {
 
   handleStatusChange() {
     const status = this.statusSelect.value;
+
+    // 日期联动逻辑
     if (status === '已读完' && !this.endDateInput.value) {
       this.endDateInput.value = new Date().toISOString().split('T')[0];
     }
@@ -2805,6 +2884,38 @@ class BookApp {
     }
     if (status === '阅读中' && !this.startDateInput.value) {
       this.startDateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    // 进度输入框联动逻辑
+    const currentProgressInput = this.currentProgressInput;
+    const totalLengthInput = this.totalLengthInput;
+    const progressUnitSelect = this.progressUnitSelect;
+
+    if (status === '未开始') {
+      // 未开始：禁用所有进度输入
+      currentProgressInput.disabled = true;
+      totalLengthInput.disabled = true;
+      progressUnitSelect.disabled = true;
+      currentProgressInput.removeAttribute('readonly');
+      currentProgressInput.value = '';
+      totalLengthInput.value = '';
+    } else if (status === '阅读中') {
+      // 阅读中：启用所有进度输入
+      currentProgressInput.disabled = false;
+      totalLengthInput.disabled = false;
+      progressUnitSelect.disabled = false;
+      currentProgressInput.removeAttribute('readonly');
+    } else if (status === '已读完') {
+      // 已读完：禁用当前进度，保持总计可用
+      currentProgressInput.disabled = true;
+      currentProgressInput.setAttribute('readonly', true);
+      totalLengthInput.disabled = false;
+      progressUnitSelect.disabled = false;
+
+      // 如果填写了总计，自动将当前进度设为等于总计
+      if (totalLengthInput.value && parseInt(totalLengthInput.value) > 0) {
+        currentProgressInput.value = totalLengthInput.value;
+      }
     }
   }
 
@@ -2845,6 +2956,337 @@ class BookApp {
     this.overlay.style.display = 'none';
     this.destroyAllCharts();
   }
+
+  // ======== 评分对比功能 ========
+
+  // 显示评分对比模态框
+  showCompareModal() {
+    const ratedBooks = this.storageService.books.filter(b => b.rating && b.rating.ratings);
+
+    if (ratedBooks.length < 2) {
+      this.showToast('需要至少2本已评分的书籍才能对比', 'warning');
+      return;
+    }
+
+    this.compareResults.innerHTML = '';
+    this.renderCompareBookSelector(ratedBooks);
+    this.compareRatingModal.style.display = 'flex';
+    this.overlay.style.display = 'block';
+  }
+
+  // 渲染书籍选择列表
+  renderCompareBookSelector(books) {
+    this.compareBookList.innerHTML = books.map(book => `
+      <div class="compare-book-item" data-id="${book.id}" onclick="toggleCompareBook('${book.id}', event)">
+        <input type="checkbox" class="compare-book-checkbox" value="${book.id}" onchange="handleCompareCheckboxChange(this)">
+        <span class="compare-book-title">${book.title}</span>
+        <span class="compare-book-author">${book.author || '未知作者'}</span>
+        <span class="compare-book-score">${book.rating.totalScore.toFixed(1)}分</span>
+      </div>
+    `).join('');
+
+    // 初始化按钮状态
+    this.toggleCompareBookSelection();
+  }
+
+  // 更新书籍项的选中样式
+  updateCompareBookItemStyle(checkbox) {
+    const bookItem = checkbox.closest('.compare-book-item');
+    if (bookItem) {
+      if (checkbox.checked) {
+        bookItem.classList.add('selected');
+      } else {
+        bookItem.classList.remove('selected');
+      }
+    }
+  }
+
+  // 切换书籍选中状态
+  toggleCompareBookSelection() {
+    const checkboxes = document.querySelectorAll('.compare-book-checkbox:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    const btn = document.getElementById('startCompareBtn');
+
+    if (selectedIds.length < 2) {
+      btn.disabled = true;
+      btn.title = '请至少选择2本书';
+    } else {
+      btn.disabled = false;
+      btn.title = '开始对比';
+    }
+  }
+
+  // 开始对比
+  startCompare() {
+    const checkboxes = document.querySelectorAll('.compare-book-checkbox:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (selectedIds.length < 2) {
+      this.showToast('请至少选择2本书进行对比', 'warning');
+      return;
+    }
+
+    const selectedBooks = selectedIds.map(id => this.storageService.books.find(b => b.id === id));
+    this.renderCompareResults(selectedBooks);
+  }
+
+  // 渲染对比结果
+  renderCompareResults(selectedBooks) {
+    const allDimensions = this.getAllRatingDimensions();
+    const layers = ['作者层面', '文本层面', '读者层面'];
+
+    // 计算每个维度的差异
+    const dimensionStats = allDimensions.map(dim => {
+      const values = selectedBooks.map(book => book.rating.ratings[dim.name] || 0);
+      const max = Math.max(...values);
+      const min = Math.min(...values);
+      const diff = max - min;
+      return { ...dim, max, min, diff, values };
+    });
+
+    // 渲染表格
+    let tableHtml = `
+      <div class="compare-total-scores">
+        ${selectedBooks.map(book => `
+          <div class="compare-total-item">
+            <span class="compare-total-title">${book.title}</span>
+            <span class="compare-total-score">${book.rating.totalScore.toFixed(1)}分</span>
+          </div>
+        `).join('')}
+      </div>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>评分维度</th>
+            ${selectedBooks.map(book => `<th>${book.title}</th>`).join('')}
+            <th>差值</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    // 按层面分组渲染
+    layers.forEach(layer => {
+      const layerDims = dimensionStats.filter(d => d.layer === layer);
+      if (layerDims.length > 0) {
+        tableHtml += `<tr class="compare-layer-row"><td colspan="${selectedBooks.length + 2}" class="compare-layer-header">${layer}</td></tr>`;
+
+        layerDims.forEach(dim => {
+          const isHighlight = dim.diff >= 1;
+          tableHtml += `
+            <tr class="${isHighlight ? 'diff-highlight' : ''}">
+              <td>${dim.name}</td>
+              ${dim.values.map((val, idx) => {
+                const isMax = val === dim.max && dim.diff >= 1;
+                const isMin = val === dim.min && dim.diff >= 1;
+                return `<td class="${isMax ? 'diff-positive' : ''} ${isMin ? 'diff-negative' : ''}">${val > 0 ? '+' : ''}${val}</td>`;
+              }).join('')}
+              <td class="${dim.diff >= 1 ? 'diff-highlight-cell' : ''}">${dim.diff}</td>
+            </tr>
+          `;
+        });
+      }
+    });
+
+    tableHtml += '</tbody></table>';
+
+    // 添加雷达图
+    tableHtml += `
+      <div class="compare-radar-container">
+        <h4>雷达图对比</h4>
+        <div class="radar-layers">
+          <div class="radar-layer-title">作者层面</div>
+          <div class="radar-layer-title">文本层面</div>
+          <div class="radar-layer-title">读者层面</div>
+        </div>
+        <div id="compareRadarChart" class="compare-radar-chart"></div>
+      </div>
+    `;
+
+    this.compareResults.innerHTML = tableHtml;
+
+    // 渲染雷达图 - 等待DOM渲染完成
+    setTimeout(() => {
+      const chartDom = document.getElementById('compareRadarChart');
+      if (chartDom) {
+        // 确保容器可见且有尺寸
+        chartDom.style.display = 'block';
+        chartDom.style.visibility = 'visible';
+        this.renderCompareRadarChart(selectedBooks, allDimensions);
+      }
+    }, 150);
+  }
+
+  // 获取所有评分维度
+  getAllRatingDimensions() {
+    const dimensions = [];
+    const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+
+    if (profile) {
+      Object.entries(profile).forEach(([layer, dims]) => {
+        dims.forEach(dim => {
+          dimensions.push({ name: dim.name, weight: dim.w, layer });
+        });
+      });
+    }
+
+    return dimensions;
+  }
+
+  // 渲染对比雷达图
+  renderCompareRadarChart(selectedBooks, allDimensions) {
+    const chartDom = document.getElementById('compareRadarChart');
+    if (!chartDom) {
+      console.error('Radar chart container not found');
+      return;
+    }
+
+    // 确保容器有尺寸
+    const container = chartDom.parentElement;
+    if (!container.offsetWidth || !container.offsetHeight) {
+      console.warn('Chart container has no dimensions, retrying...');
+      setTimeout(() => this.renderCompareRadarChart(selectedBooks, allDimensions), 200);
+      return;
+    }
+
+    // 销毁已存在的图表实例
+    if (this.compareRadarChart) {
+      this.compareRadarChart.dispose();
+    }
+
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const layers = ['作者层面', '文本层面', '读者层面'];
+
+    // 按层面分组获取指标和数据
+    const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+    const layerData = {};
+
+    layers.forEach((layer, idx) => {
+      const dims = profile[layer] || [];
+      layerData[layer] = {
+        indicators: dims.map(d => ({ name: d.name, max: 3, min: -1 })),
+        books: selectedBooks.map(book => {
+          const bookRatings = book.rating && book.rating.ratings ? book.rating.ratings : {};
+          return {
+            value: dims.map(d => {
+              const rating = bookRatings[d.name];
+              return (rating !== undefined && rating !== null) ? rating + 2 : 1;
+            }),
+            name: book.title
+          };
+        })
+      };
+    });
+
+    // 配置三个雷达图
+    const radarConfig = layers.map((layer, idx) => ({
+      indicator: layerData[layer].indicators,
+      shape: 'polygon',
+      splitNumber: 4,
+      radius: '60%',
+      center: [(idx * 33.33 + 16.67) + '%', '50%'],
+      axisName: { color: isDark ? '#aaa' : '#666', fontSize: 9 },
+      splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' } },
+      splitArea: { show: true, areaStyle: { color: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' } }
+    }));
+
+    // 构建系列数据：每个层面一个系列，每个系列包含所有书的该层面数据
+    const series = layers.map((layer, layerIdx) => ({
+      name: layer,
+      type: 'radar',
+      radarIndex: layerIdx,
+      symbol: 'circle',
+      symbolSize: 5,
+      data: selectedBooks.map((book, bookIdx) => ({
+        value: layerData[layer].books[bookIdx].value,
+        name: book.title,
+        lineStyle: { width: 2, color: colors[bookIdx % colors.length] },
+        areaStyle: { opacity: 0.15, color: colors[bookIdx % colors.length] },
+        itemStyle: { color: colors[bookIdx % colors.length] }
+      }))
+    }));
+
+    // 预计算每本书每个维度的真实分数
+    const tooltipData = {};
+    layers.forEach((layer, layerIdx) => {
+      tooltipData[layerIdx] = selectedBooks.map((book, bookIdx) => {
+        const bookRatings = book.rating && book.rating.ratings ? book.rating.ratings : {};
+        const dims = profile[layer] || [];
+        const values = {};
+        dims.forEach((d, i) => {
+          const rating = bookRatings[d.name];
+          values[d.name] = (rating !== undefined && rating !== null) ? rating : 0;
+        });
+        return { name: book.title, color: colors[bookIdx % colors.length], values };
+      });
+    });
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? 'rgba(50,50,50,0.95)' : 'rgba(255,255,255,0.95)',
+        borderColor: isDark ? '#666' : '#ddd',
+        textStyle: { color: isDark ? '#fff' : '#333', fontSize: 11 },
+        formatter: (params) => {
+          const layerIdx = params.seriesIndex;
+          const layerName = layers[layerIdx];
+          const dims = profile[layerName] || [];
+
+          let html = `<div style="font-weight:bold;margin-bottom:5px;border-bottom:1px solid #ddd;padding-bottom:3px;">${layerName}</div>`;
+
+          // 为每本书生成一列数据
+          tooltipData[layerIdx].forEach(bookData => {
+            const scoreColor = bookData.color;
+            html += `<div style="margin-bottom:8px;">`;
+            html += `<div style="color:${scoreColor};font-weight:bold;margin-bottom:3px;">${bookData.name}</div>`;
+            dims.forEach((d, i) => {
+              const score = bookData.values[d.name];
+              const scoreText = score > 0 ? '+' + score : score;
+              const displayColor = score > 0 ? '#28a745' : (score < 0 ? '#dc3545' : '#6c757d');
+              html += `<div style="display:flex;justify-content:space-between;gap:15px;margin:2px 0;">
+                <span style="opacity:0.8;">${d.name}</span>
+                <span style="color:${displayColor};font-weight:bold;">${scoreText}</span>
+              </div>`;
+            });
+            html += `</div>`;
+          });
+
+          return html;
+        }
+      },
+      legend: {
+        data: selectedBooks.map(b => b.title),
+        bottom: 0,
+        textStyle: { color: isDark ? '#fff' : '#333' }
+      },
+      radar: radarConfig,
+      series: series
+    };
+
+    this.compareRadarChart = echarts.init(chartDom);
+    this.compareRadarChart.setOption(option);
+
+    // 响应窗口大小变化
+    window.addEventListener('resize', () => {
+      if (this.compareRadarChart) {
+        this.compareRadarChart.resize();
+      }
+    });
+  }
+
+  // 关闭对比模态框
+  closeCompareModal() {
+    this.compareRatingModal.style.display = 'none';
+    this.overlay.style.display = 'none';
+    if (this.compareRadarChart) {
+      this.compareRadarChart.dispose();
+      this.compareRadarChart = null;
+    }
+  }
+
+  // ======== 评分对比功能结束 ========
 
   // 加载统计数据
   async loadStatsData() {
@@ -3761,6 +4203,62 @@ class BookApp {
   // 通用工具方法
   // =========================================
 
+  // 渲染进度条
+  renderProgressBar(book) {
+    // "未开始"状态：显示空进度条
+    if (book.status === '未开始') {
+      return `
+        <div class="book-progress not-started">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <span class="progress-text">尚未开始</span>
+        </div>
+      `;
+    }
+
+    // 对"阅读中"和"已读完"状态显示进度条
+    if (!book.currentProgress || book.currentProgress <= 0) {
+      return `
+        <div class="book-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <span class="progress-text">- / -</span>
+        </div>
+      `;
+    }
+
+    const currentProgress = book.currentProgress || 0;
+    const totalLength = book.totalLength;
+    const progressUnit = book.progressUnit || '章';
+    const isCompleted = book.status === '已读完';
+
+    // 已读完状态：强制100%，显示"已完成"
+    let progressPercent = 0;
+    let progressText = '';
+    if (isCompleted) {
+      progressPercent = 100;
+      progressText = totalLength > 0 ? `已完成 ${totalLength} ${progressUnit}` : `已完成`;
+    } else if (totalLength && totalLength > 0) {
+      progressPercent = Math.min(100, Math.round((currentProgress / totalLength) * 100));
+      progressText = `${currentProgress}/${totalLength} ${progressUnit} (${progressPercent}%)`;
+    } else {
+      progressText = `${currentProgress} ${progressUnit}`;
+    }
+
+    return `
+      <div class="book-progress ${isCompleted ? 'completed' : ''}">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${progressPercent}%"></div>
+        </div>
+        <span class="progress-text">${progressText}</span>
+      </div>
+    `;
+  }
+
+  // =========================================
+
   escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -4172,6 +4670,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.exportStatsReport = () => {
       window.bookApp.exportStatsReport();
+    };
+
+    // 评分对比全局函数
+    window.closeCompareModal = () => {
+      window.bookApp.closeCompareModal();
+    };
+
+    window.startCompare = () => {
+      window.bookApp.startCompare();
+    };
+
+    window.toggleCompareBook = (bookId, event) => {
+      // 防止点击checkbox时触发两次
+      if (event && event.target.tagName === 'INPUT') return;
+
+      const checkbox = document.querySelector(`.compare-book-checkbox[value="${bookId}"]`);
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        window.bookApp.updateCompareBookItemStyle(checkbox);
+        window.bookApp.toggleCompareBookSelection();
+      }
+    };
+
+    window.handleCompareCheckboxChange = (checkbox) => {
+      window.bookApp.updateCompareBookItemStyle(checkbox);
+      window.bookApp.toggleCompareBookSelection();
     };
 
     // 文件夹全局函数

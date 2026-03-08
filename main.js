@@ -23,9 +23,12 @@ async function ensureDataDirectory() {
 
 // 原子写入文件
 async function atomicWrite(filePath, data) {
+  console.log('atomicWrite: 写入文件:', filePath);
   const tempPath = filePath + '.tmp';
   await fs.writeFile(tempPath, data, 'utf-8');
+  console.log('atomicWrite: 临时文件写入完成');
   await fs.rename(tempPath, filePath);
+  console.log('atomicWrite: 文件重命名完成');
 }
 
 // 验证书籍数据
@@ -66,6 +69,14 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('createWindow: 页面加载失败:', errorCode, errorDescription);
+  });
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('createWindow: 渲染进程崩溃:', details.reason);
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -76,17 +87,30 @@ function setupIPCHandlers() {
   // 书籍数据操作
   ipcMain.handle('save-books', async (event, books) => {
     try {
+      console.log('main.js: 收到保存书籍请求, 数量:', books ? books.length : 0);
+
       // 输入验证
       const validation = validateBooksData(books);
       if (!validation.valid) {
+        console.log('main.js: 验证失败:', validation.error);
         return { success: false, error: validation.error };
       }
 
+      // 打印第一本书的数据用于调试
+      if (books.length > 0) {
+        console.log('main.js: 第一本书数据:', JSON.stringify(books[0]));
+      }
+
+      console.log('main.js: 验证通过，准备写入文件');
+      console.log('main.js: 数据目录:', DATA_DIR);
+      console.log('main.js: 文件路径:', BOOKS_FILE);
       await ensureDataDirectory();
       await atomicWrite(BOOKS_FILE, JSON.stringify(books, null, 2));
+      console.log('main.js: 文件写入成功');
       return { success: true };
     } catch (error) {
-      console.error('保存书籍数据失败:', error);
+      console.error('main.js: 保存书籍数据失败:', error);
+      console.error('main.js: 错误堆栈:', error.stack);
       return { success: false, error: error.message };
     }
   });

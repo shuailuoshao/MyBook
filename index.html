@@ -30,6 +30,9 @@
                     <button id="statsBtn" class="btn-secondary" title="查看统计">
                         <i class="fas fa-chart-bar"></i> 统计
                     </button>
+                    <button id="compareRatingBtn" class="btn-secondary" title="评分对比">
+                        <i class="fas fa-balance-scale"></i> 评分对比
+                    </button>
                     <button id="exportBtn" class="btn-secondary" title="导出数据">
                         <i class="fas fa-download"></i> 导出
                     </button>
@@ -192,14 +195,27 @@
                                 <input type="date" id="endDate">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
+                        <div class="form-row status-progress-row">
+                            <div class="form-group status-group">
                                 <label for="status">阅读状态</label>
                                 <select id="status" class="form-select">
                                     <option value="未开始">未开始</option>
                                     <option value="阅读中">阅读中</option>
                                     <option value="已读完">已读完</option>
                                 </select>
+                            </div>
+                            <div class="form-group progress-group">
+                                <label>阅读进度</label>
+                                <div class="progress-inputs">
+                                    <input type="number" id="currentProgress" min="0" placeholder="当前" class="progress-num">
+                                    <span class="progress-separator">/</span>
+                                    <input type="number" id="totalLength" min="1" placeholder="总计" class="progress-num">
+                                    <select id="progressUnit" class="progress-unit-select">
+                                        <option value="章">章</option>
+                                        <option value="页">页</option>
+                                        <option value="%">%</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="form-row">
@@ -632,6 +648,28 @@
                     <i class="fas fa-sync-alt"></i> 刷新统计
                 </button>
                 <button class="btn-secondary" onclick="closeStatsModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 评分对比模态框 -->
+    <div id="compareRatingModal" class="modal" style="display: none;">
+        <div class="modal-content compare-modal">
+            <div class="compare-header">
+                <div class="compare-header-top">
+                    <h3><i class="fas fa-balance-scale"></i> 评分对比</h3>
+                    <button class="close-btn" onclick="closeCompareModal()">×</button>
+                </div>
+                <div class="compare-book-selector">
+                    <label>选择要对比的书籍（至少2本）：</label>
+                    <div id="compareBookList" class="compare-book-list"></div>
+                    <button class="btn-primary" id="startCompareBtn" onclick="startCompare()">
+                        <i class="fas fa-search"></i> 开始对比
+                    </button>
+                </div>
+            </div>
+            <div class="compare-body">
+                <div class="compare-results" id="compareResults"></div>
             </div>
         </div>
     </div>

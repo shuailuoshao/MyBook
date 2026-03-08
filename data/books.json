@@ -1,1 +1,231 @@
-[]
+[
+  {
+    "id": "1772938575454",
+    "title": "不老春",
+    "author": "重返未来1999 3.3版本",
+    "startDate": "2026-02-18",
+    "endDate": "2026-02-25",
+    "status": "已读完",
+    "notes": [],
+    "rating": {
+      "totalScore": 51.5,
+      "profile": "标准配置",
+      "ratings": {
+        "情节架构": 0,
+        "人物设计": 1,
+        "世界观": -1,
+        "时代背景": -1,
+        "象征与意象": 1,
+        "登场人物塑造": 0,
+        "代入感": -1,
+        "整体审美": 1
+      },
+      "ratedAt": "2026-03-08T03:03:00.899Z"
+    },
+    "tags": [
+      "游戏剧情",
+      "奇幻",
+      "心理"
+    ],
+    "enableRating": true,
+    "folderId": "folder_1772896539885",
+    "currentProgress": 22,
+    "totalLength": 22,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T02:56:15.453Z",
+    "updatedAt": "2026-03-08T03:03:00.899Z"
+  },
+  {
+    "id": "1772938762057",
+    "title": "绿松石蛇俱乐部",
+    "author": "重返未来1999 3.4版本",
+    "startDate": "2026-03-06",
+    "endDate": "2026-03-07",
+    "status": "已读完",
+    "notes": [],
+    "rating": {
+      "totalScore": 56.5,
+      "profile": "标准配置",
+      "ratings": {
+        "时代背景": 1,
+        "象征与意象": 1,
+        "人物设计": 1,
+        "世界观": -1,
+        "登场人物塑造": 1,
+        "代入感": 1,
+        "整体审美": 1
+      },
+      "ratedAt": "2026-03-08T03:04:09.483Z"
+    },
+    "tags": [
+      "游戏剧情",
+      "悬疑",
+      "推理",
+      "心理"
+    ],
+    "enableRating": true,
+    "folderId": "folder_1772896539885",
+    "currentProgress": 21,
+    "totalLength": 21,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T02:59:22.056Z",
+    "updatedAt": "2026-03-08T03:04:09.483Z"
+  },
+  {
+    "id": "1772939122256",
+    "title": "圆通的人际关系",
+    "author": "曾仕强",
+    "startDate": "2026-02-26",
+    "endDate": "2026-02-28",
+    "status": "已读完",
+    "notes": [],
+    "rating": null,
+    "tags": [
+      "纪实",
+      "哲学",
+      "心理",
+      "社会"
+    ],
+    "enableRating": false,
+    "folderId": "folder_1772897231838",
+    "currentProgress": 7,
+    "totalLength": 7,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T03:05:22.256Z",
+    "updatedAt": "2026-03-08T03:09:13.306Z"
+  },
+  {
+    "id": "1772939198038",
+    "title": "德米安：彷徨少年时",
+    "author": "黑塞",
+    "startDate": "2025-12-30",
+    "endDate": "2026-01-02",
+    "status": "已读完",
+    "notes": [],
+    "rating": {
+      "totalScore": 94.5,
+      "profile": "标准配置",
+      "ratings": {
+        "作品主题": 1,
+        "情节架构": 0,
+        "人物设计": 1,
+        "世界观": 1,
+        "叙事时间": 0,
+        "象征与意象": 1,
+        "时代背景": 1,
+        "登场人物塑造": 1,
+        "背景描写": 1,
+        "主题表达": 1,
+        "叙述视角": 1,
+        "文笔文风信息量": 1,
+        "修辞手法": 1,
+        "对话可咀嚼度": 1,
+        "阅读前视野": 0,
+        "代入感": 1,
+        "情节理解": 1,
+        "主题理解": 1,
+        "整体审美": 1,
+        "人物理解": 1,
+        "知识获取": 1,
+        "行为影响": 1,
+        "观念改变": 1
+      },
+      "ratedAt": "2026-03-08T03:08:17.249Z"
+    },
+    "tags": [
+      "文学",
+      "治愈",
+      "心理"
+    ],
+    "enableRating": true,
+    "folderId": "folder_1772897231838",
+    "currentProgress": 6,
+    "totalLength": 6,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T03:06:38.038Z",
+    "updatedAt": "2026-03-08T03:09:17.492Z"
+  },
+  {
+    "id": "1772939342908",
+    "title": "基层中国运行逻辑",
+    "author": "聂辉华",
+    "startDate": "2026-01-03",
+    "endDate": "2026-01-12",
+    "status": "已读完",
+    "notes": [],
+    "rating": null,
+    "tags": [
+      "纪实",
+      "社会",
+      "哲学"
+    ],
+    "enableRating": false,
+    "folderId": "folder_1772897231838",
+    "currentProgress": 12,
+    "totalLength": 12,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T03:09:02.908Z",
+    "updatedAt": "2026-03-08T03:09:15.750Z"
+  },
+  {
+    "id": "1772939471532",
+    "title": "张忠谋自传",
+    "author": "张忠谋",
+    "startDate": "2026-01-18",
+    "endDate": "2026-01-20",
+    "status": "已读完",
+    "notes": [],
+    "rating": null,
+    "tags": [
+      "传记",
+      "心理",
+      "社会"
+    ],
+    "enableRating": false,
+    "folderId": "folder_1772897231838",
+    "currentProgress": 4,
+    "totalLength": 4,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T03:11:11.532Z",
+    "updatedAt": "2026-03-08T03:11:19.322Z"
+  },
+  {
+    "id": "1772939566649",
+    "title": "苦难辉煌",
+    "author": "金一南",
+    "startDate": "2026-03-03",
+    "endDate": null,
+    "status": "阅读中",
+    "notes": [],
+    "rating": null,
+    "tags": [
+      "纪实",
+      "社会"
+    ],
+    "enableRating": false,
+    "folderId": "uncategorized",
+    "currentProgress": 4,
+    "totalLength": 16,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T03:12:46.649Z",
+    "updatedAt": "2026-03-08T03:12:46.649Z"
+  },
+  {
+    "id": "1772942004254",
+    "title": "测试",
+    "author": "",
+    "startDate": null,
+    "endDate": null,
+    "status": "未开始",
+    "notes": [],
+    "rating": null,
+    "tags": [],
+    "enableRating": false,
+    "folderId": "uncategorized",
+    "currentProgress": 0,
+    "totalLength": 0,
+    "progressUnit": "章",
+    "createdAt": "2026-03-08T03:53:24.254Z",
+    "updatedAt": "2026-03-08T03:53:24.254Z"
+  }
+]

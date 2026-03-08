@@ -543,6 +543,96 @@ body {
     flex: 1;
 }
 
+/* 状态与进度并排布局 */
+.status-progress-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.status-progress-row .status-group {
+    flex: 0 0 140px;
+}
+
+.status-progress-row .progress-group {
+    flex: 1;
+}
+
+/* 进度输入区域 */
+.progress-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-num {
+    width: 70px;
+    padding: 8px 10px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+    transition: all 0.3s;
+}
+
+.progress-num:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(180, 100, 180, 0.1);
+}
+
+.progress-separator {
+    color: #999;
+    font-weight: 600;
+}
+
+.progress-unit-select {
+    padding: 8px 10px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.progress-unit-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: #fff;
+}
+
+/* 进度输入框禁用状态 */
+.progress-inputs .progress-num:disabled,
+.progress-inputs .progress-unit-select:disabled {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+    color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.progress-inputs .progress-num[readonly] {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+    color: #6c757d;
+}
+
+/* 深色模式禁用状态 */
+[data-theme="dark"] .progress-inputs .progress-num:disabled,
+[data-theme="dark"] .progress-inputs .progress-unit-select:disabled {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .progress-inputs .progress-num[readonly] {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #adb5bd;
+}
+
 .form-actions {
     display: flex;
     gap: 15px;
@@ -897,8 +987,7 @@ body {
     gap: 15px;
     margin-top: 20px;
     scroll-margin-top: 100px;
-    align-items: start;
-    align-content: start;
+    align-items: stretch;
 }
 
 /* 书籍卡片 */
@@ -912,6 +1001,10 @@ body {
     position: relative;
     overflow: hidden;
     max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    height: 100%;
 }
 
 .book-card:hover {
@@ -940,6 +1033,62 @@ body {
 
 .book-card.未开始::before {
     background: #95a5a6;
+}
+
+/* 书籍卡片进度条 */
+.book-progress {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px dashed #e9ecef;
+}
+
+.progress-bar {
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #b564c9, #d192e8);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-align: right;
+}
+
+/* 已完成状态进度条 */
+.book-progress.completed .progress-fill {
+    background: linear-gradient(90deg, #28a745, #34ce57);
+}
+
+.book-progress.completed .progress-text {
+    color: #28a745;
+    font-weight: 600;
+}
+
+/* 未开始状态进度条 */
+.book-progress.not-started .progress-bar {
+    background-color: transparent;
+    border: 1px dashed #ccc;
+    box-sizing: border-box;
+}
+
+.book-progress.not-started .progress-fill {
+    background: transparent;
+    width: 0 !important;
+}
+
+.book-progress.not-started .progress-text {
+    color: #ced4da;
+    font-style: italic;
 }
 
 .book-header {
@@ -1010,6 +1159,30 @@ body {
     font-size: 0.85rem;
     font-weight: 600;
     color: #2c3e50;
+}
+
+/* 书籍卡片底部容器 */
+.book-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e9ecef;
+}
+
+/* 荣誉徽章 */
+.honor-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #ffd700, #ffb700);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #5d4e08;
+    box-shadow: 0 2px 6px rgba(255, 215, 0, 0.4);
 }
 
 .book-actions {
@@ -4150,6 +4323,41 @@ html, body {
     --text-muted: #adb5bd; /* 统一定义深色模式下的次要文字颜色 */
 }
 
+/* 深色模式进度条 */
+[data-theme="dark"] .book-progress {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .progress-bar {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .progress-text {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .book-progress.completed .progress-fill {
+    background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+[data-theme="dark"] .book-progress.completed .progress-text {
+    color: #2ecc71;
+}
+
+/* 深色模式进度输入 */
+[data-theme="dark"] .progress-num,
+[data-theme="dark"] .progress-unit-select {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .progress-num:focus,
+[data-theme="dark"] .progress-unit-select:focus {
+    border-color: #b564c9;
+    background: rgba(255, 255, 255, 0.1);
+}
+
 /* =========================================
    深色模式评分文字高亮 - 最终补丁
    ========================================= */
@@ -4165,7 +4373,328 @@ html, body {
     opacity: 1 !important;         /* 确保没有被设置半透明 */
 }
 
-/* 2. 专门针对“评分：”这三个字及其后面的数字 */
-[data-theme="dark"] .book-card *:contains("评分") {
+/* 2. 专门针对”评分：”这三个字及其后面的数字 */
+[data-theme=”dark”] .book-card *:contains(“评分”) {
     color: #ffe4e1 !important;     /* 使用浅粉白，既清晰又符合你的主题色 */
+}
+
+/* 深色模式荣誉徽章 */
+[data-theme=”dark”] .honor-badge {
+    background: linear-gradient(135deg, #b8960c 0%, #f4e04d 25%, #d4af37 50%, #8b7023 75%, #b8960c 100%);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+    border-color: #f4e04d;
+}
+
+[data-theme=”dark”] .honor-badge {
+    background: linear-gradient(135deg, #ffa500, #ff8c00);
+    color: #2d1f00;
+    box-shadow: 0 2px 8px rgba(255, 165, 0, 0.5);
+}
+
+[data-theme=”dark”] .book-footer {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ======== 评分对比模态框 ======== */
+#compareRatingModal {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#compareRatingModal .modal-content {
+    max-width: 1100px;
+    width: 95%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    margin: 5vh auto;
+}
+
+/* 固定不动的 Header 区域 */
+.compare-modal .compare-header {
+    flex-shrink: 0;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color, #eee);
+}
+
+.compare-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px 10px;
+}
+
+.compare-header-top h3 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.compare-header-top .close-btn {
+    font-size: 28px;
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+    background: none;
+    border: none;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.compare-header-top .close-btn:hover {
+    color: #333;
+    background: rgba(0,0,0,0.05);
+}
+
+/* 书籍选择区域 */
+.compare-modal .compare-book-selector {
+    padding: 0 20px 15px;
+}
+
+/* 可滚动的对比内容区域 */
+.compare-modal .compare-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: visible;
+    padding: 20px;
+}
+
+.compare-book-selector label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.compare-book-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.compare-book-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.compare-book-item:hover {
+    border-color: var(--primary-color);
+}
+
+.compare-book-item.selected {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.compare-book-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.compare-book-title {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.compare-book-author {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.compare-book-score {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.compare-results {
+    overflow-x: auto;
+}
+
+.compare-total-scores {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.compare-total-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 25px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.compare-total-title {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.compare-total-score {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.compare-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.85rem;
+}
+
+.compare-table th,
+.compare-table td {
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.compare-table th {
+    background: var(--header-bg);
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.compare-layer-row td {
+    background: var(--primary-light);
+    font-weight: 600;
+    text-align: left;
+    color: var(--primary-color);
+}
+
+.diff-positive {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.diff-negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.diff-highlight {
+    background: rgba(255, 215, 0, 0.15);
+}
+
+.diff-highlight-cell {
+    font-weight: bold;
+    color: #856404;
+    background: rgba(255, 193, 7, 0.2);
+}
+
+.compare-radar-container {
+    margin-top: 30px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    min-height: 400px;
+}
+
+.compare-radar-container h4 {
+    margin: 0 0 5px 0;
+    text-align: center;
+    color: var(--text-color);
+}
+
+.radar-layers {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 5px;
+}
+
+.radar-layer-title {
+    flex: 1;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 3px 0;
+    border-bottom: 2px solid var(--primary-color);
+    margin: 0 3px;
+    font-size: 12px;
+}
+
+.compare-radar-chart {
+    width: 100%;
+    height: 380px;
+}
+
+/* 深色模式对比模态框 */
+[data-theme=”dark”] .compare-book-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme=”dark”] .compare-book-item.selected {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: #3498db;
+}
+
+[data-theme=”dark”] .compare-total-item {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme=”dark”] .compare-table th {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme=”dark”] .compare-layer-row td {
+    background: rgba(52, 152, 219, 0.15);
+}
+
+[data-theme=”dark”] .compare-radar-container {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme=”dark”] .compare-modal .compare-header {
+    background: #2d2d2d;
+    border-bottom-color: #444;
+}
+
+[data-theme=”dark”] .compare-header-top .close-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+[data-theme=”dark”] .diff-positive {
+    color: #2ecc71;
+}
+
+[data-theme=”dark”] .diff-negative {
+    color: #e74c3c;
+}
+
+[data-theme=”dark”] .diff-highlight-cell {
+    color: #f1c40f;
+    background: rgba(241, 196, 15, 0.2);
 }

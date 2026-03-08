@@ -51,6 +51,9 @@ class Book {
     notes = [],
     rating = null,
     tags = [],
+    currentProgress = 0,
+    totalLength = 0,
+    progressUnit = '章',
     createdAt = new Date().toISOString(),
     updatedAt = new Date().toISOString()
   } = {}) {
@@ -63,6 +66,9 @@ class Book {
     this.notes = notes;
     this.rating = rating;
     this.tags = tags;
+    this.currentProgress = currentProgress;
+    this.totalLength = totalLength;
+    this.progressUnit = progressUnit;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -95,7 +101,7 @@ class Book {
 
   // 更新书籍信息
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'currentProgress', 'totalLength', 'progressUnit'];
 
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) {
@@ -137,6 +143,9 @@ class Book {
       notes: this.notes,
       rating: this.rating,
       tags: this.tags,
+      currentProgress: this.currentProgress,
+      totalLength: this.totalLength,
+      progressUnit: this.progressUnit,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };
