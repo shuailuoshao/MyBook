@@ -1162,8 +1162,9 @@ body {
 .book-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 15px;
+    gap: 12px;
 }
 
 .book-title {

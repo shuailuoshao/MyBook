@@ -3309,8 +3309,8 @@ class BookApp {
           <div class="book-title">${this.escapeHtml(book.title)}</div>
           <div class="book-author">${this.escapeHtml(book.author || '未知作者')}</div>
         </div>
-        <span class="book-status status-${book.status}">${book.status}</span>
         ${ratingHtml}
+        <span class="book-status status-${book.status}">${book.status}</span>
       </div>
       <div class="book-dates">
         <div class="date-item">
