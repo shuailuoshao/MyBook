@@ -1668,6 +1668,64 @@ class ChartManager {
 class BookApp {
   constructor() {
     // 构造函数为空，初始化在 init() 方法中完成
+
+    // 题材与状态称谓映射表
+    this.statusLabels = {
+      '书籍类': {
+        'completed': '已读完',
+        'reading': '阅读中',
+        'unstarted': '未开始'
+      },
+      '影视类': {
+        'completed': '已看完',
+        'reading': '观看中',
+        'unstarted': '未开始'
+      },
+      '游戏类': {
+        'completed': '已玩完',
+        'reading': '游玩中',
+        'unstarted': '未开始'
+      },
+      'default': {
+        'completed': '已读完',
+        'reading': '阅读中',
+        'unstarted': '未开始'
+      }
+    };
+
+    // 题材分类映射
+    this.genreCategories = {
+      '书籍类': ['文学', '小说', '轻小说', '网文', '纪实', '报告文学', '传记', '技术文档', '学术论文', '散文', '诗歌', '童话', '科普', '历史', '哲学', '心理学', '经济学', '管理学', '计算机', '编程', '设计', '艺术', '摄影', '音乐', '文学评论'],
+      '影视类': ['电影', '电视剧', '动漫', '纪录片', '漫画', '短片', '系列剧', '连续剧', '动画', '真人秀', '综艺'],
+      '游戏类': ['游戏剧情', 'Galgame', 'RPG', 'AVG', 'ACT', 'Racing', 'Sports', 'Simulation', 'Strategy', 'Puzzle', 'Adventure', '角色扮演', '动作', '竞速', '体育', '模拟', '策略', '解谜', '冒险']
+    };
+  }
+
+  // 获取状态称谓
+  getStatusLabel(genre, status) {
+    // 将数据库中的状态值映射到内部状态值
+    const statusMap = {
+      '已读完': 'completed',
+      '阅读中': 'reading',
+      '未开始': 'unstarted',
+      'completed': 'completed',
+      'reading': 'reading',
+      'unstarted': 'unstarted'
+    };
+
+    const internalStatus = statusMap[status] || 'unstarted';
+
+    // 根据题材确定分类
+    let category = 'default';
+    for (const [cat, genres] of Object.entries(this.genreCategories)) {
+      if (genres.includes(genre)) {
+        category = cat;
+        break;
+      }
+    }
+
+    // 返回对应的称谓
+    return this.statusLabels[category][internalStatus] || this.statusLabels.default[internalStatus];
   }
 
   async init() {
@@ -3310,7 +3368,7 @@ class BookApp {
           <div class="book-author">${this.escapeHtml(book.author || '未知作者')}</div>
         </div>
         ${ratingHtml}
-        <span class="book-status status-${book.status}">${book.status}</span>
+        <span class="book-status status-${book.status}">${this.getStatusLabel(book.tags[0] || 'default', book.status)}</span>
       </div>
       <div class="book-dates">
         <div class="date-item">
@@ -3391,7 +3449,17 @@ class BookApp {
       this.authorInput.value = book.author || '';
       this.startDateInput.value = book.startDate ? book.startDate.split('T')[0] : '';
       this.endDateInput.value = book.endDate ? book.endDate.split('T')[0] : '';
-      this.statusSelect.value = book.status;
+      // 将数据库中的显示文本转换为内部值
+      const displayToInternal = {
+        '已读完': 'completed',
+        '阅读中': 'reading',
+        '未开始': 'unstarted',
+        '已看完': 'completed',
+        '观看中': 'reading',
+        '已玩完': 'completed',
+        '游玩中': 'reading'
+      };
+      this.statusSelect.value = displayToInternal[book.status] || book.status;
       this.currentProgressInput.value = book.currentProgress || 0;
       this.totalLengthInput.value = book.totalLength || '';
       this.progressUnitSelect.value = book.progressUnit || '章';
@@ -3402,7 +3470,7 @@ class BookApp {
       this.authorInput.value = '';
       this.startDateInput.value = '';
       this.endDateInput.value = '';
-      this.statusSelect.value = '未开始';
+      this.statusSelect.value = 'unstarted';
       this.currentProgressInput.value = '';
       this.totalLengthInput.value = '';
       this.progressUnitSelect.value = '章';
@@ -3419,6 +3487,25 @@ class BookApp {
     // 状态联动逻辑：初始化进度输入框状态
     this.handleStatusChange();
 
+    // 题材变化监听器：实时更新状态称谓
+    // 题材使用按钮组，需要监听按钮点击事件
+    const formatTagsContainer = document.getElementById('formatTags');
+    if (formatTagsContainer) {
+      // 初始化状态选项（获取当前选中的题材）
+      const selectedFormat = this.currentTags.length > 0 && this.isFormatTag(this.currentTags[0])
+        ? this.currentTags[0]
+        : this.formatTags[0];
+      this.updateStatusOptions(selectedFormat);
+
+      // 监听题材按钮点击
+      formatTagsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('preset-tag')) {
+          const selectedTag = e.target.dataset.tag;
+          this.updateStatusOptions(selectedTag);
+        }
+      });
+    }
+
     this.bookFormSection.style.display = 'block';
     this.titleInput.focus();
   }
@@ -3426,8 +3513,89 @@ class BookApp {
   // 总计输入变化时，同步更新当前进度（仅在已读完状态下）
   handleTotalLengthChange() {
     const status = this.statusSelect.value;
-    if (status === '已读完' && this.totalLengthInput.value && parseInt(this.totalLengthInput.value) > 0) {
+    if (status === 'completed' && this.totalLengthInput.value && parseInt(this.totalLengthInput.value) > 0) {
       this.currentProgressInput.value = this.totalLengthInput.value;
+    }
+  }
+
+  // 更新状态标签称谓
+  updateStatusLabels() {
+    // 获取第一个书籍的题材作为参考（如果存在）
+    const firstBook = this.books[0];
+    const referenceGenre = firstBook ? firstBook.tags[0] : 'default';
+
+    // 更新统计面板中的状态标签
+    const completedLabel = document.getElementById('completedLabel');
+    const readingLabel = document.getElementById('readingLabel');
+
+    if (completedLabel) {
+      completedLabel.textContent = this.getStatusLabel(referenceGenre, 'completed');
+    }
+    if (readingLabel) {
+      readingLabel.textContent = this.getStatusLabel(referenceGenre, 'reading');
+    }
+
+    // 更新筛选面板中的状态标签（如果存在）
+    const filterStatusLabels = document.querySelectorAll('.filter-status-label');
+    filterStatusLabels.forEach(label => {
+      const status = label.dataset.status;
+      if (status) {
+        label.textContent = this.getStatusLabel(referenceGenre, status);
+      }
+    });
+  }
+
+  // 更新状态选项
+  updateStatusOptions(genre) {
+    const statusSelect = document.getElementById('statusSelect');
+    if (!statusSelect) return;
+
+    // 获取当前选中的值，以便保持数据一致性
+    const currentValue = statusSelect.value;
+
+    // 将显示文本映射到内部值
+    const displayToInternal = {
+      '已读完': 'completed',
+      '阅读中': 'reading',
+      '未开始': 'unstarted',
+      '已看完': 'completed',
+      '观看中': 'reading',
+      '已玩完': 'completed',
+      '游玩中': 'reading'
+    };
+
+    // 转换为内部值（如果当前值是显示文本）
+    const internalValue = displayToInternal[currentValue] || currentValue;
+
+    // 清空现有选项
+    statusSelect.innerHTML = '';
+
+    // 根据题材确定分类
+    let category = 'default';
+    for (const [cat, genres] of Object.entries(this.genreCategories)) {
+      if (genres.includes(genre)) {
+        category = cat;
+        break;
+      }
+    }
+
+    // 获取对应的状态称谓
+    const statusLabels = this.statusLabels[category];
+
+    // 添加新选项
+    Object.entries(statusLabels).forEach(([value, label]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      statusSelect.appendChild(option);
+    });
+
+    // 恢复之前选中的值（如果存在且有效）
+    if (internalValue && statusLabels[internalValue]) {
+      statusSelect.value = internalValue;
+    } else {
+      // 默认选择第一个选项
+      statusSelect.value = Object.keys(statusLabels)[0];
     }
   }
 
@@ -3555,16 +3723,24 @@ class BookApp {
     const status = this.statusSelect.value;
 
     // 已读完状态：确保当前进度等于总计
-    if (status === '已读完' && totalLength > 0) {
+    if (status === 'completed' && totalLength > 0) {
       currentProgress = totalLength;
     }
+
+    // 将内部状态值转换回显示文本以保持数据库兼容性
+    const internalToDisplay = {
+      'completed': '已读完',
+      'reading': '阅读中',
+      'unstarted': '未开始'
+    };
+    const displayStatus = internalToDisplay[status] || status;
 
     const bookData = {
       title: this.titleInput.value.trim(),
       author: this.authorInput.value.trim(),
       startDate: this.startDateInput.value || null,
       endDate: this.endDateInput.value || null,
-      status: status,
+      status: displayStatus,
       currentProgress: currentProgress,
       totalLength: totalLength,
       progressUnit: this.progressUnitSelect.value,
@@ -3883,15 +4059,15 @@ class BookApp {
   handleStatusChange() {
     const status = this.statusSelect.value;
 
-    // 日期联动逻辑
-    if (status === '已读完' && !this.endDateInput.value) {
+    // 日期联动逻辑（使用内部值）
+    if (status === 'completed' && !this.endDateInput.value) {
       this.endDateInput.value = new Date().toISOString().split('T')[0];
     }
-    if (status === '未开始') {
+    if (status === 'unstarted') {
       this.startDateInput.value = '';
       this.endDateInput.value = '';
     }
-    if (status === '阅读中' && !this.startDateInput.value) {
+    if (status === 'reading' && !this.startDateInput.value) {
       this.startDateInput.value = new Date().toISOString().split('T')[0];
     }
 
@@ -3900,7 +4076,7 @@ class BookApp {
     const totalLengthInput = this.totalLengthInput;
     const progressUnitSelect = this.progressUnitSelect;
 
-    if (status === '未开始') {
+    if (status === 'unstarted') {
       // 未开始：禁用所有进度输入
       currentProgressInput.disabled = true;
       totalLengthInput.disabled = true;
@@ -3908,13 +4084,13 @@ class BookApp {
       currentProgressInput.removeAttribute('readonly');
       currentProgressInput.value = '';
       totalLengthInput.value = '';
-    } else if (status === '阅读中') {
+    } else if (status === 'reading') {
       // 阅读中：启用所有进度输入
       currentProgressInput.disabled = false;
       totalLengthInput.disabled = false;
       progressUnitSelect.disabled = false;
       currentProgressInput.removeAttribute('readonly');
-    } else if (status === '已读完') {
+    } else if (status === 'completed') {
       // 已读完：禁用当前进度，保持总计可用
       currentProgressInput.disabled = true;
       currentProgressInput.setAttribute('readonly', true);
@@ -4336,6 +4512,9 @@ class BookApp {
       ? Math.round((report.completedBooks / report.totalBooks) * 100)
       : 0;
     document.getElementById('completionRate').textContent = `${completionRate}%`;
+
+    // 动态更新状态标签称谓
+    this.updateStatusLabels();
   }
 
   // 创建图表

@@ -94,13 +94,13 @@
                         <label class="filter-label">阅读状态</label>
                         <div class="checkbox-group" id="filterStatusGroup">
                             <label class="checkbox-label">
-                                <input type="checkbox" name="filterStatus" value="未开始"> 未开始
+                                <input type="checkbox" name="filterStatus" value="未开始" data-status="unstarted"> <span class="filter-status-label" data-status="unstarted">未开始</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="filterStatus" value="阅读中"> 阅读中
+                                <input type="checkbox" name="filterStatus" value="阅读中" data-status="reading"> <span class="filter-status-label" data-status="reading">阅读中</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="filterStatus" value="已读完"> 已读完
+                                <input type="checkbox" name="filterStatus" value="已读完" data-status="completed"> <span class="filter-status-label" data-status="completed">已读完</span>
                             </label>
                         </div>
                     </div>
@@ -599,7 +599,7 @@
                             </div>
                             <div class="stat-info">
                                 <div class="stat-value" id="completedBooks">0</div>
-                                <div class="stat-label">已读完</div>
+                                <div class="stat-label" id="completedLabel">已读完</div>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -608,7 +608,7 @@
                             </div>
                             <div class="stat-info">
                                 <div class="stat-value" id="readingBooks">0</div>
-                                <div class="stat-label">阅读中</div>
+                                <div class="stat-label" id="readingLabel">阅读中</div>
                             </div>
                         </div>
                         <div class="stat-card">
