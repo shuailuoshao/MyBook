@@ -27,6 +27,9 @@ const DEFAULT_PROFILE_NAME = "标准配置";
 const DEBUG = false;
 const log = DEBUG ? console.log.bind(console) : () => {};
 
+// 预编译正则表达式（性能优化）
+const _WIN_PATH_REGEX = /^[a-zA-Z]:\\/;
+
 // =========================================
 // 日记数据模型
 // =========================================
@@ -1712,6 +1715,9 @@ class BookApp {
     this._sortedJournals = null;
     this._journalsHash = '';
 
+    // 渲染任务控制器（用于取消进行中的渲染）
+    this._renderController = null;
+
     // 题材与状态称谓映射表
     this.statusLabels = {
       '书籍类': {
@@ -2412,12 +2418,18 @@ class BookApp {
     this._journalsHash = '';
   }
 
-  // 渲染日记列表（完全异步优化）
+  // 渲染日记列表（第三轮极限优化）
   renderJournalList() {
+    // 取消上一次渲染任务
+    if (this._renderController) {
+      this._renderController.aborted = true;
+    }
+    this._renderController = { aborted: false };
+
     // 使用缓存的 DOM 引用
     const container = this.domCache.journalList;
     const emptyState = this.domCache.journalEmptyState;
-    const BATCH_SIZE = 20;
+    const BATCH_SIZE = 10;  // 首屏优先
 
     log('renderJournalList called, journals:', this.journals.length, 'moodFilter:', this.currentMoodFilter);
 
@@ -2502,7 +2514,7 @@ class BookApp {
         }).join('')
       : '';
 
-    // 获取图片信息（支持 dataUrl 和路径两种格式）
+    // 获取图片信息（支持 dataUrl 和路径两种格式）- 预编译正则优化
     const imagesHtml = journal.images && journal.images.length > 0
       ? journal.images.map(imgData => {
           let imgSrc = '';
@@ -2514,7 +2526,7 @@ class BookApp {
               imgKey = imgData.dataUrl;
             } else if (imgData.path) {
               imgSrc = imgData.path;
-              if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+              if (_WIN_PATH_REGEX.test(imgSrc)) {
                 imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
               }
               imgKey = imgData.path;
@@ -2522,7 +2534,7 @@ class BookApp {
           } else {
             // 字符串格式（旧数据）
             imgSrc = imgData;
-            if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+            if (_WIN_PATH_REGEX.test(imgSrc)) {
               imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
             }
             imgKey = imgData;
@@ -2548,23 +2560,38 @@ class BookApp {
     `;
   }
 
-  // 异步渲染剩余日记
+  // 异步渲染剩余日记（使用 requestIdleCallback）
   _renderRemainingJournals(remaining, container) {
     const BATCH = 10;
     let index = 0;
 
     const renderBatch = () => {
+      // 检查是否已取消
+      if (this._renderController && this._renderController.aborted) {
+        return;
+      }
+
       const batch = remaining.slice(index, index + BATCH);
       const html = this._renderJournalCards(batch);
       container.insertAdjacentHTML('beforeend', html);
       index += BATCH;
 
       if (index < remaining.length) {
-        requestAnimationFrame(renderBatch);
+        // 使用 requestIdleCallback 空闲时渲染，回退到 setTimeout
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(renderBatch);
+        } else {
+          setTimeout(renderBatch, 16);
+        }
       }
     };
 
-    requestAnimationFrame(renderBatch);
+    // 首帧后开始渲染
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(renderBatch);
+    } else {
+      requestAnimationFrame(renderBatch);
+    }
   }
 
   // 获取星期几
@@ -2985,7 +3012,7 @@ class BookApp {
         }).join('')
       : '';
 
-    // 获取图片信息（支持 dataUrl 和路径两种格式）
+    // 获取图片信息（支持 dataUrl 和路径两种格式）- 预编译正则优化
     const imagesHtml = journal.images && journal.images.length > 0
       ? journal.images.map(imgData => {
           let imgSrc = '';
@@ -2997,7 +3024,7 @@ class BookApp {
               imgKey = imgData.dataUrl;
             } else if (imgData.path) {
               imgSrc = imgData.path;
-              if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+              if (_WIN_PATH_REGEX.test(imgSrc)) {
                 imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
               }
               imgKey = imgData.path;
@@ -3005,7 +3032,7 @@ class BookApp {
           } else {
             // 字符串格式（旧数据）
             imgSrc = imgData;
-            if (/^[a-zA-Z]:\\/.test(imgSrc)) {
+            if (_WIN_PATH_REGEX.test(imgSrc)) {
               imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
             }
             imgKey = imgData;
