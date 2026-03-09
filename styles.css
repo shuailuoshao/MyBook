@@ -5,53 +5,66 @@
     box-sizing: border-box;
 }
 
-/* 全局颜色变量 - 浅丁香紫/粉白 → 珊瑚粉/桃粉主题 */
+/* 粉紫渐变配色方案 */
 :root {
-    --primary-gradient: linear-gradient(135deg, #e6e6fa 0%, #ffe4e1 50%, #ffb6c1 100%);
-    --primary-color: #dda0dd;
-    --secondary-color: #ffb6c1;
-    --hover-color: #da70d6;
-    --bg-light: #fff5f5;
-    --bg-gradient: linear-gradient(135deg, #f8f0ff 0%, #ffe4e1 100%);
-    --danger-color: #e74c3c;
+    /* 主色调 - 粉紫渐变 */
+    --primary-color: #B794C5;
+    --primary-gradient: linear-gradient(135deg, #E8D5E0 0%, #D4B8E0 50%, #C9A8E0 100%);
+    --secondary-color: #D4A5C5;
+    --hover-color: #A67BA8;
+
+    /* 背景色 - 柔和渐变 */
+    --bg-color: #F5F0F7;
+    --bg-light: rgba(255, 255, 255, 0.85);
+    --bg-gradient: linear-gradient(180deg, #E8D5E0 0%, #F5EEF7 50%, #F0E5F5 100%);
+
+    /* 功能色 */
+    --success-color: #9DD6B8;
+    --warning-color: #E8C97D;
+    --danger-color: #D49AA5;
 
     /* 基础颜色变量 */
-    --bg-color: white;
-    --text-color: #333;
-    --border-color: #e9ecef;
-    --card-bg: white;
-    --header-bg: var(--primary-gradient);
-    --footer-bg: #f8f9fa;
-    --input-bg: linear-gradient(135deg, #fff5f5 0%, #fff0f5 100%);
-    --modal-bg: white;
-    --shadow-color: rgba(0, 0, 0, 0.1);
+    --text-color: #5A4A5A;
+    --text-secondary: #8A7A8A;
+    --border-color: rgba(180, 150, 180, 0.2);
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --header-bg: linear-gradient(135deg, #E8D5E0 0%, #D4B8E0 100%);
+    --footer-bg: #F0E5F0;
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --modal-bg: rgba(255, 255, 255, 0.95);
+    --shadow-color: rgba(150, 100, 150, 0.15);
+    --shadow-medium: rgba(150, 100, 150, 0.25);
+
+    /* 圆角 */
+    --radius-small: 10px;
+    --radius-medium: 14px;
+    --radius-large: 18px;
 
     /* 主题阴影 */
-    --theme-shadow-light: rgba(0, 0, 0, 0.1);
+    --theme-shadow-light: 0 2px 10px rgba(150, 100, 150, 0.1);
+    --theme-shadow-medium: 0 4px 20px rgba(150, 100, 150, 0.18);
 }
 
-/* 深色模式变量 */
+/* 深色模式 - 粉紫暗色 */
 [data-theme="dark"] {
-    --primary-gradient: linear-gradient(135deg, #4a2c4a 0%, #5a3a5a 50%, #7a4a7a 100%);
-    --primary-color: #8a5a8a;
-    --secondary-color: #9a6a9a;
-    --hover-color: #aa7aaa;
-    --bg-light: #2a1a2a;
-    --bg-gradient: linear-gradient(135deg, #3a2a3a 0%, #4a3a4a 100%);
-    --footer-bg: #1a0a1a;
+    --primary-gradient: linear-gradient(135deg, #8B6B9C 0%, #7A6A8C 100%);
+    --primary-color: #9A8A9C;
+    --secondary-color: #8A7A8C;
+    --hover-color: #AA9AAA;
+    --bg-light: #2A2530;
+    --bg-gradient: linear-gradient(180deg, #1A1520 0%, #252030 100%);
 
-    --bg-color: #1a0a1a;
-    --text-color: #e9ecef;
-    --border-color: #4a3a4a;
-    --card-bg: #2a1a2a;
-    --header-bg: var(--primary-gradient);
-    --footer-bg: #2a1a2a;
-    --input-bg: linear-gradient(135deg, #3a2a3a 0%, #4a3a4a 100%);
-    --modal-bg: #2a1a2a;
-    --shadow-color: rgba(0, 0, 0, 0.3);
-
-    /* 深色模式具体元素样式覆盖 */
-    --btn-text: #f8f9fa;
+    --bg-color: #1A1520;
+    --text-color: #E8E0E8;
+    --text-secondary: #A89AA8;
+    --border-color: rgba(150, 130, 150, 0.3);
+    --card-bg: rgba(40, 35, 45, 0.9);
+    --header-bg: linear-gradient(135deg, #2A2535 0%, #1A1525 100%);
+    --footer-bg: #252030;
+    --input-bg: rgba(40, 35, 50, 0.9);
+    --modal-bg: rgba(35, 30, 45, 0.95);
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --shadow-medium: rgba(100, 80, 120, 0.35);
 }
 
 [data-theme="dark"] .book-title {
@@ -134,13 +147,15 @@
 }
 
 body {
-    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Microsoft YaHei', sans-serif;
     background: var(--bg-gradient);
     color: var(--text-color);
-    line-height: 1.6;
+    line-height: 1.5;
     min-height: 100vh;
     overflow-x: hidden;
-    transition: background 0.3s, color 0.3s;
+    transition: background 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .app-container {
@@ -249,31 +264,68 @@ body {
     max-width: 500px;
 }
 
-/* 日期筛选样式 */
+/* Apple 风格日期筛选样式 */
 .date-filter {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-left: 12px;
+    padding: 4px 8px;
+    background: var(--bg-light);
+    border-radius: var(--radius-medium);
+    border: 1px solid var(--border-color);
 }
 
 .date-filter .date-input {
-    padding: 6px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-small);
     font-size: 0.85rem;
-    background: var(--input-bg);
+    background: transparent;
     color: var(--text-color);
+    -webkit-appearance: none;
+    cursor: pointer;
 }
 
 .date-filter .date-input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    background: var(--bg-color);
+}
+
+.date-filter .date-input::-webkit-calendar-picker-indicator {
+    filter: opacity(0.5);
+    cursor: pointer;
+}
+
+.date-filter span {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
 }
 
 .date-filter .btn-small {
-    padding: 6px 10px;
+    padding: 8px 12px;
     font-size: 0.85rem;
+    border-radius: var(--radius-small);
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.date-filter .btn-small:hover {
+    background: var(--hover-color);
+}
+
+.date-filter .btn-small.btn-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.date-filter .btn-small.btn-outline:hover {
+    background: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--text-secondary);
 }
 
 .search-box i {
@@ -462,60 +514,68 @@ body {
     flex-wrap: wrap;
 }
 
-/* 按钮样式 */
+/* Apple 风格按钮样式 */
 .btn-primary, .btn-secondary, .btn-danger {
-    padding: 12px 24px;
+    padding: 10px 20px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-medium);
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    display: flex;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary i, .btn-secondary i, .btn-danger i {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
 }
 
 .btn-primary {
     background: var(--primary-gradient);
-    color: #4a2c4a;
-    border-radius: 25px;
+    color: #5A4A5A;
     border: none;
 }
 
 .btn-primary:hover {
     background: var(--hover-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(180, 100, 180, 0.3);
+    color: white;
+    transform: scale(1.02);
+    box-shadow: var(--theme-shadow-medium);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
 }
 
 .btn-secondary {
-    background: var(--primary-gradient);
-    color: #4a2c4a;
-    border: none;
-    border-radius: 25px;
+    background: var(--bg-light);
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
 }
 
 .btn-secondary:hover {
-    background: var(--hover-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(180, 100, 180, 0.3);
+    background: var(--bg-color);
+    border-color: var(--primary-color);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    background: var(--danger-color);
     color: white;
 }
 
 .btn-danger:hover {
-    background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    background: #DC2F1E;
+    transform: scale(1.02);
+    box-shadow: var(--theme-shadow-medium);
+}
+
+.btn-danger:active {
+    transform: scale(0.98);
 }
 
 /* 按钮防挤压 */
@@ -524,21 +584,29 @@ body {
     flex-shrink: 0;
 }
 
-/* 表单控件 */
-.form-select, input[type="text"], input[type="date"] {
-    padding: 8px 12px;
+/* Apple 风格表单控件 */
+.form-select, input[type="text"], input[type="date"], input[type="datetime-local"], input[type="number"], textarea {
+    padding: 12px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
+    border-radius: var(--radius-small);
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
     background: var(--input-bg);
     color: var(--text-color);
+    -webkit-appearance: none;
 }
 
-.form-select:focus, input:focus {
+.form-select:focus, input:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
+}
+
+.form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='12 12'%3E%3Cpath fill='%238E8E93' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
 }
 
 .form-select:hover, input:hover {
@@ -1191,14 +1259,14 @@ body {
     }
 }
 
-/* 书籍卡片 */
+/* Apple 风格书籍卡片 */
 .book-card {
     background: var(--card-bg);
-    border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 4px 12px -2px var(--theme-shadow-light, rgba(0, 0, 0, 0.1));
+    border-radius: var(--radius-large);
+    padding: 16px;
+    box-shadow: var(--theme-shadow-light);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -1207,12 +1275,16 @@ body {
     height: 100%;
     width: 100%;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .book-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px var(--theme-shadow-light, rgba(0, 0, 0, 0.15)) !important;
-    border-color: var(--theme-border, #3498db) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--theme-shadow-medium) !important;
+}
+
+.book-card:active {
+    transform: translateY(0);
 }
 
 .book-card::before {
@@ -1548,21 +1620,25 @@ body {
     z-index: 1000;
 }
 
+/* Apple 风格模态框 */
 .modal-content {
     background: var(--modal-bg);
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px var(--shadow-color);
+    padding: 24px;
+    border-radius: var(--radius-large);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     max-width: 500px;
     width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
     z-index: 1001;
-    transition: background 0.3s, box-shadow 0.3s;
+    transition: all 0.3s ease;
 }
 
 .modal h3 {
-    font-size: 1.2rem;
-    margin-bottom: 15px;
-    color: #2c3e50;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--text-color);
     display: flex;
     align-items: center;
     gap: 10px;

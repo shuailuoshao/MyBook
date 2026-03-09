@@ -77,7 +77,8 @@
       "Bash(npx skills find UI redesign)",
       "Bash(npx skills add heyman333/atelier-ui@apple-ui-designer -g -y)",
       "Bash(npx skills add shajith003/awesome-claude-skills@ui-design -g -y)",
-      "Bash(npx skills add teachingai/full-stack-skills@electron -g -y)"
+      "Bash(npx skills add teachingai/full-stack-skills@electron -g -y)",
+      "Bash(curl -L -o \"d:/study_and_try/MyBook/MyBook/reference.png\" \"https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/ccv2%2F2026-03-09%2FMiniMax-M2.5%2F2028446885785637630%2F96ec324798d7e7f8df6dea0ce87bf5b87a8edb0b78448979f21b1c935f6258c2..png?Expires=1773131863&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=k2fizvNo%2BeQIGGPKnyN9Hq7c8f8%3D\")"
     ]
   }
 }
