@@ -75,6 +75,37 @@ let ratingApp = null;
 
 // ExportService类定义（导入/导出服务）
 class ExportService {
+  // 导出全部数据（知识库 + 每日记录 + 文件夹）
+  static exportAllData(books, journals, folders) {
+    const exportData = {
+      version: '1.0',
+      exportTime: new Date().toISOString(),
+      books: books.map(book => book.toJSON ? book.toJSON() : book),
+      journals: journals.map(journal => journal.toJSON ? journal.toJSON() : journal),
+      folders: folders || []
+    };
+    return JSON.stringify(exportData, null, 2);
+  }
+
+  // 解析导入数据
+  static parseImportData(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      // 验证数据格式
+      if (!data.version) {
+        throw new Error('无效的导入文件格式');
+      }
+      return {
+        books: data.books || [],
+        journals: data.journals || [],
+        folders: data.folders || []
+      };
+    } catch (e) {
+      console.error('解析导入数据失败:', e);
+      throw new Error('导入文件格式错误');
+    }
+  }
+
   // 导出为 JSON（完整数据）
   static exportToJSON(books) {
     const exportData = {
@@ -165,7 +196,22 @@ class ExportService {
     try {
       const data = JSON.parse(jsonString);
 
-      // 验证数据结构
+      // 检测是否为全量导出数据（全量数据有 version 和 exportTime 字段）
+      const isFullExport = data.version && data.exportTime;
+
+      if (isFullExport) {
+        // 全量数据格式
+        return {
+          success: true,
+          isFullExport: true,
+          books: data.books || [],
+          journals: data.journals || [],
+          folders: data.folders || [],
+          exportTime: data.exportTime
+        };
+      }
+
+      // 验证数据结构（旧的单书籍数据格式）
       if (!data.books || !Array.isArray(data.books)) {
         throw new Error('无效的数据格式：缺少 books 数组');
       }
@@ -1821,6 +1867,8 @@ class BookApp {
     this.currentView = 'knowledge'; // knowledge | journal
     this.currentMoodFilter = null; // 当前心情筛选
     this.currentJournalSearchTerm = ''; // 当前日记搜索关键词
+    this.journalStartDate = null; // 日期筛选开始日期
+    this.journalEndDate = null; // 日期筛选结束日期
     this.currentJournalImages = []; // 当前日记图片数组
     this.currentJournalToDelete = null; // 待删除的日记ID
     this.statsCurrentPage = 0; // 统计模态框当前页码
@@ -2109,6 +2157,30 @@ class BookApp {
       });
     }
 
+    // 日期筛选事件
+    const journalStartDate = document.getElementById('journalStartDate');
+    const journalEndDate = document.getElementById('journalEndDate');
+    const journalDateFilterBtn = document.getElementById('journalDateFilterBtn');
+    const journalClearDateFilterBtn = document.getElementById('journalClearDateFilterBtn');
+
+    if (journalDateFilterBtn) {
+      journalDateFilterBtn.addEventListener('click', () => {
+        this.journalStartDate = journalStartDate ? journalStartDate.value : null;
+        this.journalEndDate = journalEndDate ? journalEndDate.value : null;
+        this.renderJournalList();
+      });
+    }
+
+    if (journalClearDateFilterBtn) {
+      journalClearDateFilterBtn.addEventListener('click', () => {
+        this.journalStartDate = null;
+        this.journalEndDate = null;
+        if (journalStartDate) journalStartDate.value = '';
+        if (journalEndDate) journalEndDate.value = '';
+        this.renderJournalList();
+      });
+    }
+
     this.fileDropArea.addEventListener('click', () => this.importFile.click());
     this.fileDropArea.addEventListener('dragover', (e) => this.handleDragOver(e));
     this.fileDropArea.addEventListener('drop', (e) => this.handleFileDrop(e));
@@ -2368,6 +2440,10 @@ class BookApp {
       if (c.journalToolbar) c.journalToolbar.style.display = 'none';
       if (c.journalSection) c.journalSection.style.display = 'none';
 
+      // 清除日记日期筛选状态
+      this.journalStartDate = null;
+      this.journalEndDate = null;
+
       // 显示知识库模块
       if (c.kbSidebar) c.kbSidebar.style.display = 'block';
       if (c.kbToolbar) c.kbToolbar.style.display = 'flex';
@@ -2385,7 +2461,9 @@ class BookApp {
     const currentHash = JSON.stringify({
       journals: this.journals.map(j => j.id),  // 只用 ID 减少计算量
       filter: this.currentMoodFilter,
-      search: this.currentJournalSearchTerm
+      search: this.currentJournalSearchTerm,
+      startDate: this.journalStartDate,
+      endDate: this.journalEndDate
     });
 
     if (this._journalsHash !== currentHash) {
@@ -2402,6 +2480,21 @@ class BookApp {
           (j.content && j.content.toLowerCase().includes(term)) ||
           j.date.includes(term)
         );
+      }
+      // 日期范围筛选
+      if (this.journalStartDate || this.journalEndDate) {
+        filtered = filtered.filter(j => {
+          const journalDate = new Date(j.date);
+          const start = this.journalStartDate ? new Date(this.journalStartDate) : null;
+          const end = this.journalEndDate ? new Date(this.journalEndDate) : null;
+          // 设置结束日期为当天的最后一刻
+          if (end) {
+            end.setHours(23, 59, 59, 999);
+          }
+          if (start && journalDate < start) return false;
+          if (end && journalDate > end) return false;
+          return true;
+        });
       }
 
       this._sortedJournals = [...filtered].sort((a, b) =>
@@ -2912,12 +3005,12 @@ class BookApp {
         dots.forEach((dot, index) => {
           dot.classList.toggle('active', index === 1);
         });
-        // 切换到第二页后，调用resize确保热力图正确渲染
-        setTimeout(() => {
+        // 切换到第二页后，调用resize确保热力图正确渲染（使用 requestAnimationFrame 优化）
+        requestAnimationFrame(() => {
           if (this.journalHeatmapChart) {
             this.journalHeatmapChart.resize();
           }
-        }, 350);
+        });
       } else if (e.deltaY < 0 && this.statsCurrentPage === 1) {
         // 向上滚动，从第二页切回第一页
         this.statsCurrentPage = 0;
@@ -2925,12 +3018,12 @@ class BookApp {
         dots.forEach((dot, index) => {
           dot.classList.toggle('active', index === 0);
         });
-        // 切回第一页后，调用resize确保饼图正确渲染
-        setTimeout(() => {
+        // 切回第一页后，调用resize确保饼图正确渲染（使用 requestAnimationFrame 优化）
+        requestAnimationFrame(() => {
           if (this.journalStatsChart) {
             this.journalStatsChart.resize();
           }
-        }, 350);
+        });
       }
     };
 
@@ -2948,15 +3041,15 @@ class BookApp {
         });
         // 切换到第二页时调用resize
         if (page === 1 && this.journalHeatmapChart) {
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             this.journalHeatmapChart.resize();
-          }, 350);
+          });
         }
         // 切换回第一页时调用resize
         if (page === 0 && this.journalStatsChart) {
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             this.journalStatsChart.resize();
-          }, 350);
+          });
         }
       });
     });
@@ -3488,10 +3581,13 @@ class BookApp {
     this.hideEmptyState();
     this.bookListContainer.innerHTML = '';
 
+    // 使用 DocumentFragment 批量添加（性能优化）
+    const fragment = document.createDocumentFragment();
     sortedBooks.forEach(book => {
       const bookCard = this.createBookCard(book);
-      this.bookListContainer.appendChild(bookCard);
+      fragment.appendChild(bookCard);
     });
+    this.bookListContainer.appendChild(fragment);
   }
 
   // 检查是否有活动的过滤条件
@@ -5415,6 +5511,13 @@ class BookApp {
       let fileExtension;
 
       switch (format) {
+        case 'full-json':
+          // 全量导出：书籍 + 日记 + 文件夹
+          const journals = this.journals || [];
+          const folders = this.storageService.folders || [];
+          exportData = ExportService.exportAllData(books, journals, folders);
+          fileExtension = 'json';
+          break;
         case 'json':
           exportData = ExportService.exportToJSON(books);
           fileExtension = 'json';
@@ -5476,6 +5579,44 @@ class BookApp {
       }
 
       const merge = this.importMerge.checked;
+
+      // 检查是否为全量导入
+      if (this.currentImportData.isFullExport) {
+        // 全量数据导入
+        const newBooks = this.currentImportData.books || [];
+        const newJournals = this.currentImportData.journals || [];
+        const newFolders = this.currentImportData.folders || [];
+
+        if (!merge) {
+          // 替换模式：直接替换所有数据
+          this.storageService.books = newBooks.map(b => Book.fromJSON(b));
+          this.journals = newJournals.map(j => JournalEntry.fromJSON(j));
+          this.storageService.folders = newFolders;
+        } else {
+          // 合并模式：追加数据
+          const existingBooks = this.storageService.getAllBooks();
+          const bookMerge = ExportService.mergeBooks(existingBooks, newBooks, 'skipDuplicates');
+          this.storageService.books = bookMerge.mergedBooks;
+
+          // 合并日记（基于 ID）
+          const existingIds = new Set(this.journals.map(j => j.id));
+          const newJournalsToAdd = newJournals.filter(j => !existingIds.has(j.id));
+          this.journals = [...this.journals, ...newJournalsToAdd.map(j => JournalEntry.fromJSON(j))];
+        }
+
+        await this.storageService.saveBooks();
+        await this.saveJournals();
+
+        const message = `导入完成: ${newBooks.length} 本书籍, ${newJournals.length} 篇日记`;
+        this.showToast(message, 'success');
+        this.closeImportModal();
+        this.loadBooks();
+        this.renderJournalList();
+        this.renderFolders();
+        return;
+      }
+
+      // 原有的单书籍导入逻辑
       const existingBooks = this.storageService.getAllBooks();
       const newBooks = this.currentImportData.books;
 
@@ -5646,16 +5787,18 @@ class BookApp {
     // 排序
     const sortedBooks = SortService.applyCurrentSort(books, this.currentSortField, this.currentSortOrder);
 
-    // 渲染
+    // 渲染（使用 DocumentFragment 批量添加）
     if (sortedBooks.length === 0) {
       this.showEmptyState();
     } else {
       this.hideEmptyState();
       this.bookListContainer.innerHTML = '';
+      const fragment = document.createDocumentFragment();
       sortedBooks.forEach(book => {
         const bookCard = this.createBookCard(book);
-        this.bookListContainer.appendChild(bookCard);
+        fragment.appendChild(bookCard);
       });
+      this.bookListContainer.appendChild(fragment);
     }
 
     this.updateBookCount();

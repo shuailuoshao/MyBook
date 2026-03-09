@@ -163,6 +163,18 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="journalSearch" placeholder="搜索日记...">
                     </div>
+                    <!-- 日期筛选 -->
+                    <div class="date-filter">
+                        <input type="date" id="journalStartDate" class="date-input" title="开始日期">
+                        <span>-</span>
+                        <input type="date" id="journalEndDate" class="date-input" title="结束日期">
+                        <button id="journalDateFilterBtn" class="btn-small" title="筛选">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                        <button id="journalClearDateFilterBtn" class="btn-small btn-outline" title="清除筛选">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="data-controls">
                     <button id="journalStatsBtn" class="btn-secondary" title="日记统计">
@@ -506,23 +518,30 @@
             <div class="modal-body">
                 <div class="export-options">
                     <label class="radio-label">
-                        <input type="radio" name="exportFormat" value="json" checked>
+                        <input type="radio" name="exportFormat" value="full-json" checked>
                         <span class="radio-text">
-                            <strong>JSON (完整数据)</strong>
+                            <strong>全部数据 (推荐)</strong>
+                            <small>导出知识库 + 每日记录 + 文件夹，可完整备份和恢复</small>
+                        </span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="exportFormat" value="json">
+                        <span class="radio-text">
+                            <strong>仅知识库 (JSON)</strong>
                             <small>导出所有书籍数据，包括笔记和评分</small>
                         </span>
                     </label>
                     <label class="radio-label">
                         <input type="radio" name="exportFormat" value="json-detailed">
                         <span class="radio-text">
-                            <strong>JSON (含评分详情)</strong>
+                            <strong>仅知识库 (含评分详情)</strong>
                             <small>导出完整数据，包含详细的评分指标</small>
                         </span>
                     </label>
                     <label class="radio-label">
                         <input type="radio" name="exportFormat" value="csv">
                         <span class="radio-text">
-                            <strong>CSV (表格)</strong>
+                            <strong>仅知识库 (CSV)</strong>
                             <small>导出为表格格式，适合在 Excel 中查看</small>
                         </span>
                     </label>

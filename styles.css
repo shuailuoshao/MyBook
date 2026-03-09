@@ -249,6 +249,33 @@ body {
     max-width: 500px;
 }
 
+/* 日期筛选样式 */
+.date-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+.date-filter .date-input {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background: var(--input-bg);
+    color: var(--text-color);
+}
+
+.date-filter .date-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.date-filter .btn-small {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
 .search-box i {
     position: absolute;
     left: 12px;

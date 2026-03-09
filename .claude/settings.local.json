@@ -70,7 +70,14 @@
       "Bash(cmd /c \"set ELECTRON_RUN_AS_NODE=0& start cmd /k node_modules\\\\electron\\\\dist\\\\electron.exe .\")",
       "Bash(powershell -ExecutionPolicy Bypass -File start_fixed.ps1)",
       "Bash(\"./node_modules/.bin/electron\" --version)",
-      "Bash(node node_modules/electron/cli.js --version)"
+      "Bash(node node_modules/electron/cli.js --version)",
+      "Bash(curl -L -o \"d:\\\\study_and_try\\\\MyBook\\\\MyBook\\\\build\\\\icon_new.png\" \"https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/ccv2%2F2026-03-09%2FMiniMax-M2.5%2F2028446885785637630%2F0c6f6c422ce01104b54b75f12d94594bfac7c5ad87bea5b5c42d28251fb929f3..png?Expires=1773120327&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=ScdNS83k%2BYBxTQUsJnOE4T9sZNs%3D\")",
+      "Bash(curl -L -o \"d:/study_and_try/MyBook/MyBook/build/icon.png\" \"https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/ccv2%2F2026-03-09%2FMiniMax-M2.5%2F2028446885785637630%2Fee30095fafc2339bf3da3fb10c260ff29e8dba2d5cef45923a7b0a674f855f09..png?Expires=1773117433&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=1PI8cHnnJLW1SHg%2BnHp0zDvSWGE%3D\")",
+      "Bash(npx skills find electron UI design)",
+      "Bash(npx skills find UI redesign)",
+      "Bash(npx skills add heyman333/atelier-ui@apple-ui-designer -g -y)",
+      "Bash(npx skills add shajith003/awesome-claude-skills@ui-design -g -y)",
+      "Bash(npx skills add teachingai/full-stack-skills@electron -g -y)"
     ]
   }
 }

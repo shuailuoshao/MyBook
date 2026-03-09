@@ -26,6 +26,7 @@
   "build": {
     "appId": "com.mybook.app",
     "productName": "MyBook书籍管理",
+    "icon": "build/icon.ico",
     "directories": {
       "output": "dist"
     },
