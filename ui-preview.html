@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Preview - Apple Bright Purple</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Preview container styles */
+        .preview-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .preview-section {
+            margin-bottom: 60px;
+        }
+
+        .preview-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        /* Override dark mode styles for preview */
+        body {
+            background-color: var(--bg-color) !important;
+            background-image: linear-gradient(180deg, #FAFAFC 0%, #F0F0F3 100%) !important;
+            color: var(--text-color) !important;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F4F4F5 100%) !important;
+            border-bottom: 1px solid var(--border-color) !important;
+        }
+
+        .app-header h1 {
+            color: var(--text-color) !important;
+        }
+
+        .sidebar {
+            background: #FFFFFF !important;
+            border-right: 1px solid var(--border-color) !important;
+        }
+
+        .sidebar-menu-item {
+            color: var(--text-secondary) !important;
+        }
+
+        .sidebar-menu-item.active {
+            background: #F3E8FF !important;
+            color: var(--primary-color) !important;
+        }
+
+        .search-box {
+            background: var(--input-bg) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .search-box input {
+            background: transparent !important;
+            color: var(--text-color) !important;
+        }
+
+        /* Book grid preview */
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* Rating section preview */
+        .rating-workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .rating-workspace {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <!-- Header Preview -->
+        <div class="preview-section">
+            <div class="preview-title">1. 顶部导航栏</div>
+            <header class="app-header" style="padding: 16px 24px; border-radius: 12px;">
+                <div class="header-left">
+                    <h1 style="font-size: 20px;"><i class="fas fa-book" style="color: var(--primary-color);"></i> 企画0004</h1>
+                </div>
+                <div class="header-right">
+                    <button class="btn-secondary" style="padding: 8px 16px;">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </header>
+        </div>
+
+        <!-- Book Cards Preview -->
+        <div class="preview-section">
+            <div class="preview-title">2. 作品卡片</div>
+            <div class="book-grid">
+                <div class="book-card">
+                    <div class="book-header">
+                        <span class="book-title">作品标题</span>
+                        <span class="book-status" style="background: #F3E8FF; color: #8E34EB;">已完成</span>
+                    </div>
+                    <p class="book-author">作者名称</p>
+                    <div class="book-rating">
+                        <i class="fas fa-star" style="color: #FFB800;"></i>
+                        <span class="rating-value">8.5</span>
+                    </div>
+                    <div class="book-tags" style="margin-top: 8px;">
+                        <span class="tag" style="background: #F3E8FF; color: #8E34EB; padding: 2px 8px; border-radius: 4px; font-size: 12px;">小说</span>
+                    </div>
+                </div>
+                <div class="book-card">
+                    <div class="book-header">
+                        <span class="book-title">另一部作品</span>
+                        <span class="book-status" style="background: #FEF3C7; color: #D97706;">阅读中</span>
+                    </div>
+                    <p class="book-author">另一位作者</p>
+                    <div class="book-rating">
+                        <i class="fas fa-star" style="color: #FFB800;"></i>
+                        <span class="rating-value">7.8</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons Preview -->
+        <div class="preview-section">
+            <div class="preview-title">3. 按钮样式</div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; padding: 20px; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color);">
+                <button class="btn-primary">
+                    <i class="fas fa-plus"></i> 主要按钮
+                </button>
+                <button class="btn-secondary">
+                    <i class="fas fa-cog"></i> 次要按钮
+                </button>
+                <button class="btn-danger">
+                    <i class="fas fa-trash"></i> 危险按钮
+                </button>
+            </div>
+        </div>
+
+        <!-- Form Inputs Preview -->
+        <div class="preview-section">
+            <div class="preview-title">4. 表单控件</div>
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 24px; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); max-width: 400px;">
+                <input type="text" class="form-select" placeholder="输入框样式" style="width: 100%;">
+                <select class="form-select" style="width: 100%;">
+                    <option>选择框样式</option>
+                    <option>选项一</option>
+                    <option>选项二</option>
+                </select>
+                <textarea class="form-select" placeholder="文本域样式" rows="3" style="width: 100%;"></textarea>
+            </div>
+        </div>
+
+        <!-- Modal Preview -->
+        <div class="preview-section">
+            <div class="preview-title">5. 模态框</div>
+            <div style="background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden; max-width: 500px; box-shadow: var(--theme-shadow-medium);">
+                <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
+                    <h3 style="margin: 0; font-size: 18px; color: var(--text-color);">模态框标题</h3>
+                    <button class="close-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary);">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;">这是模态框的内容区域，展示简洁明亮的Apple风格设计。</p>
+                    <button class="btn-primary" style="width: 100%;">确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="preview-section">
+            <div class="preview-title">6. 紫色配色方案</div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: #8E34EB; border-radius: 12px; margin-bottom: 8px;"></div>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Primary</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: #A855F7; border-radius: 12px; margin-bottom: 8px;"></div>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Light</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: #7C3AED; border-radius: 12px; margin-bottom: 8px;"></div>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Dark</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: #F3E8FF; border-radius: 12px; margin-bottom: 8px; border: 1px solid #E5E5EA;"></div>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Subtle</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: #FAFAFC; border-radius: 12px; margin-bottom: 8px; border: 1px solid #E5E5EA;"></div>
+                    <span style="font-size: 12px; color: var(--text-secondary);">Background</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化图标
+        console.log('Apple Bright Purple Theme Preview Loaded');
+    </script>
+</body>
+</html>

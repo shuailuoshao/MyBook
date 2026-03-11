@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyBook UI Design - Apple Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Apple Bright Purple Theme */
+        :root {
+            /* Primary Purple */
+            --apple-purple: #8E34EB;
+            --apple-purple-light: #A855F7;
+            --apple-purple-dark: #7C3AED;
+            --apple-purple-subtle: #F3E8FF;
+
+            /* Light Background */
+            --apple-bg: #FAFAFC;
+            --apple-bg-secondary: #F4F4F5;
+            --apple-bg-card: #FFFFFF;
+
+            /* Text */
+            --apple-text: #1D1D1F;
+            --apple-text-secondary: #86868B;
+            --apple-text-tertiary: #A1A1A6;
+
+            /* System Colors */
+            --apple-blue: #007AFF;
+            --apple-green: #34C759;
+            --apple-red: #FF3B30;
+            --apple-orange: #FF9500;
+            --apple-yellow: #FFCC00;
+
+            /* Borders & Dividers */
+            --apple-border: #E5E5EA;
+            --apple-divider: #D1D1D6;
+
+            /* Shadows */
+            --apple-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --apple-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --apple-shadow-lg: 0 12px 32px rgba(0,0,0,0.12);
+        }
+
+        body {
+            background: linear-gradient(180deg, var(--apple-bg) 0%, #F0F0F3 100%);
+            color: var(--apple-text);
+            min-height: 100vh;
+        }
+
+        /* Apple Card Style */
+        .apple-card {
+            background: var(--apple-bg-card);
+            border-radius: 20px;
+            box-shadow: var(--apple-shadow-sm);
+            border: 1px solid var(--apple-border);
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        .apple-card:hover {
+            box-shadow: var(--apple-shadow-md);
+            transform: translateY(-2px);
+        }
+
+        /* Apple Button Styles */
+        .btn-apple {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-apple-primary {
+            background: linear-gradient(135deg, var(--apple-purple) 0%, var(--apple-purple-dark) 100%);
+            color: white;
+        }
+
+        .btn-apple-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(142, 52, 235, 0.3);
+        }
+
+        .btn-apple-secondary {
+            background: var(--apple-bg-secondary);
+            color: var(--apple-purple);
+            border: 1px solid var(--apple-purple-light);
+        }
+
+        .btn-apple-secondary:hover {
+            background: var(--apple-purple-subtle);
+        }
+
+        /* Apple Input */
+        .input-apple {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--apple-bg-secondary);
+            border: 1px solid var(--apple-border);
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .input-apple:focus {
+            border-color: var(--apple-purple);
+            box-shadow: 0 0 0 3px var(--apple-purple-subtle);
+            background: white;
+        }
+
+        /* Apple List Style */
+        .apple-list {
+            background: var(--apple-bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .apple-list-item {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--apple-divider);
+            transition: background 0.15s ease;
+        }
+
+        .apple-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .apple-list-item:hover {
+            background: var(--apple-bg-secondary);
+        }
+
+        /* Apple Toggle */
+        .toggle-apple {
+            width: 51px;
+            height: 31px;
+            background: var(--apple-bg-secondary);
+            border-radius: 16px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .toggle-apple.active {
+            background: var(--apple-purple);
+        }
+
+        .toggle-apple::after {
+            content: '';
+            position: absolute;
+            width: 27px;
+            height: 27px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-apple.active::after {
+            transform: translateX(20px);
+        }
+
+        /* Badge */
+        .badge-apple {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-plus {
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--apple-green);
+        }
+
+        .badge-minus {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--apple-red);
+        }
+
+        .badge-zero {
+            background: rgba(134, 134, 139, 0.15);
+            color: var(--apple-text-secondary);
+        }
+
+        /* Progress Bar */
+        .progress-apple {
+            height: 8px;
+            background: var(--apple-bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-apple-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--apple-purple-light), var(--apple-purple));
+            border-radius: 4px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Section Header - Apple Style */
+        .section-header {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--apple-text);
+        }
+
+        /* iOS-Style Segmented Control */
+        .segment-control {
+            display: inline-flex;
+            background: var(--apple-bg-secondary);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .segment-item {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--apple-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .segment-item.active {
+            background: white;
+            color: var(--apple-purple);
+            box-shadow: var(--apple-shadow-sm);
+        }
+
+        /* Modal - iOS Sheet Style */
+        .modal-sheet {
+            background: var(--apple-bg-card);
+            border-radius: 20px 20px 0 0;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Metric Card */
+        .metric-card {
+            background: var(--apple-bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--apple-shadow-sm);
+            border: 1px solid var(--apple-border);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--apple-purple);
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: var(--apple-text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--apple-border);
+            border-radius: 3px;
+        }
+
+        /* Score Item */
+        .score-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--apple-bg-secondary);
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .score-name {
+            font-weight: 500;
+            color: var(--apple-text);
+        }
+
+        /* Tab Bar - iOS Style */
+        .tab-bar {
+            display: flex;
+            background: rgba(250, 250, 252, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--apple-border);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            color: var(--apple-text-tertiary);
+            font-size: 10px;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .tab-item.active {
+            color: var(--apple-purple);
+        }
+
+        .tab-icon {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6 md:p-10">
+    <!-- ======================================== -->
+    <!-- 1. 主界面 - 简洁明亮入口 -->
+    <!-- ======================================== -->
+    <section class="mb-20 max-w-2xl mx-auto animate-in">
+        <h2 class="section-header mb-8">1. 主界面入口</h2>
+
+        <div class="apple-card p-12 text-center cursor-pointer relative overflow-hidden">
+            <!-- 淡紫色渐变背景 -->
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-purple-50/50"></div>
+            <div class="absolute top-0 right-0 w-64 h-64 bg-purple-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div class="absolute bottom-0 left-0 w-48 h-48 bg-purple-100/40 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+            <div class="relative z-10">
+                <!-- 简洁书本图标 -->
+                <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i data-lucide="book-open" class="w-10 h-10 text-white"></i>
+                </div>
+
+                <h3 class="text-3xl font-semibold tracking-tight text-gray-900 mb-2" style="letter-spacing: -0.02em;">
+                    自主评分
+                </h3>
+                <p class="text-gray-500 mb-8 text-base">深度解析作品多维洞察</p>
+
+                <button class="btn-apple btn-apple-primary">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    开始精读
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================== -->
+    <!-- 2. 偏好设置面板 - 简洁列表式 -->
+    <!-- ======================================== -->
+    <section class="mb-20 max-w-2xl mx-auto animate-in" style="animation-delay: 0.1s;">
+        <h2 class="section-header mb-8">2. 偏好设置</h2>
+
+        <div class="apple-card overflow-hidden">
+            <!-- 设置列表 -->
+            <div class="apple-list">
+                <!-- API配置 -->
+                <div class="apple-list-item">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <i data-lucide="key" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900">API 配置</div>
+                            <div class="text-sm text-gray-500">设置 OpenAI API 密钥</div>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-300"></i>
+                </div>
+
+                <!-- 评价标准 -->
+                <div class="apple-list-item">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <i data-lucide="list-checks" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900">评价标准</div>
+                            <div class="text-sm text-gray-500">自定义评分维度</div>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-300"></i>
+                </div>
+
+                <!-- 主题切换 -->
+                <div class="apple-list-item">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <i data-lucide="moon" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div class="font-medium text-gray-900">深色模式</div>
+                    </div>
+                    <div class="toggle-apple" onclick="this.classList.toggle('active')"></div>
+                </div>
+
+                <!-- 自动保存 -->
+                <div class="apple-list-item">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <i data-lucide="save" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div class="font-medium text-gray-900">自动保存</div>
+                    </div>
+                    <div class="toggle-apple active" onclick="this.classList.toggle('active')"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================== -->
+    <!-- 3. 评分进度 Dashboard -->
+    <!-- ======================================== -->
+    <section class="mb-20 max-w-3xl mx-auto animate-in" style="animation-delay: 0.2s;">
+        <h2 class="section-header mb-8">3. 评分进度监控</h2>
+
+        <div class="apple-card p-6">
+            <!-- 进度头部 -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <i data-lucide="activity" class="w-6 h-6 text-purple-600"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-900">正在处理</div>
+                        <div class="text-sm text-gray-500">第 3 / 10 个片段</div>
+                    </div>
+                </div>
+                <div class="text-2xl font-bold text-purple-600">30%</div>
+            </div>
+
+            <!-- 进度条 -->
+            <div class="progress-apple mb-6">
+                <div class="progress-apple-fill" style="width: 30%"></div>
+            </div>
+
+            <!-- 指标卡片 -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="metric-card">
+                    <div class="metric-value">3</div>
+                    <div class="metric-label">当前片段</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">24K</div>
+                    <div class="metric-label">Token消耗</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">6</div>
+                    <div class="metric-label">已完成</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">~21s</div>
+                    <div class="metric-label">预计剩余</div>
+                </div>
+            </div>
+
+            <!-- 评分列表 -->
+            <div class="space-y-4">
+                <div class="text-sm font-medium text-gray-500 mb-3">作者层面</div>
+                <div class="score-item">
+                    <span class="score-name">文笔质量</span>
+                    <div class="flex gap-2">
+                        <span class="badge-apple badge-plus">+2</span>
+                        <span class="badge-apple badge-zero">○1</span>
+                        <span class="badge-apple badge-minus">-0</span>
+                    </div>
+                </div>
+                <div class="score-item">
+                    <span class="score-name">情节设计</span>
+                    <div class="flex gap-2">
+                        <span class="badge-apple badge-plus">+1</span>
+                        <span class="badge-apple badge-zero">○2</span>
+                        <span class="badge-apple badge-minus">-0</span>
+                    </div>
+                </div>
+
+                <div class="text-sm font-medium text-gray-500 mb-3 mt-6">文本层面</div>
+                <div class="score-item">
+                    <span class="score-name">主题深度</span>
+                    <div class="flex gap-2">
+                        <span class="badge-apple badge-plus">+1</span>
+                        <span class="badge-apple badge-zero">○1</span>
+                        <span class="badge-apple badge-minus">-1</span>
+                    </div>
+                </div>
+                <div class="score-item">
+                    <span class="score-name">人物塑造</span>
+                    <div class="flex gap-2">
+                        <span class="badge-apple badge-plus">+2</span>
+                        <span class="badge-apple badge-zero">○0</span>
+                        <span class="badge-apple badge-minus">-1</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="mt-6 flex justify-center">
+                <button class="btn-apple" style="background: #FEE2E2; color: #EF4444;">
+                    <i data-lucide="stop-circle" class="w-5 h-5"></i>
+                    中止任务
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================== -->
+    <!-- 4. 评分工作区 -->
+    <!-- ======================================== -->
+    <section class="mb-20 max-w-4xl mx-auto animate-in" style="animation-delay: 0.3s;">
+        <h2 class="section-header mb-8">4. 评分工作区</h2>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- 左侧：文本内容 -->
+            <div class="apple-card p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i>
+                    </div>
+                    <div class="font-semibold text-gray-900">文本内容</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 leading-relaxed max-h-80 overflow-y-auto">
+                    <p class="mb-4">示例文本内容区域，展示当前需要评分的内容。文本将在这里显示，用户可以边阅读边进行评分。</p>
+                    <p>每一段落都会有一个独立的评分项，用户可以根据自己的理解给出 +1、0、-1 的评价。</p>
+                </div>
+            </div>
+
+            <!-- 右侧：评分面板 -->
+            <div class="apple-card p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <i data-lucide="star" class="w-5 h-5 text-purple-600"></i>
+                    </div>
+                    <div class="font-semibold text-gray-900">评分维度</div>
+                </div>
+
+                <!-- 评分项目 -->
+                <div class="space-y-3">
+                    <div class="score-item">
+                        <div>
+                            <div class="font-medium text-gray-900">文笔质量</div>
+                            <div class="text-xs text-gray-400">+1 优秀 / 0 一般 / -1 需改进</div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="w-10 h-10 rounded-lg bg-green-50 text-green-600 font-semibold hover:bg-green-100 transition">+1</button>
+                            <button class="w-10 h-10 rounded-lg bg-gray-100 text-gray-600 font-semibold hover:bg-gray-200 transition">0</button>
+                            <button class="w-10 h-10 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition">-1</button>
+                        </div>
+                    </div>
+
+                    <div class="score-item">
+                        <div>
+                            <div class="font-medium text-gray-900">情节设计</div>
+                            <div class="text-xs text-gray-400">+1 优秀 / 0 一般 / -1 需改进</div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="w-10 h-10 rounded-lg bg-green-50 text-green-600 font-semibold hover:bg-green-100 transition">+1</button>
+                            <button class="w-10 h-10 rounded-lg bg-gray-100 text-gray-600 font-semibold hover:bg-gray-200 transition">0</button>
+                            <button class="w-10 h-10 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition">-1</button>
+                        </div>
+                    </div>
+
+                    <div class="score-item">
+                        <div>
+                            <div class="font-medium text-gray-900">主题深度</div>
+                            <div class="text-xs text-gray-400">+1 优秀 / 0 一般 / -1 需改进</div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="w-10 h-10 rounded-lg bg-green-50 text-green-600 font-semibold hover:bg-green-100 transition">+1</button>
+                            <button class="w-10 h-10 rounded-lg bg-gray-100 text-gray-600 font-semibold hover:bg-gray-200 transition">0</button>
+                            <button class="w-10 h-10 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition">-1</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 提交按钮 -->
+                <button class="btn-apple btn-apple-primary w-full mt-6">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                    提交评分
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================== -->
+    <!-- 5. 作品卡片 -->
+    <!-- ======================================== -->
+    <section class="mb-20 max-w-2xl mx-auto animate-in" style="animation-delay: 0.4s;">
+        <h2 class="section-header mb-8">5. 作品卡片</h2>
+
+        <div class="apple-card p-5 flex gap-4">
+            <!-- 封面占位 -->
+            <div class="w-20 h-28 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex-shrink-0 flex items-center justify-center">
+                <i data-lucide="book" class="w-8 h-8 text-white/80"></i>
+            </div>
+
+            <!-- 内容 -->
+            <div class="flex-1 min-w-0">
+                <h4 class="font-semibold text-gray-900 truncate">作品标题名称</h4>
+                <p class="text-sm text-gray-500 mb-2">作者名称</p>
+
+                <!-- 评分展示 -->
+                <div class="flex items-center gap-4 mb-3">
+                    <div class="flex items-center gap-1">
+                        <i data-lucide="star" class="w-4 h-4 text-yellow-400 fill-yellow-400"></i>
+                        <span class="font-semibold text-gray-900">8.5</span>
+                    </div>
+                    <div class="text-sm text-gray-500">综合评分</div>
+                </div>
+
+                <!-- 标签 -->
+                <div class="flex gap-2 flex-wrap">
+                    <span class="px-2 py-1 bg-purple-100 text-purple-600 rounded-lg text-xs font-medium">小说</span>
+                    <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">已完成</span>
+                </div>
+            </div>
+
+            <!-- 操作 -->
+            <div class="flex flex-col gap-2">
+                <button class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+                <button class="w-9 h-9 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center hover:bg-gray-100 transition">
+                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================== -->
+    <!-- 6. 底部导航栏 -->
+    <!-- ======================================== -->
+    <section class="mb-20 max-w-2xl mx-auto animate-in" style="animation-delay: 0.5s;">
+        <h2 class="section-header mb-8">6. 底部导航</h2>
+
+        <div class="tab-bar rounded-3xl overflow-hidden">
+            <div class="tab-item">
+                <i data-lucide="library" class="tab-icon"></i>
+                <span>书库</span>
+            </div>
+            <div class="tab-item">
+                <i data-lucide="clock" class="tab-icon"></i>
+                <span>最近</span>
+            </div>
+            <div class="tab-item">
+                <i data-lucide="bar-chart-2" class="tab-icon"></i>
+                <span>统计</span>
+            </div>
+            <div class="tab-item active">
+                <i data-lucide="settings" class="tab-icon"></i>
+                <span>设置</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 初始化图标 -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

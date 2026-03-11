@@ -1,6 +1,11 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+
+// 设置session以确保localStorage持久化
+app.on('ready', () => {
+  session.defaultSession.setStorageQuota(10 * 1024 * 1024); // 10MB
+});
 
 // 数据文件路径
 const DATA_DIR = path.join(__dirname, 'data');
@@ -66,16 +71,16 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webviewTag: true,
+      sandbox: false
     }
   });
 
   mainWindow.loadFile('index.html');
 
-  // 开发工具
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
-  }
+  // 开发工具 - 默认打开（启动时自动打开控制台，已注释）
+  // mainWindow.webContents.openDevTools();
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('createWindow: 页面加载失败:', errorCode, errorDescription);
@@ -177,6 +182,33 @@ function setupIPCHandlers() {
     }
   });
 
+  // 评价标准配置
+  const RATING_CRITERIA_FILE = path.join(DATA_DIR, 'rating-criteria.json');
+
+  ipcMain.handle('save-rating-criteria', async (event, criteria) => {
+    try {
+      await ensureDataDirectory();
+      await fs.writeFile(RATING_CRITERIA_FILE, JSON.stringify(criteria, null, 2), 'utf-8');
+      console.log('评价标准已保存到文件:', RATING_CRITERIA_FILE);
+      return { success: true };
+    } catch (error) {
+      console.error('保存评价标准失败:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('load-rating-criteria', async () => {
+    try {
+      await ensureDataDirectory();
+      const content = await fs.readFile(RATING_CRITERIA_FILE, 'utf-8');
+      console.log('评价标准已从文件加载:', RATING_CRITERIA_FILE);
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('加载评价标准失败:', error);
+      return null;
+    }
+  });
+
   // 工具函数
   ipcMain.on('show-message', (event, { title, message }) => {
     if (mainWindow) {
@@ -188,6 +220,14 @@ function setupIPCHandlers() {
   ipcMain.on('open-devtools', () => {
     if (mainWindow) {
       mainWindow.webContents.openDevTools();
+    }
+  });
+
+  // F12 快捷键打开开发者工具
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
     }
   });
 

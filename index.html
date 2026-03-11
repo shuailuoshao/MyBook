@@ -6,7 +6,7 @@
     <title>企画0004</title>
     <link rel="stylesheet" href="styles.css?v=888">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*;">
 </head>
 <body>
     <div class="app-container">
@@ -21,6 +21,9 @@
                     </button>
                     <button id="viewJournal" class="view-switcher-btn" onclick="switchView('journal')">
                         <i class="fas fa-pen"></i> 每日记录
+                    </button>
+                    <button id="viewAiRead" class="view-switcher-btn" onclick="switchView('airead')">
+                        <i class="fas fa-book-open"></i> 自主评分
                     </button>
                 </div>
                 <button id="themeToggleBtn" class="btn-secondary theme-toggle-global" title="切换主题">
@@ -383,6 +386,68 @@
                     </div>
                 </div>
             </section>
+
+            <!-- AI精读区域 -->
+            <section id="aiReadContainer" class="ai-read-section" style="display: none;">
+                <div class="section-header">
+                    <h2 class="gradient-text">自主评分</h2>
+                </div>
+                <div class="ai-read-intro">
+                    <div class="intro-card glass-card hover-scale">
+                        <!-- 发光书本图标 -->
+                        <div class="book-icon-wrapper breathe">
+                            <div class="book-glow"></div>
+                            <i class="fas fa-book-open book-icon"></i>
+                        </div>
+
+                        <div class="intro-content">
+                            <h3 class="gradient-text">自主评分</h3>
+                            <p class="intro-subtitle">深度解析作品多维洞察 · AI智能评分</p>
+                            <p class="intro-description">导入txt/md文件，AI将分块深度解析，从作者层面和文本维度进行全方位智能评分</p>
+
+                            <div class="intro-steps">
+                                <div class="step-item">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <h4>配置API</h4>
+                                        <p>设置AI服务连接</p>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <h4>选择文件</h4>
+                                        <p>导入txt/md书籍</p>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <h4>AI评分</h4>
+                                        <p>深度解析分析</p>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-number">4</div>
+                                    <div class="step-content">
+                                        <h4>导入知识库</h4>
+                                        <p>保存阅读成果</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="intro-actions">
+                                <button id="aiSettingsBtn2" class="btn-modern btn-secondary-modern" onclick="window.openAiSettingsModal()">
+                                    <i class="fas fa-cog glow-icon"></i> API设置
+                                </button>
+                                <button id="startAiReadBtn2" class="btn-modern btn-primary-modern breathe" onclick="window.openAiReadModal()">
+                                    <i class="fas fa-sparkles"></i> 开始精读
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -574,7 +639,7 @@
                     </div>
                     <div id="importPreview" class="import-preview" style="display: none;">
                         <h4>数据预览</h4>
-                        <div id="previewContent"></div>
+                        <div id="importPreviewContent"></div>
                     </div>
                 </div>
                 <div class="import-options">
@@ -885,6 +950,416 @@
             </div>
             <div class="compare-body">
                 <div class="compare-results" id="compareResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI精读模态框 - Apple iOS 风格全新设计 -->
+    <div id="aiReadModal" class="modal" style="display: none;">
+        <div class="modal-content ai-read-modal">
+            <!-- 顶部标题栏 -->
+            <div class="air-header">
+                <div class="air-header-left">
+                    <div class="air-header-icon">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div class="air-header-text">
+                        <h2>AI 精读评分</h2>
+                        <p>深度分析与智能评分</p>
+                    </div>
+                </div>
+                <button class="air-close" onclick="closeAiReadModal()">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- 主要内容区 -->
+            <div class="air-body">
+                <!-- 步骤1：文件导入 -->
+                <div id="aiReadStep1" class="air-step">
+                    <div class="air-split">
+                        <!-- 左侧：文件导入 -->
+                        <div class="air-panel air-upload-panel">
+                            <div class="air-panel-header">
+                                <div class="air-panel-icon">
+                                    <i class="fas fa-file-import"></i>
+                                </div>
+                                <div class="air-panel-title">
+                                    <h3>导入作品</h3>
+                                    <p>上传文本文件进行AI分析</p>
+                                </div>
+                            </div>
+
+                            <!-- 拖拽区域 -->
+                            <div class="air-dropzone" id="dropZone">
+                                <div class="air-dropzone-content">
+                                    <div class="air-dropzone-icon">
+                                        <i class="fas fa-cloud-arrow-up"></i>
+                                    </div>
+                                    <h4>拖拽文件到此处</h4>
+                                    <p>或点击选择文件</p>
+                                    <span class="air-dropzone-hint">支持 TXT、MD 格式</span>
+                                </div>
+                                <input type="file" id="fileInput" accept=".txt,.md" style="display: none;">
+                            </div>
+
+                            <!-- 文件信息卡片 -->
+                            <div class="air-file-card" id="fileInfo" style="display: none;">
+                                <div class="air-file-icon">
+                                    <i class="fas fa-file-lines"></i>
+                                </div>
+                                <div class="air-file-details">
+                                    <h4 id="selectedFileName">文件名</h4>
+                                    <div class="air-file-meta">
+                                        <span><i class="fas fa-code"></i> <span id="fileEncoding">UTF-8</span></span>
+                                        <span><i class="fas fa-weight-hanging"></i> <span id="fileSize">-</span></span>
+                                        <span><i class="fas fa-text"></i> <span id="fileChars">-</span> 字</span>
+                                    </div>
+                                </div>
+                                <button class="air-file-change" id="selectFileBtn">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 右侧：内容预览 -->
+                        <div class="air-panel air-preview-panel">
+                            <div class="air-panel-header">
+                                <div class="air-panel-icon">
+                                    <i class="fas fa-eye"></i>
+                                </div>
+                                <div class="air-panel-title">
+                                    <h3>内容预览</h3>
+                                    <p id="previewCount">等待导入文件...</p>
+                                </div>
+                            </div>
+                            <div class="air-preview" id="previewContent">
+                                <div class="air-preview-empty">
+                                    <i class="fas fa-file-circle-question"></i>
+                                    <p>选择文件后显示内容预览</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 进度显示 -->
+                <div id="aiReadProgress" class="air-progress" style="display: none;">
+                    <div class="air-progress-card">
+                        <div class="air-progress-header">
+                            <div class="air-progress-icon">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            </div>
+                            <div class="air-progress-text">
+                                <h4 id="progressText">正在分析中...</h4>
+                                <p id="currentChunk">准备处理</p>
+                            </div>
+                            <span id="progressPercent" class="air-progress-percent">0%</span>
+                        </div>
+                        <div class="air-progress-track">
+                            <div id="progressBar" class="air-progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 投票结果显示 -->
+                <div id="aiRatingProgress" class="air-rating-result" style="display: none;"></div>
+
+                <!-- 步骤2：显示结果 -->
+                <div id="aiReadStep2" class="ai-read-step" style="display: none;">
+                    <div class="ai-read-result apple-result">
+                        <div class="result-card">
+                            <div class="result-icon">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="result-content">
+                                <h4>提取的书名</h4>
+                                <p id="extractedTitle" class="extracted-title">-</p>
+                            </div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-icon">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="result-content">
+                                <h4>AI评分结果</h4>
+                                <div id="aiRatingFinal" class="ai-rating-result"></div>
+                            </div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-icon">
+                                <i class="fas fa-tags"></i>
+                            </div>
+                            <div class="result-content">
+                                <h4>标签</h4>
+                                <div id="aiTags" class="ai-tags"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部操作栏 -->
+            <div class="air-footer">
+                <div class="air-footer-hint">
+                    <i class="fas fa-circle-info"></i>
+                    <span>AI将分析作品内容并给出多维度评分</span>
+                </div>
+                <div class="air-footer-actions">
+                    <button id="importAiBookBtn" class="air-btn air-btn-primary" style="display: none;" onclick="importAiBook()">
+                        <i class="fas fa-download"></i> 导入知识库
+                    </button>
+                    <button id="startAiReadBtn" class="air-btn air-btn-primary" disabled onclick="startAiReading()">
+                        <i class="fas fa-play"></i> 开始分析
+                    </button>
+                    <button class="air-btn air-btn-secondary" onclick="closeAiReadModal()">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 偏好设置模态框 - 全新设计 -->
+    <div id="aiSettingsModal" class="modal" style="display: none;">
+        <div class="modal-content preferences-modal">
+            <!-- 顶部标题区 -->
+            <div class="pref-header">
+                <div class="pref-header-left">
+                    <div class="pref-header-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <div class="pref-header-text">
+                        <h2>偏好设置</h2>
+                        <p>自定义你的AI精读体验与评分标准</p>
+                    </div>
+                </div>
+                <div class="pref-header-right">
+                    <div class="pref-status-badge">
+                        <span class="status-dot"></span>
+                        <span id="apiStatusText">未连接</span>
+                    </div>
+                </div>
+                <button class="close-btn pref-close" onclick="closeAiSettingsModal()">×</button>
+            </div>
+
+            <!-- 主要内容区 -->
+            <div class="pref-body">
+                <!-- 左侧：API配置 -->
+                <div class="pref-sidebar">
+                    <div class="pref-card pref-api-card">
+                        <div class="pref-card-header">
+                            <div class="pref-card-icon">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <div class="pref-card-title">
+                                <h3>API 配置</h3>
+                                <p>AI 服务连接设置</p>
+                            </div>
+                        </div>
+                        <div class="pref-card-body">
+                            <div class="pref-form-group">
+                                <label>API Provider</label>
+                                <select id="aiApiProvider" class="pref-select">
+                                    <option>MiniMax</option>
+                                    <option>OpenAI</option>
+                                    <option>Claude</option>
+                                    <option>自定义</option>
+                                </select>
+                            </div>
+                            <div class="pref-form-group">
+                                <label>API URL</label>
+                                <input type="text" id="aiApiUrl" class="pref-input" placeholder="https://api.minimax.chat/v1">
+                            </div>
+                            <div class="pref-form-group">
+                                <label>Model</label>
+                                <select id="aiModel" class="pref-select">
+                                    <option selected>MiniMax-M2.5</option>
+                                    <option>MiniMax-Text-01</option>
+                                    <option>MiniMax-Text-02</option>
+                                    <option>MiniMax-Text-03</option>
+                                </select>
+                            </div>
+                            <div class="pref-form-group">
+                                <label>API Key</label>
+                                <input type="password" id="aiApiKey" class="pref-input" placeholder="输入API Key">
+                            </div>
+                            <div class="pref-form-actions">
+                                <button id="testAiApiBtn" class="pref-btn pref-btn-primary">
+                                    <i class="fas fa-plug"></i> 测试连接
+                                </button>
+                            </div>
+                            <div id="testApiResult" class="pref-result"></div>
+                        </div>
+                    </div>
+
+                    <!-- 快速统计 -->
+                    <div class="pref-card pref-stats-card">
+                        <div class="pref-card-header">
+                            <div class="pref-card-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="pref-card-title">
+                                <h3>评分统计</h3>
+                                <p>当前配置概览</p>
+                            </div>
+                        </div>
+                        <div class="pref-card-body">
+                            <div class="pref-stat-grid">
+                                <div class="pref-stat-item">
+                                    <span class="pref-stat-value" id="authorCriteriaCount">0</span>
+                                    <span class="pref-stat-label">作者维度</span>
+                                </div>
+                                <div class="pref-stat-item">
+                                    <span class="pref-stat-value" id="textCriteriaCount">0</span>
+                                    <span class="pref-stat-label">文本维度</span>
+                                </div>
+                                <div class="pref-stat-item">
+                                    <span class="pref-stat-value" id="totalCriteriaCount">0</span>
+                                    <span class="pref-stat-label">总评分项</span>
+                                </div>
+                                <div class="pref-stat-item">
+                                    <span class="pref-stat-value" id="avgWeight">0%</span>
+                                    <span class="pref-stat-label">平均权重</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：评价标准 -->
+                <div class="pref-main">
+                    <div class="pref-card pref-criteria-card">
+                        <div class="pref-card-header pref-criteria-header">
+                            <div class="pref-card-title">
+                                <h3><i class="fas fa-list-check"></i> 评价标准配置</h3>
+                                <p>自定义评分维度、权重与评分标准</p>
+                            </div>
+                            <div class="pref-criteria-actions">
+                                <button id="aiOptimizeBtn" class="pref-btn pref-btn-secondary">
+                                    <i class="fas fa-magic"></i> AI优化
+                                </button>
+                                <button id="resetCriteriaBtn" class="pref-btn pref-btn-outline">
+                                    <i class="fas fa-rotate-left"></i> 恢复默认
+                                </button>
+                            </div>
+                        </div>
+                        <div class="pref-card-body pref-criteria-body">
+                            <!-- 作者层面 -->
+                            <div class="criteria-panel">
+                                <div class="criteria-panel-header" onclick="toggleCriteriaPanel(this)">
+                                    <div class="criteria-panel-icon">
+                                        <i class="fas fa-user-pen"></i>
+                                    </div>
+                                    <div class="criteria-panel-title">
+                                        <h4>作者层面</h4>
+                                        <span class="criteria-count" id="authorCriteriaCount2">0 项</span>
+                                    </div>
+                                    <div class="criteria-panel-weight">
+                                        权重: <span id="authorWeight">0%</span>
+                                    </div>
+                                    <i class="fas fa-chevron-down criteria-panel-arrow"></i>
+                                </div>
+                                <div id="authorCriteriaList" class="criteria-items collapsed">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
+
+                            <!-- 文本层面 -->
+                            <div class="criteria-panel">
+                                <div class="criteria-panel-header" onclick="toggleCriteriaPanel(this)">
+                                    <div class="criteria-panel-icon">
+                                        <i class="fas fa-file-lines"></i>
+                                    </div>
+                                    <div class="criteria-panel-title">
+                                        <h4>文本层面</h4>
+                                        <span class="criteria-count" id="textCriteriaCount2">0 项</span>
+                                    </div>
+                                    <div class="criteria-panel-weight">
+                                        权重: <span id="textWeight">0%</span>
+                                    </div>
+                                    <i class="fas fa-chevron-down criteria-panel-arrow"></i>
+                                </div>
+                                <div id="textCriteriaList" class="criteria-items collapsed">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部操作区 -->
+            <div class="pref-footer">
+                <div class="pref-footer-info">
+                    <span class="pref-hint"><i class="fas fa-circle-info"></i> 修改后请点击保存以应用新设置</span>
+                </div>
+                <div class="pref-footer-actions">
+                    <button class="pref-btn pref-btn-secondary" onclick="closeAiSettingsModal()">取消</button>
+                    <button class="pref-btn pref-btn-primary" onclick="saveAiSettings()">
+                        <i class="fas fa-check"></i> 保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 评价标准配置模态框 -->
+    <div id="criteriaModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-list"></i> 评价标准配置</h3>
+                <button class="close-btn" onclick="closeCriteriaModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="criteria-actions">
+                    <button id="aiOptimizeBtn" class="btn-secondary">
+                        <i class="fas fa-magic"></i> AI优化建议
+                    </button>
+                    <button id="resetCriteriaBtn" class="btn-secondary">
+                        <i class="fas fa-undo"></i> 恢复默认
+                    </button>
+                </div>
+                <div id="criteriaList" class="criteria-list">
+                    <!-- 评价标准将通过JS动态生成 -->
+                </div>
+                <div class="criteria-add">
+                    <button id="addCriteriaBtn" class="btn-secondary">
+                        <i class="fas fa-plus"></i> 添加新标准
+                    </button>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveCriteria()">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+                <button class="btn-secondary" onclick="closeCriteriaModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI优化建议模态框 -->
+    <div id="aiOptimizeModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-magic"></i> AI优化建议</h3>
+                <button class="close-btn" onclick="closeAiOptimizeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="aiOptimizeLoading" style="text-align: center; padding: 20px;">
+                    <i class="fas fa-spinner fa-spin"></i> AI正在分析评价标准...
+                </div>
+                <div id="aiOptimizeResult" style="display: none;">
+                    <div class="ai-optimize-suggestion">
+                        <h4>AI建议：</h4>
+                        <p id="aiSuggestionText"></p>
+                    </div>
+                    <div id="aiOptimizedCriteria" class="criteria-preview"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeAiOptimizeModal()">关闭</button>
+                <button id="applyOptimizeBtn" class="btn-primary" style="display: none;" onclick="applyAiOptimize()">
+                    <i class="fas fa-check"></i> 应用建议
+                </button>
             </div>
         </div>
     </div>

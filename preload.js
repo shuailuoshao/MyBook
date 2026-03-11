@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveJournals: (journals) => ipcRenderer.invoke('save-journals', journals),
   loadJournals: () => ipcRenderer.invoke('load-journals'),
 
+  // 评价标准操作
+  saveRatingCriteria: (criteria) => ipcRenderer.invoke('save-rating-criteria', criteria),
+  loadRatingCriteria: () => ipcRenderer.invoke('load-rating-criteria'),
+
   // 工具函数
   showMessage: (title, message) => ipcRenderer.send('show-message', { title, message }),
 

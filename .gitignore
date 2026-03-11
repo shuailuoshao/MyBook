@@ -35,3 +35,9 @@ logs/
 
 *.exe
 *.zip
+
+# 忽略 AI UI/UX 技能库文件
+.claude/skills/ui-ux-pro-max/
+.cursor/skills/ui-ux-pro-max/
+.windsurf/skills/ui-ux-pro-max/
+.github/prompts/ui-ux-pro-max/
