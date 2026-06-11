@@ -7,12 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadBooks: () => ipcRenderer.invoke('load-books'),
   deleteBook: (bookId) => ipcRenderer.invoke('delete-book', bookId),
 
-  // 日记操作
-  saveJournals: (journals) => ipcRenderer.invoke('save-journals', journals),
-  loadJournals: () => ipcRenderer.invoke('load-journals'),
+  // 灵感操作
+  saveInspirations: (inspirations) => ipcRenderer.invoke('save-inspirations', inspirations),
+  loadInspirations: () => ipcRenderer.invoke('load-inspirations'),
 
-  // 评价标准操作
-  saveRatingCriteria: (criteria) => ipcRenderer.invoke('save-rating-criteria', criteria),
+  // 评分标准
   loadRatingCriteria: () => ipcRenderer.invoke('load-rating-criteria'),
 
   // 工具函数

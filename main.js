@@ -1,32 +1,81 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 
-// 设置session以确保localStorage持久化
-app.on('ready', () => {
-  session.defaultSession.setStorageQuota(10 * 1024 * 1024); // 10MB
-});
+// 数据文件路径 - 开发环境使用项目目录，打包后使用userData目录
+let DATA_DIR, BOOKS_FILE, INSPIRATIONS_FILE;
+let dataDirectoryInitialized = false;
 
-// 数据文件路径
-const DATA_DIR = path.join(__dirname, 'data');
-const BOOKS_FILE = path.join(DATA_DIR, 'books.json');
-const JOURNALS_FILE = path.join(DATA_DIR, 'journals.json');
+// 初始化路径（在app ready后调用）
+function initDataPaths() {
+  // 开发环境使用项目根目录的data文件夹
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    // 开发模式：使用项目目录
+    DATA_DIR = path.join(__dirname, 'data');
+  } else {
+    // 打包模式：使用用户数据目录
+    const userDataPath = app.getPath('userData');
+    DATA_DIR = path.join(userDataPath, 'data');
+  }
+  BOOKS_FILE = path.join(DATA_DIR, 'books.json');
+  INSPIRATIONS_FILE = path.join(DATA_DIR, 'inspirations.json');
+  console.log('数据目录:', DATA_DIR);
+}
 
 // 确保数据目录存在
 async function ensureDataDirectory() {
+  // 如果已经初始化过，直接返回，避免重复检查文件
+  if (dataDirectoryInitialized) {
+    return;
+  }
+  dataDirectoryInitialized = true;
+
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
-    // 如果书籍数据文件不存在，创建空数组
-    try {
-      await fs.access(BOOKS_FILE);
-    } catch {
-      await fs.writeFile(BOOKS_FILE, JSON.stringify([], null, 2), 'utf-8');
-    }
-    // 如果日记数据文件不存在，创建空数组
-    try {
-      await fs.access(JOURNALS_FILE);
-    } catch {
-      await fs.writeFile(JOURNALS_FILE, JSON.stringify([], null, 2), 'utf-8');
+
+    // 打包模式下，如果数据文件为空或不存在，从打包目录复制现有数据
+    if (!app.isPackaged) {
+      // 开发模式：直接使用项目目录的数据
+      try {
+        await fs.access(BOOKS_FILE);
+      } catch {
+        await fs.writeFile(BOOKS_FILE, JSON.stringify([], null, 2), 'utf-8');
+      }
+    } else {
+      // 打包模式：检查用户数据目录是否有数据，如果没有则从打包目录复制
+      // 获取应用根目录（兼容 electron-packager 和 electron-builder）
+      const appPath = app.getAppPath();
+      const packagedDataDir = path.join(appPath, 'data');
+
+      // 检查并初始化 books.json
+      try {
+        await fs.access(BOOKS_FILE);
+        // 文件已存在，检查是否为空
+        const content = await fs.readFile(BOOKS_FILE, 'utf-8');
+        if (!content || content.trim() === '' || content.trim() === '[]') {
+          // 尝试从打包目录复制
+          try {
+            const srcBooksFile = path.join(packagedDataDir, 'books.json');
+            await fs.access(srcBooksFile);
+            await fs.copyFile(srcBooksFile, BOOKS_FILE);
+            console.log('已从打包目录复制 books.json');
+          } catch (e) {
+            // 打包目录没有数据文件，创建空文件
+            await fs.writeFile(BOOKS_FILE, JSON.stringify([], null, 2), 'utf-8');
+          }
+        }
+      } catch {
+        // 文件不存在，尝试复制或创建
+        try {
+          const srcBooksFile = path.join(packagedDataDir, 'books.json');
+          await fs.access(srcBooksFile);
+          await fs.copyFile(srcBooksFile, BOOKS_FILE);
+          console.log('已从打包目录复制 books.json');
+        } catch (e) {
+          await fs.writeFile(BOOKS_FILE, JSON.stringify([], null, 2), 'utf-8');
+        }
+      }
     }
   } catch (error) {
     console.error('创建数据目录失败:', error);
@@ -64,9 +113,13 @@ function validateBooksData(books) {
 let mainWindow;
 
 function createWindow() {
+  // 初始化数据路径
+  initDataPaths();
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    title: 'MyBook',
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
@@ -159,52 +212,38 @@ function setupIPCHandlers() {
     }
   });
 
-  // 日记数据操作
-  ipcMain.handle('save-journals', async (event, journals) => {
+  // 灵感数据操作
+  ipcMain.handle('save-inspirations', async (event, inspirations) => {
     try {
       await ensureDataDirectory();
-      await atomicWrite(JOURNALS_FILE, JSON.stringify(journals, null, 2));
+      await atomicWrite(INSPIRATIONS_FILE, JSON.stringify(inspirations, null, 2));
       return { success: true };
     } catch (error) {
-      console.error('保存日记失败:', error);
+      console.error('保存灵感失败:', error);
       return { success: false, error: error.message };
     }
   });
 
-  ipcMain.handle('load-journals', async () => {
+  ipcMain.handle('load-inspirations', async () => {
     try {
       await ensureDataDirectory();
-      const content = await fs.readFile(JOURNALS_FILE, 'utf-8');
+      const content = await fs.readFile(INSPIRATIONS_FILE, 'utf-8');
       return JSON.parse(content);
     } catch (error) {
-      console.error('加载日记失败:', error);
+      console.error('加载灵感失败:', error);
       return [];
     }
   });
 
-  // 评价标准配置
-  const RATING_CRITERIA_FILE = path.join(DATA_DIR, 'rating-criteria.json');
-
-  ipcMain.handle('save-rating-criteria', async (event, criteria) => {
-    try {
-      await ensureDataDirectory();
-      await fs.writeFile(RATING_CRITERIA_FILE, JSON.stringify(criteria, null, 2), 'utf-8');
-      console.log('评价标准已保存到文件:', RATING_CRITERIA_FILE);
-      return { success: true };
-    } catch (error) {
-      console.error('保存评价标准失败:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
+  // 评分标准数据操作
   ipcMain.handle('load-rating-criteria', async () => {
     try {
       await ensureDataDirectory();
-      const content = await fs.readFile(RATING_CRITERIA_FILE, 'utf-8');
-      console.log('评价标准已从文件加载:', RATING_CRITERIA_FILE);
+      const criteriaPath = path.join(DATA_DIR, 'rating-criteria.json');
+      const content = await fs.readFile(criteriaPath, 'utf-8');
       return JSON.parse(content);
     } catch (error) {
-      console.error('加载评价标准失败:', error);
+      console.error('加载评分标准失败:', error);
       return null;
     }
   });
@@ -420,14 +459,16 @@ app.on('before-quit', async (event) => {
 process.on('uncaughtException', (error) => {
   console.error('未捕获的异常:', error);
   // 记录错误到日志文件
-  const logPath = path.join(DATA_DIR, 'error.log');
+  const logDir = DATA_DIR || path.join(app.getPath('userData'), 'data');
+  const logPath = path.join(logDir, 'error.log');
   const logMessage = `[${new Date().toISOString()}] 未捕获异常: ${error.stack || error.message}\n`;
   fs.appendFile(logPath, logMessage).catch(() => {});
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('未处理的 Promise 拒绝:', reason);
-  const logPath = path.join(DATA_DIR, 'error.log');
+  const logDir = DATA_DIR || path.join(app.getPath('userData'), 'data');
+  const logPath = path.join(logDir, 'error.log');
   const logMessage = `[${new Date().toISOString()}] 未处理拒绝: ${reason}\n`;
   fs.appendFile(logPath, logMessage).catch(() => {});
 });

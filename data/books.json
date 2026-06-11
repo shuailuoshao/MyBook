@@ -5,7 +5,7 @@
     "author": "重返未来1999 3.3版本",
     "startDate": "2026-02-18",
     "endDate": "2026-02-25",
-    "status": "已读完",
+    "status": "已玩完",
     "notes": [],
     "rating": {
       "totalScore": 51.5,
@@ -20,7 +20,7 @@
         "代入感": -1,
         "整体审美": 1
       },
-      "ratedAt": "2026-03-08T03:03:00.899Z"
+      "ratedAt": "2026-04-24T06:09:25.979Z"
     },
     "tags": [
       "游戏剧情",
@@ -28,12 +28,13 @@
       "心理"
     ],
     "enableRating": true,
-    "folderId": "folder_1772896539885",
+    "enableInspiration": false,
+    "folderId": "uncategorized",
     "currentProgress": 22,
     "totalLength": 22,
     "progressUnit": "章",
     "createdAt": "2026-03-08T02:56:15.453Z",
-    "updatedAt": "2026-03-08T03:03:00.899Z"
+    "updatedAt": "2026-04-24T06:11:15.463Z"
   },
   {
     "id": "1772938762057",
@@ -41,7 +42,7 @@
     "author": "重返未来1999 3.4版本",
     "startDate": "2026-03-06",
     "endDate": "2026-03-07",
-    "status": "已读完",
+    "status": "已玩完",
     "notes": [],
     "rating": {
       "totalScore": 56.5,
@@ -55,7 +56,7 @@
         "代入感": 1,
         "整体审美": 1
       },
-      "ratedAt": "2026-03-08T03:04:09.483Z"
+      "ratedAt": "2026-04-24T06:09:22.434Z"
     },
     "tags": [
       "游戏剧情",
@@ -64,12 +65,13 @@
       "心理"
     ],
     "enableRating": true,
-    "folderId": "folder_1772896539885",
+    "enableInspiration": false,
+    "folderId": "uncategorized",
     "currentProgress": 21,
     "totalLength": 21,
     "progressUnit": "章",
     "createdAt": "2026-03-08T02:59:22.056Z",
-    "updatedAt": "2026-03-08T03:04:09.483Z"
+    "updatedAt": "2026-04-24T06:11:04.031Z"
   },
   {
     "id": "1772939122256",
@@ -87,12 +89,13 @@
       "社会"
     ],
     "enableRating": false,
-    "folderId": "folder_1772897231838",
+    "enableInspiration": true,
+    "folderId": "uncategorized",
     "currentProgress": 7,
     "totalLength": 7,
     "progressUnit": "章",
     "createdAt": "2026-03-08T03:05:22.256Z",
-    "updatedAt": "2026-03-08T03:09:13.306Z"
+    "updatedAt": "2026-04-16T03:58:45.733Z"
   },
   {
     "id": "1772939198038",
@@ -138,6 +141,7 @@
       "心理"
     ],
     "enableRating": true,
+    "enableInspiration": false,
     "folderId": "folder_1772897231838",
     "currentProgress": 6,
     "totalLength": 6,
@@ -160,6 +164,7 @@
       "哲学"
     ],
     "enableRating": false,
+    "enableInspiration": false,
     "folderId": "folder_1772897231838",
     "currentProgress": 12,
     "totalLength": 12,
@@ -182,20 +187,21 @@
       "社会"
     ],
     "enableRating": false,
-    "folderId": "folder_1772897231838",
+    "enableInspiration": true,
+    "folderId": "uncategorized",
     "currentProgress": 4,
     "totalLength": 4,
     "progressUnit": "章",
     "createdAt": "2026-03-08T03:11:11.532Z",
-    "updatedAt": "2026-03-08T03:11:19.322Z"
+    "updatedAt": "2026-04-16T04:08:29.285Z"
   },
   {
     "id": "1772939566649",
     "title": "苦难辉煌",
     "author": "金一南",
     "startDate": "2026-03-03",
-    "endDate": null,
-    "status": "阅读中",
+    "endDate": "2026-03-17",
+    "status": "已读完",
     "notes": [],
     "rating": null,
     "tags": [
@@ -203,12 +209,13 @@
       "社会"
     ],
     "enableRating": false,
-    "folderId": "folder_1772897231838",
+    "enableInspiration": false,
+    "folderId": "uncategorized",
     "currentProgress": 6,
     "totalLength": 16,
     "progressUnit": "章",
     "createdAt": "2026-03-08T03:12:46.649Z",
-    "updatedAt": "2026-03-10T15:18:27.109Z"
+    "updatedAt": "2026-03-17T13:03:18.098Z"
   },
   {
     "id": "1772956012201",
@@ -229,7 +236,7 @@
         "阅读前视野": -1,
         "整体审美": 1
       },
-      "ratedAt": "2026-03-08T07:47:51.766Z"
+      "ratedAt": "2026-04-24T06:09:31.363Z"
     },
     "tags": [
       "电影",
@@ -237,11 +244,12 @@
       "治愈"
     ],
     "enableRating": true,
+    "enableInspiration": false,
     "folderId": "folder_1772956219839",
     "currentProgress": 1,
     "totalLength": 1,
     "progressUnit": "章",
     "createdAt": "2026-03-08T07:46:52.200Z",
-    "updatedAt": "2026-03-08T07:50:28.797Z"
+    "updatedAt": "2026-04-24T06:09:31.363Z"
   }
 ]

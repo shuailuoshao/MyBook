@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win --x64",
+    "build": "electron-packager . MyBook --platform=win32 --arch=x64 --out=dist --overwrite",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -21,11 +21,13 @@
   },
   "devDependencies": {
     "electron": "^27.0.0",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "electron-packager": "^17.1.2"
   },
   "build": {
     "appId": "com.mybook.app",
-    "productName": "MyBook书籍管理",
+    "productName": "MyBook",
+    "electronDist": "node_modules/electron/dist",
     "icon": "build/icon.ico",
     "directories": {
       "output": "dist"

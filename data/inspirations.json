@@ -1,0 +1,126 @@
+[
+  {
+    "id": "202605070253",
+    "bookId": "1772939122256",
+    "title": "11111111",
+    "tags": [],
+    "coreTranslation": "111111111111111111<b>2222222</b>2221<b>11111</b>1111<b>1111111222</b>22222",
+    "contextExamples": {
+      "personal": "",
+      "case": ""
+    },
+    "connections": {
+      "parent": [],
+      "child": [],
+      "related": [],
+      "opposing": []
+    },
+    "source": {
+      "reference": "",
+      "quote": ""
+    },
+    "createdAt": "2026-05-07T02:53:37.297Z",
+    "updatedAt": "2026-05-07T02:53:37.297Z"
+  },
+  {
+    "id": "202605070212",
+    "bookId": "1772939471532",
+    "title": "1111111111",
+    "tags": [
+      "哲学",
+      "文学"
+    ],
+    "coreTranslation": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "contextExamples": {
+      "personal": "",
+      "case": ""
+    },
+    "connections": {
+      "parent": [],
+      "child": [],
+      "related": [],
+      "opposing": []
+    },
+    "source": {
+      "reference": "",
+      "quote": ""
+    },
+    "createdAt": "2026-05-07T02:12:44.630Z",
+    "updatedAt": "2026-05-07T02:12:44.630Z"
+  },
+  {
+    "id": "202604211532",
+    "bookId": "1772939122256",
+    "title": "1111",
+    "tags": [
+      "哲学"
+    ],
+    "coreTranslation": "1111",
+    "contextExamples": {
+      "personal": "",
+      "case": ""
+    },
+    "connections": {
+      "parent": [],
+      "child": [],
+      "related": [],
+      "opposing": []
+    },
+    "source": {
+      "reference": "",
+      "quote": ""
+    },
+    "createdAt": "2026-04-21T15:32:01.365Z",
+    "updatedAt": "2026-05-07T03:00:06.606Z"
+  },
+  {
+    "id": "202604210809",
+    "bookId": "1772939122256",
+    "title": "1111",
+    "tags": [
+      "哲学"
+    ],
+    "coreTranslation": "1111111222222",
+    "contextExamples": {
+      "personal": "",
+      "case": ""
+    },
+    "connections": {
+      "parent": [],
+      "child": [],
+      "related": [],
+      "opposing": []
+    },
+    "source": {
+      "reference": "",
+      "quote": ""
+    },
+    "createdAt": "2026-04-21T08:09:50.107Z",
+    "updatedAt": "2026-04-21T08:10:01.092Z"
+  },
+  {
+    "id": "202604200953",
+    "bookId": "1772939122256",
+    "title": "11111",
+    "tags": [
+      "社会学"
+    ],
+    "coreTranslation": "11111",
+    "contextExamples": {
+      "personal": "",
+      "case": ""
+    },
+    "connections": {
+      "parent": [],
+      "child": [],
+      "related": [],
+      "opposing": []
+    },
+    "source": {
+      "reference": "",
+      "quote": ""
+    },
+    "createdAt": "2026-04-20T09:53:49.285Z",
+    "updatedAt": "2026-04-20T10:34:05.534Z"
+  }
+]

@@ -5,162 +5,297 @@
     box-sizing: border-box;
 }
 
+/* ECharts tooltip - floating layer, absolutely no layout impact */
+.echarts-tooltip,
+.echarts-tooltip-component {
+    position: fixed !important;
+    z-index: 999999 !important;
+    pointer-events: none !important;
+    overflow: visible !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+
+/* 确保 rating 模态框内任何溢出都被隐藏 */
+.rating-modal,
+.rating-modal .modal-content,
+.rating-workspace,
+.rating-sidebar,
+.rating-chart-panel {
+    overflow: hidden !important;
+    clip: none !important;
+}
+
+#ratingChart {
+    overflow: hidden !important;
+}
+
 /* Inter 字体导入 */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* Apple 明亮紫色配色方案 */
+/* =========================================
+   丁香花灵与极夜星轨 - 设计令牌系统
+   ========================================= */
 :root {
-    /* 主色调 - Apple Purple */
-    --primary-color: #8E34EB;
-    --primary-light: #A855F7;
-    --primary-dark: #7C3AED;
-    --primary-gradient: linear-gradient(135deg, #8E34EB 0%, #7C3AED 100%);
-    --secondary-color: #A855F7;
-    --hover-color: #7C3AED;
+    /* 1. 品牌主色轴 - 珊瑚粉 (Coral Pink) */
+    --color-primary-100: #FFE5E8;
+    --color-primary-300: #FF8C9E;
+    --color-primary-500: #FF6F7D;
+    --color-primary-700: #E85A6B;
 
-    /* 背景色 - 明亮 */
-    --bg-color: #FAFAFC;
-    --bg-light: rgba(255, 255, 255, 0.8);
-    --bg-gradient: linear-gradient(180deg, #FAFAFC 0%, #F0F0F3 100%);
+    /* 2. 语义功能色 */
+    --color-success: #5E9C76;
+    --color-warning: #D49A50;
+    --color-danger:  #C2596E;
+    --color-info:    #6B8EAD;
 
-    /* 功能色 */
-    --success-color: #34C759;
-    --warning-color: #FF9500;
-    --danger-color: #FF3B30;
+    --bg-success-light: rgba(94, 156, 118, 0.1);
+    --bg-warning-light: rgba(212, 154, 80, 0.1);
+    --bg-danger-light:  rgba(194, 89, 110, 0.1);
+    --bg-info-light:    rgba(107, 142, 173, 0.1);
 
-    /* 基础颜色变量 */
-    --text-color: #1D1D1F;
-    --text-secondary: #86868B;
-    --text-tertiary: #A1A1A6;
-    --border-color: #E5E5EA;
-    --card-bg: #FFFFFF;
-    --header-bg: linear-gradient(135deg, #FFFFFF 0%, #F4F4F5 100%);
-    --footer-bg: #F4F4F5;
-    --input-bg: #F4F4F5;
-    --modal-bg: rgba(255, 255, 255, 0.98);
-    --shadow-color: rgba(0, 0, 0, 0.08);
-    --shadow-medium: rgba(142, 52, 235, 0.15);
+    /* 3. 中性色与卡片 */
+    --text-primary:   #2C2635;
+    --text-secondary: #5C5466;
+    --text-tertiary:  #8F889A;
+    --text-inverse:   #FFFFFF;
+    --border-color:   #DCD8E3;
+    --surface-card:   #FFFFFF;
+    --surface-hover:  #F2F0F5;
 
-    /* 圆角 - Apple Style */
+    /* 4. 呼吸背景底层 */
+    --bg-base:  #F5F0FA;
+    --bg-pulse: #FFE5E8;
+
+    /* 进度条默认色 */
+    --theme-progress: var(--color-primary-500);
+
+    /* 兼容性别名（供现有样式使用） */
+    --primary-color: var(--color-primary-500);
+    --primary-light: var(--color-primary-100);
+    --primary-dark: var(--color-primary-700);
+    --primary-gradient: linear-gradient(to top, var(--color-primary-100) 0%, var(--surface-card) 100%);
+    --secondary-color: #B185DB;
+    --success-color: var(--color-success);
+    --warning-color: var(--color-warning);
+    --danger-color: var(--color-danger);
+    --text-color: var(--text-primary);
+    --card-bg: var(--surface-card);
+
+    /* 圆角 */
     --radius-small: 8px;
     --radius-medium: 12px;
     --radius-large: 16px;
     --radius-xl: 20px;
     --radius-3xl: 24px;
 
-    /* 主题阴影 */
+    /* 阴影 */
     --theme-shadow-light: 0 1px 2px rgba(0, 0, 0, 0.04);
     --theme-shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.08);
     --theme-shadow-large: 0 12px 32px rgba(0, 0, 0, 0.12);
-
-    /* 玻璃态效果 - 轻量版 */
-    --glass-bg: rgba(255, 255, 255, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.5);
-    --glass-backdrop: blur(20px);
 }
 
-/* Apple 明亮主题（默认） */
+/* =========================================
+   暗色模式映射
+   ========================================= */
+[data-theme='dark'],
+[data-theme="dark"] {
+    --color-primary-100: #D5A6E8 !important;
+    --color-primary-300: #8F75A5 !important;
+    --color-primary-500: #A467C4 !important;
+    --color-primary-700: #6A4A87 !important;
+
+    --bg-success-light: rgba(94, 156, 118, 0.15);
+    --bg-warning-light: rgba(212, 154, 80, 0.15);
+    --bg-danger-light:  rgba(194, 89, 110, 0.15);
+    --bg-info-light:    rgba(107, 142, 173, 0.15);
+
+    --text-primary:   #D4CDE8;
+    --text-secondary: #9990A8;
+    --text-tertiary:  #706880;
+    --text-inverse:   #FFFFFF;
+    --border-color:   #4A4460;
+    --surface-card:   #332D50;
+    --surface-hover:  #3D3860;
+
+    --bg-base:  #18171F;
+    --bg-pulse: #5C4280;
+
+    --secondary-color: #C9A0DC;
+
+    --theme-shadow-light: rgba(0, 0, 0, 0.3);
+}
+
+/* 深色模式：书籍卡片文字对比度（强制翻白） */
+[data-theme='dark'] .book-card {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme='dark'] .book-card .book-title,
+[data-theme='dark'] .book-card .book-header-title,
+[data-theme='dark'] .book-card .honor-badge {
+    color: var(--text-primary) !important;
+}
+[data-theme='dark'] .book-card span,
+[data-theme='dark'] .book-card p,
+[data-theme='dark'] .book-card small,
+[data-theme='dark'] .book-card label,
+[data-theme='dark'] .book-card strong,
+[data-theme='dark'] .book-card [class*="meta"],
+[data-theme='dark'] .book-card [class*="info"],
+[data-theme='dark'] .book-card [class*="time"],
+[data-theme='dark'] .book-card [class*="author"],
+[data-theme='dark'] .book-card [class*="date"],
+[data-theme='dark'] .book-card [class*="genre"],
+[data-theme='dark'] .book-card [class*="tag"],
+[data-theme='dark'] .book-card .book-status,
+[data-theme='dark'] .book-card .progress-text,
+[data-theme='dark'] .book-card .book-info,
+[data-theme='dark'] .book-card .tag-text {
+    color: var(--text-secondary) !important;
+}
+[data-theme='dark'] .book-card .book-date-value {
+    color: var(--text-primary) !important;
+}
+
+/* 深色模式：卡片底部功能按钮玻璃态 */
+[data-theme='dark'] .action-btn,
+[data-theme='dark'] .action-btn i {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--text-secondary) !important;
+    border: none !important;
+}
+[data-theme='dark'] .action-btn:hover,
+[data-theme='dark'] .action-btn:hover i {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 深色模式：评分面板全摧毁修复 */
+[data-theme='dark'] .rating-modal .modal-header {
+    background: var(--surface-card) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+[data-theme='dark'] .rating-modal .modal-header h3 {
+    color: var(--text-primary) !important;
+}
+[data-theme='dark'] .rating-workspace {
+    background: var(--surface-card) !important;
+}
+[data-theme='dark'] .rating-left {
+    border-right-color: var(--border-color) !important;
+}
+[data-theme='dark'] .rating-right {
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+[data-theme='dark'] .rating-sidebar {
+    background: transparent !important;
+}
+[data-theme='dark'] #ratingChart,
+[data-theme='dark'] #ratingChart canvas {
+    background: transparent !important;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+[data-theme='dark'] .rating-metric-box {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme='dark'] .rating-metric-box .metric-name {
+    color: var(--text-primary) !important;
+}
+[data-theme='dark'] .rating-metric-box .w-label {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-secondary) !important;
+}
+[data-theme='dark'] .rating-btn {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme='dark'] .rating-btn:hover {
+    border-color: var(--color-primary-300) !important;
+}
+[data-theme='dark'] .rating-btn.active[data-v="-1"] {
+    background: var(--color-danger) !important;
+    border-color: var(--color-danger) !important;
+}
+[data-theme='dark'] .rating-btn.active[data-v="0"] {
+    background: var(--text-tertiary) !important;
+    border-color: var(--text-tertiary) !important;
+}
+[data-theme='dark'] .rating-btn.active[data-v="1"] {
+    background: var(--color-success) !important;
+    border-color: var(--color-success) !important;
+}
+[data-theme='dark'] .rating-layer-title {
+    color: var(--color-primary-300) !important;
+    border-bottom-color: var(--color-primary-300) !important;
+}
+[data-theme='dark'] .criteria-item {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme='dark'] .criteria-name {
+    color: var(--text-secondary) !important;
+}
+[data-theme='dark'] .criteria-textarea {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+[data-theme='dark'] .rating-category h5 {
+    color: var(--text-secondary) !important;
+}
+[data-theme='dark'] .rating-item,
+[data-theme='dark'] .rating-item span,
+[data-theme='dark'] .rating-item strong,
+[data-theme='dark'] .rating-item p {
+    color: var(--text-secondary) !important;
+}
+[data-theme='dark'] .ai-read-modal .rating-items,
+[data-theme='dark'] #aiRatingFinal .rating-items {
+    background: transparent !important;
+}
+[data-theme='dark'] .ai-read-modal .result-card,
+[data-theme='dark'] .apple-result,
+[data-theme='dark'] .result-content {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme='dark'] .extracted-title {
+    color: var(--color-primary-300) !important;
+}
+
+/* =========================================
+   全局背景渲染与温柔呼吸动画
+   ========================================= */
 body {
-    background-color: var(--bg-color);
-    background-image: linear-gradient(180deg, #FAFAFC 0%, #F0F0F3 100%);
-    color: var(--text-color);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
     font-size: 16px;
     line-height: 1.7;
-    transition: background-color 0.3s, color 0.3s;
+    position: relative;
     min-height: 100vh;
+    z-index: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-[data-theme="dark"] .book-title {
-    color: #e9ecef;
+body::before {
+    content: "";
+    position: fixed;
+    top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle at center, var(--bg-pulse) 0%, transparent 65%);
+    z-index: -1;
+    pointer-events: none;
+    animation: gentle-breath 15s ease-in-out infinite;
 }
 
-[data-theme="dark"] .book-author {
-    color: #adb5bd;
+@keyframes gentle-breath {
+    0%, 100% { opacity: 0.4; transform: scale(0.85); }
+    50%      { opacity: 0.95; transform: scale(1.15); }
 }
 
-[data-theme="dark"] .date-label {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .date-value {
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .form-select,
-[data-theme="dark"] input[type="text"],
-[data-theme="dark"] input[type="date"] {
-    background: #2a2a2a;
-    color: #e9ecef;
-    border-color: #4a4a4a;
-}
-
-[data-theme="dark"] .modal h3 {
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .modal p {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .action-btn {
-    background: #3a3a3a;
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .action-btn:hover {
-    background: #4a4a4a;
-    color: #ffffff;
-}
-
-[data-theme="dark"] .action-btn.edit {
-    background: #1a3a5a;
-    color: #90caf9;
-}
-
-[data-theme="dark"] .action-btn.delete {
-    background: #5a1a1a;
-    color: #ef9a9a;
-}
-
-[data-theme="dark"] .status-未开始 {
-    background: #3a3a3a;
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .status-阅读中 {
-    background: #5a4a1a;
-    color: #ffe082;
-}
-
-[data-theme="dark"] .status-已读完 {
-    background: #1a5a3a;
-    color: #a5d6a7;
-}
-
-[data-theme="dark"] .empty-state {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .empty-state h3 {
-    color: #e9ecef;
-}
-
-[data-theme="dark"] #bookCount {
-    color: #e9ecef;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Microsoft YaHei', sans-serif;
-    background: var(--bg-gradient);
-    color: var(--text-color);
-    line-height: 1.5;
-    min-height: 100vh;
-    overflow-x: hidden;
-    transition: background 0.3s ease, color 0.3s ease;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
 
 .app-container {
     display: flex;
@@ -185,7 +320,7 @@ body {
     z-index: 1000;
     transition: background 0.3s, box-shadow 0.3s;
     max-height: 100vh;
-    overflow-y: auto;
+    overflow: visible;
 }
 
 /* 粘性头部滚动时增强阴影 */
@@ -227,15 +362,6 @@ body {
     box-shadow: none !important;
 }
 
-/* ===== 深色模式适配 ===== */
-[data-theme="dark"] .filter-panel {
-    background: #282430 !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="dark"] .filter-panel:not(.hidden) {
-    border-bottom: 2px solid var(--primary-color) !important;
-}
 
 .app-header h1 {
     font-size: 1.8rem;
@@ -256,9 +382,15 @@ body {
 .toolbar-left {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
     flex: 1;
-    max-width: 700px;
+    flex-wrap: nowrap;
+    overflow: visible;
+    position: static;
+}
+
+.toolbar-left > * {
+    flex-shrink: 0;
 }
 
 .search-box {
@@ -469,8 +601,9 @@ body {
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    background: var(--primary-color);
-    color: white;
+    background: rgba(219, 112, 147, 0.12);
+    color: #333;
+    border: 1px solid #db7093;
     border-radius: 12px;
     font-size: 12px;
 }
@@ -539,18 +672,29 @@ body {
 }
 
 .btn-primary {
-    background: var(--primary-gradient);
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-700) 100%);
+    color: #ffffff;
     border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(255, 111, 125, 0.3);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-primary:hover {
-    transform: scale(1.02);
-    box-shadow: 0 8px 24px rgba(142, 52, 235, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 111, 125, 0.5);
+    background: linear-gradient(135deg, var(--color-primary-300) 0%, var(--color-primary-500) 100%);
 }
 
 .btn-primary:active {
-    transform: scale(0.98);
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(255, 111, 125, 0.3);
 }
 
 .btn-secondary {
@@ -561,7 +705,7 @@ body {
 }
 
 .btn-secondary:hover {
-    background: #F3E8FF;
+    background: var(--bg-info-light);
     border-color: var(--primary-color);
 }
 
@@ -708,55 +852,9 @@ body {
     color: var(--primary-color);
 }
 
-/* 深色模式侧边栏 */
-[data-theme="dark"] .sidebar {
-    background: #2a1a2a;
-    border-right-color: var(--border-color);
-}
-
-[data-theme="dark"] .sidebar-header {
-    border-bottom-color: var(--border-color);
-}
-
-[data-theme="dark"] .sidebar-header h3 {
-    color: var(--text-color);
-}
-
-[data-theme="dark"] .sidebar-item {
-    color: var(--text-color);
-}
-
-[data-theme="dark"] .sidebar-item:hover {
-    background: rgba(180, 100, 180, 0.2);
-}
-
-[data-theme="dark"] .sidebar-item.active {
-    background: rgba(180, 100, 180, 0.2);
-    color: var(--primary-color);
-    border-right-color: var(--primary-color);
-}
-
-[data-theme="dark"] .sidebar-add-btn {
-    border-color: var(--border-color);
-    color: var(--text-color);
-}
-
-[data-theme="dark"] .sidebar-add-btn:hover {
-    background: rgba(180, 100, 180, 0.2);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
-
-/* 主要内容区域 */
-.main-content {
-    flex: 1;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-    position: relative;
     z-index: 1;
     overflow-y: auto;
+    background: transparent;
 }
 
 /* 书籍列表区域 - 防止被 sticky 元素遮挡 */
@@ -881,28 +979,6 @@ body {
     color: #6c757d;
 }
 
-/* 深色模式禁用状态 */
-[data-theme="dark"] .progress-inputs .progress-num:disabled,
-[data-theme="dark"] .progress-inputs .progress-unit-select:disabled {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .progress-inputs .progress-num[readonly] {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #adb5bd;
-}
-
-.form-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: flex-end;
-    margin-top: 15px;
-    padding-top: 12px;
-    border-top: 1px solid #e9ecef;
-}
 
 /* 复选框美化 */
 .checkbox-label {
@@ -1052,8 +1128,9 @@ body {
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: var(--primary-gradient);
-    color: #4a2c4a;
+    background: rgba(219, 112, 147, 0.15);
+    color: #333;
+    border: 1px solid #db7093;
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 500;
@@ -1100,8 +1177,9 @@ body {
     align-items: center;
     gap: 6px;
     padding: 5px 10px;
-    background: var(--primary-gradient);
-    color: #4a2c4a;
+    background: rgba(219, 112, 147, 0.15);
+    color: #333;
+    border: 1px solid #db7093;
     border-radius: 12px;
     font-size: 0.85rem;
     font-weight: 500;
@@ -1231,23 +1309,25 @@ body {
     color: #2c3e50;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
+    padding-left: 10px;
 }
 
 .list-info {
     background: #f8f9fa;
-    padding: 8px 16px;
+    padding: 8px 24px;
     border-radius: 20px;
     font-size: 0.9rem;
     color: #6c757d;
+    margin-right: 10px;
 }
 
 /* 书籍列表容器 - 响应式网格布局 */
 .book-list-container {
     display: grid;
-    /* 初始状态：普通窗口下两列 */
-    grid-template-columns: repeat(2, 1fr);
-    gap: 25px;
+    /* 自适应流式网格 */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
     margin-top: 20px;
     scroll-margin-top: 100px;
     align-items: stretch;
@@ -1256,18 +1336,11 @@ body {
     box-sizing: border-box;
 }
 
-/* 宽屏/全屏状态：三列布局 */
-@media (min-width: 1200px) {
-    .book-list-container {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
 /* Apple 风格书籍卡片 - 明亮主题 */
 .book-card {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 16px;
-    padding: 16px;
+    padding: 12px 16px;
     box-shadow: var(--theme-shadow-light);
     border: 1px solid var(--border-color);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1275,11 +1348,12 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 180px;
+    min-height: 170px;
     height: 100%;
     width: 100%;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+    --card-status-color: var(--primary-color);
 }
 
 .book-card:hover {
@@ -1298,20 +1372,12 @@ body {
     left: 0;
     width: 5px;
     height: 100%;
-    background: var(--primary-color) !important;
+    background: var(--card-status-color, var(--color-primary-500)) !important;
     border-radius: 4px 0 0 4px;
 }
 
-.book-card.阅读中::before {
-    background: var(--warning-color) !important;
-}
-
-.book-card.已读完::before {
-    background: var(--primary-color) !important;
-}
-
-.book-card.未开始::before {
-    background: var(--text-tertiary) !important;
+.book-progress .progress-fill {
+    background-color: var(--card-status-color, var(--color-primary-500)) !important;
 }
 
 /* 右上角状态标签 */
@@ -1348,19 +1414,91 @@ body {
     background-color: var(--theme-progress, #3498db) !important;
 }
 
-/* 主题阴影 */
-:root {
-    --theme-shadow-light: rgba(0, 0, 0, 0.1);
-}
-
 [data-theme="dark"] {
     --theme-shadow-light: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .inspiration-search-box {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .inspiration-search-box i {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .inspiration-search-box input {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .inspiration-search-box input::placeholder {
+    color: var(--text-tertiary) !important;
+}
+
+[data-theme="dark"] .inspiration-toolbar {
+    background: transparent !important;
+}
+
+[data-theme="dark"] .filter-panel {
+    background: var(--surface-card);
+}
+
+[data-theme="dark"] .filter-panel-footer {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .filter-tag-pill.selected {
+    background: var(--color-primary-300);
+    border-color: var(--color-primary-300);
+}
+
+[data-theme="dark"] .filter-time-options input[type="radio"] {
+    accent-color: var(--color-primary-300);
+}
+
+[data-theme="dark"] .filter-date-input {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .filter-popover {
+    background: var(--surface-card);
+}
+
+[data-theme="dark"] .filter-popover .book-select-wrapper select {
+    background: var(--surface-card);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .time-pill {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .time-pill.active {
+    background: var(--color-primary-300);
+    border-color: var(--color-primary-300);
+}
+
+[data-theme="dark"] .filter-tag-pill.selected {
+    background: var(--color-primary-300);
+    border-color: var(--color-primary-300);
+}
+
+[data-theme="dark"] .btn-reset {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .btn-reset:hover {
+    background: rgba(255, 255, 255, 0.12);
 }
 
 /* 书籍卡片进度条 */
 .book-progress {
     margin-top: auto;
-    padding-top: 12px;
+    padding-top: 10px;
     border-top: 1px dashed #e9ecef;
 }
 
@@ -1441,15 +1579,16 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    gap: 12px;
+    margin-bottom: 12px;
+    gap: 8px;
 }
 
 .book-title {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 5px;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+    line-height: 1.3;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1522,8 +1661,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 12px;
-    padding-top: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px dashed #e9ecef;
 }
 
@@ -1619,10 +1758,6 @@ body {
     flex-shrink: 0;
 }
 
-/* 深色模式下确保底部状态栏与容器底色完全融合 */
-[data-theme="dark"] .app-footer {
-    background-color: transparent !important;
-}
 
 .status-info {
     display: flex;
@@ -1650,7 +1785,7 @@ body {
 
 /* Apple 风格模态框 - 明亮主题 */
 .modal-content {
-    background: #FFFFFF;
+    background: var(--surface-card);
     padding: 24px;
     border-radius: var(--radius-xl);
     box-shadow: var(--theme-shadow-large);
@@ -1690,6 +1825,8 @@ body {
 }
 
 .overlay {
+    visibility: hidden;
+    opacity: 0;
     position: fixed;
     top: 0;
     left: 0;
@@ -1699,6 +1836,14 @@ body {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 999;
+    transition: visibility 0.3s, opacity 0.3s;
+    pointer-events: none;
+}
+
+.overlay.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* =========================================
@@ -2366,18 +2511,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #dda0dd 0%, #ffb6c1 100%);
+    background: linear-gradient(135deg, #FF8C9E 0%, #FF6F7D 100%);
     border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #da70d6 0%, #ff69b4 100%);
+    background: linear-gradient(135deg, #FF6F7D 0%, #E85A6B 100%);
 }
 
 /* Firefox 滚动条兼容 */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #dda0dd #f1f1f1;
+    scrollbar-color: #FF8C9E #f1f1f1;
 }
 
 /* =========================================
@@ -2388,6 +2533,7 @@ body {
 .rating-modal {
     max-width: none !important;
     width: 100% !important;
+    height: 100% !important;
     background: rgba(0, 0, 0, 0.4) !important;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -2396,8 +2542,17 @@ body {
 .rating-modal .modal-content {
     max-width: 1200px !important;
     width: 95%;
-    padding: 0 !important; /* 移除padding，让内部区域贴边 */
-    overflow: hidden; /* 防止圆角被内部色块破坏 */
+    height: auto;
+    max-height: 90vh;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+/* 确保 rating 模态框内的 tooltip 不会产生滚动条 */
+.rating-modal {
+    overflow: visible !important;
 }
 
 /* 模态框头部 */
@@ -2411,19 +2566,6 @@ body {
     align-items: center;
 }
 
-/* 深色模式下评分模态框头部使用透明背景 */
-[data-theme="dark"] .rating-modal .modal-header {
-    background: transparent;
-    border-bottom: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] .rating-modal {
-    background: rgba(0, 0, 0, 0.6) !important;
-}
-
-[data-theme="dark"] .rating-modal .modal-header h3 {
-    color: var(--text-color);
-}
 
 .rating-modal .modal-header h3 {
     color: #4a2c4a;
@@ -2434,28 +2576,37 @@ body {
 .rating-workspace {
     display: flex;
     flex-direction: row;
-    height: 65vh;       /* 锁定高度，约占屏幕的65% */
-    min-height: 500px;
+    flex: 1;
+    min-height: 0;
     background: #fff;
+    overflow: hidden;
 }
 
 /* 3. 左侧：打分区 (允许滚动) */
 .rating-left {
-    flex: 1.5;          /* 宽度占比 60% */
-    overflow-y: auto;   /* 核心！内容过多时内部滚动 */
+    flex: 1.5;
+    overflow-y: auto;
     padding: 20px 25px;
     border-right: 1px solid #f0f0f0;
 }
 
-/* 4. 右侧：看板区 (固定图表) */
+/* 4. 右侧：看板区 (固定图表+操作按钮) */
 .rating-right {
-    flex: 1;            /* 宽度占比 40% */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-light);
+    overflow: hidden;
+}
+
+.rating-sidebar {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 20px 25px;
-    background: var(--bg-light); /* 淡淡的粉色背景 */
-    position: relative;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* --- 保留你精美的指标与按钮样式 --- */
@@ -2499,7 +2650,7 @@ body {
 .rating-btn:hover { border-color: var(--primary-color); }
 .rating-btn.active[data-v="-1"] { background: var(--danger-color); color: white; border-color: var(--danger-color); }
 .rating-btn.active[data-v="0"] { background: #909399; color: white; border-color: #909399; }
-.rating-btn.active[data-v="1"] { background: var(--secondary-color); color: white; border-color: var(--secondary-color); }
+.rating-btn.active[data-v="1"] { background: #88D8A0; color: white; border-color: #88D8A0; }
 
 /* --- 右侧看板样式美化 --- */
 .rating-total-card {
@@ -2512,14 +2663,19 @@ body {
 
 .rating-total-card .rating-label { display: block; color: #E27267; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
 .rating-score { font-size: 3.5rem; font-weight: 800; color: #F88379; text-shadow: 0 2px 10px rgba(248, 131, 121, 0.3); }
-.rating-chart-panel { width: 100%; display: flex; flex-direction: column; align-items: center; }
-#ratingChart { width: 100%; height: 350px; margin-top: 10px; }
+.rating-chart-panel { width: 100%; display: flex; flex-direction: column; align-items: center; overflow: hidden; position: relative; }
+#ratingChart { width: 100%; height: 350px; margin-top: 10px; overflow: visible; position: relative; z-index: 1; }
+#ratingChart canvas { overflow: visible !important; }
 
-/* --- 5. 底部操作按钮区 --- */
+/* --- 5. 底部操作按钮区 (嵌入右侧边栏) --- */
 .rating-actions {
-    display: flex; flex-shrink: 0; justify-content: flex-end; gap: 15px;
-    padding: 15px 25px; border-top: 1px solid #e9ecef;
-    background: #fafafa; border-radius: 0 0 12px 12px;
+    display: flex;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    gap: 15px;
+    padding: 15px 25px;
+    border-top: 1px solid #e9ecef;
+    background: #fafafa;
 }
 
 .filter-header {
@@ -2739,40 +2895,6 @@ body {
     margin-right: 10px;
 }
 
-/* 深色模式细节保护 */
-[data-theme="dark"] .filter-top-row,
-[data-theme="dark"] .filter-bottom-row {
-    background-color: #282430 !important;
-    box-shadow: none !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="dark"] #filterPanel,
-[data-theme="dark"] #filterPanel h3,
-[data-theme="dark"] #filterPanel label,
-[data-theme="dark"] #filterPanel .filter-label,
-[data-theme="dark"] .checkbox-label,
-[data-theme="dark"] .date-range span,
-[data-theme="dark"] .rating-range span,
-[data-theme="dark"] .duration-range span,
-[data-theme="dark"] .filter-tag-category {
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .filter-tag-category-row {
-    background-color: rgba(40, 36, 48, 0.5) !important;
-    border-radius: 6px;
-    padding: 8px 15px;
-}
-
-[data-theme="dark"] .checkbox-label:has(input:checked) {
-    background-color: rgba(180, 100, 180, 0.3) !important;
-    color: #ffffff !important;
-}
-
-[data-theme="dark"] .checkbox-label:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-}
 
 /* 复选框对齐修复 */
 .checkbox-label {
@@ -2810,8 +2932,8 @@ body {
 }
 
 .tag-format-checkbox:has(input:checked) {
-    background: rgba(155, 89, 182, 0.3) !important;
-    border-color: rgba(155, 89, 182, 0.6) !important;
+    background: rgba(219, 112, 147, 0.12) !important;
+    border-color: #db7093 !important;
     color: #333;
     font-weight: 600;
 }
@@ -3103,6 +3225,7 @@ body {
    右键菜单样式
    ========================================= */
 .context-menu {
+    visibility: hidden;
     position: fixed;
     background: var(--card-bg);
     border-radius: 8px;
@@ -3111,8 +3234,13 @@ body {
     min-width: 180px;
     overflow: visible;
     border: 1px solid var(--border-color);
-    animation: context-menu-in 0.15s ease-out;
-    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    opacity: 0;
+    transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+}
+
+.context-menu.visible {
+    visibility: visible;
+    opacity: 1;
 }
 
 @keyframes context-menu-in {
@@ -3180,9 +3308,7 @@ body {
 
 .context-menu .submenu {
     display: none;
-    position: absolute;
-    left: 100%;
-    top: 0;
+    position: fixed;
     min-width: 160px;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -3214,40 +3340,6 @@ body {
     background: #f8f9fa;
 }
 
-/* 深色模式适配 */
-[data-theme="dark"] .context-menu .submenu {
-    background: var(--card-bg);
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme="dark"] .context-menu .submenu li {
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .context-menu .submenu li:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* 深色模式右键菜单 */
-[data-theme="dark"] .context-menu li {
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .context-menu li:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme="dark"] .context-menu li.danger {
-    color: #ff6b6b;
-}
-
-[data-theme="dark"] .context-menu li.danger:hover {
-    background: rgba(255, 107, 107, 0.1);
-}
-
-[data-theme="dark"] .context-menu li.divider {
-    background: rgba(255, 255, 255, 0.1);
-}
 
 /* ==================== 导入/导出样式 ==================== */
 .data-controls {
@@ -3272,18 +3364,6 @@ body {
     font-size: 1rem;
 }
 
-/* 深色模式下主题切换按钮更显眼 */
-[data-theme="dark"] #themeToggleBtn {
-    background: #8E34EB !important;
-    color: #ffffff !important;
-    border: 2px solid #A855F7 !important;
-    box-shadow: 0 0 15px rgba(142, 52, 235, 0.5) !important;
-}
-
-[data-theme="dark"] #themeToggleBtn i {
-    color: #ffffff !important;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5) !important;
-}
 
 #themeToggleBtn i {
     font-size: 1.2rem;
@@ -3456,21 +3536,6 @@ body {
     transform: translateY(-1px);
 }
 
-/* 深色模式取消按钮 */
-[data-theme="dark"] .modal-actions .btn-secondary,
-[data-theme="dark"] #cancelJournalDeleteBtn,
-[data-theme="dark"] #cancelDeleteBtn {
-    border-color: #555;
-    color: #aaa;
-}
-
-[data-theme="dark"] .modal-actions .btn-secondary:hover,
-[data-theme="dark"] #cancelJournalDeleteBtn:hover,
-[data-theme="dark"] #cancelDeleteBtn:hover {
-    background: #333 !important;
-    border-color: #666;
-    color: #ccc;
-}
 
 /* ===== 新建文件夹弹窗专用样式 ===== */
 
@@ -3854,1153 +3919,8 @@ body {
         gap: 5px;
     }
 }
-
-/* =========================================
-   深色模式完美适配 (Dark Mode Text Contrast Fix)
-   ========================================= */
-
-/* 1. 覆盖基础大标题文本 + body背景 - 最高优先级 */
-[data-theme="dark"] body {
-    background: #12121f !important;
-    color: #f8f9fa !important;
-}
-
-/* 所有主要容器的深色背景 */
-[data-theme="dark"] div,
-[data-theme="dark"] section,
-[data-theme="dark"] article,
-[data-theme="dark"] main,
-[data-theme="dark"] aside,
-[data-theme="dark"] nav,
-[data-theme="dark"] header,
-[data-theme="dark"] footer {
-    background: transparent !important;
-}
-
-[data-theme="dark"] .app-header h1,
-[data-theme="dark"] .section-header h2,
-[data-theme="dark"] .form-container h2 {
-    color: #f8f9fa !important;
-}
-
-/* 深色模式：确保 header 背景正确覆盖 */
-[data-theme="dark"] .app-header {
-    background: #252538 !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* 2. 书籍卡片内部文本高对比度提亮 */
-[data-theme="dark"] .book-title {
-    color: #ffffff !important; /* 书名用纯白，最醒目 */
-}
-
-[data-theme="dark"] .book-author,
-[data-theme="dark"] .date-label {
-    color: #adb5bd !important; /* 作者和标签用浅灰，保持视觉层次感 */
-}
-
-[data-theme="dark"] .date-value {
-    color: #e9ecef !important; /* 日期具体数值提亮 */
-}
-
-/* 3. 顶部工具栏和表单输入框改造 */
-[data-theme="dark"] .form-select,
-[data-theme="dark"] input[type="text"],
-[data-theme="dark"] input[type="date"],
-[data-theme="dark"] #globalSearch {
-    background-color: rgba(255, 255, 255, 0.1) !important; /* 输入框变成半透明深色 */
-    color: #f8f9fa !important; /* 用户打的字变成白色 */
-    border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* 修复下拉菜单在深色模式下展开时的选项背景 */
-[data-theme="dark"] .form-select option {
-    background-color: #2c2c3e !important;
-    color: #f8f9fa !important;
-}
-
-/* 4. 列表右上角的书籍数量小药丸 */
-[data-theme="dark"] .list-info {
-    background: rgba(255, 255, 255, 0.15) !important;
-    color: #f8f9fa !important;
-}
-
-/* 5. 空状态提示和各种弹窗内部文本 */
-[data-theme="dark"] .empty-state h3,
-[data-theme="dark"] .empty-state p,
-[data-theme="dark"] .modal h3,
-[data-theme="dark"] .modal p {
-    color: #e9ecef !important;
-}
-
-/* 6. 顶部工具栏：按钮、图标与提示词深色模式终极修复 */
-[data-theme="dark"] .btn-primary,
-[data-theme="dark"] .btn-secondary,
-[data-theme="dark"] .toolbar button,
-[data-theme="dark"] .form-select {
-    color: #f8f9fa !important; /* 按钮文字和下拉菜单文字变白 */
-}
-
-[data-theme="dark"] .btn-primary i,
-[data-theme="dark"] .btn-secondary i,
-[data-theme="dark"] .toolbar button i,
-[data-theme="dark"] .app-header h1 i {
-    color: #f8f9fa !important; /* 所有的 FontAwesome 小图标变白 */
-}
-
-/* 修复搜索框里的提示文字(Placeholder)太暗的问题 */
-[data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder {
-    color: #adb5bd !important; /* 提示词变成柔和的浅灰色 */
-}
-
-/* =========================================
-   深色模式全局修复 - 容器背景+文字颜色
-   ========================================= */
-
-/* 1. 主要容器设置深色背景 + 浅色文字 */
-[data-theme="dark"] .app-container {
-    background: #1a1a2e !important;
-}
-
-[data-theme="dark"] .sidebar {
-    background: #252538 !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .sidebar * {
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .app-header {
-    background: #252538 !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .app-header * {
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .main-content {
-    background: #12121f !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .main-content * {
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .book-list-section {
-    background: #12121f !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .book-list-section * {
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .filter-panel {
-    background: #252538 !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .filter-panel * {
-    color: #f8f9fa !important;
-}
-
-/* 书籍卡片深色背景 */
-[data-theme="dark"] .book-card,
-[data-theme="dark"] .book-item {
-    background: #2a2a40 !important;
-    color: #f8f9fa !important;
-    border-color: #3a3a50 !important;
-}
-
-[data-theme="dark"] .book-card *,
-[data-theme="dark"] .book-item * {
-    color: #f8f9fa !important;
-}
-
-/* 侧边栏项目 */
-[data-theme="dark"] .sidebar-item,
-[data-theme="dark"] .sidebar-header {
-    background: transparent !important;
-    color: #f8f9fa !important;
-}
-
-/* 工具栏深色背景 */
-[data-theme="dark"] .toolbar {
-    background: #252538 !important;
-}
-
-/* 搜索框深色模式 */
-[data-theme="dark"] .search-box,
-[data-theme="dark"] .search-box *,
-[data-theme="dark"] #globalSearch,
-[data-theme="dark"] #globalSearch * {
-    background: #1a1a2e !important;
-    color: #f8f9fa !important;
-}
-
-/* 下拉框深色模式 */
-[data-theme="dark"] .form-select,
-[data-theme="dark"] select {
-    background: #1a1a2e !important;
-    color: #f8f9fa !important;
-    border-color: #3a3a50 !important;
-}
-
-/* 日期筛选器深色模式 */
-[data-theme="dark"] .date-filter,
-[data-theme="dark"] .date-filter * {
-    background: #1a1a2e !important;
-    color: #f8f9fa !important;
-}
-
-/* 工具栏按钮深色模式 */
-[data-theme="dark"] .toolbar button,
-[data-theme="dark"] .toolbar .btn {
-    background: #3a3a50 !important;
-    color: #f8f9fa !important;
-    border-color: #4a4a60 !important;
-}
-
-/* 主要按钮深色模式 */
-[data-theme="dark"] .btn-primary {
-    background: linear-gradient(135deg, #8E34EB 0%, #7C3AED 100%) !important;
-    color: #ffffff !important;
-    border: none !important;
-}
-
-/* 次要按钮深色模式 */
-[data-theme="dark"] .btn-secondary {
-    background: #3a3a50 !important;
-    color: #f8f9fa !important;
-    border-color: #4a4a60 !important;
-}
-
-/* 小按钮深色模式 */
-[data-theme="dark"] .btn-small {
-    background: #3a3a50 !important;
-    color: #f8f9fa !important;
-    border-color: #4a4a60 !important;
-}
-
-/* 轮廓按钮深色模式 */
-[data-theme="dark"] .btn-outline {
-    background: transparent !important;
-    color: #f8f9fa !important;
-    border-color: #4a4a60 !important;
-}
-
-/* 所有按钮深色模式 */
-[data-theme="dark"] button,
-[data-theme="dark"] .btn,
-[data-theme="dark"] .action-btn,
-[data-theme="dark"] .sidebar-add-btn {
-    background: #3a3a50 !important;
-    color: #f8f9fa !important;
-    border-color: #4a4a60 !important;
-}
-
-/* 侧边栏按钮 */
-[data-theme="dark"] .sidebar button,
-[data-theme="dark"] .sidebar .btn,
-[data-theme="dark"] .sidebar-item button,
-[data-theme="dark"] .sidebar-item .btn {
-    background: #3a3a50 !important;
-    color: #f8f9fa !important;
-    border-color: #4a4a60 !important;
-}
-
-/* 下拉框倒三角图标 - 修复为白色可见 */
-[data-theme="dark"] .form-select,
-[data-theme="dark"] select,
-[data-theme="dark"] select.form-control {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f8f9fa' d='M6 8L1 3h10z'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 10px center !important;
-    background-size: 12px 12px !important;
-    -webkit-appearance: none !important;
-    -moz-appearance: none !important;
-    appearance: none !important;
-    padding-right: 30px !important;
-}
-
-/* 日期选择器图标 */
-[data-theme="dark"] input[type="date"] {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'%3E%3Cpath fill='%23f8f9fa' d='M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 10px center !important;
-    background-size: 16px 16px !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-    padding-right: 35px !important;
-}
-
-/* 主要容器全覆盖 */
-[data-theme="dark"] #app,
-[data-theme="dark"] .app {
-    background: #12121f !important;
-}
-
-/* 区块标题深色背景 */
-[data-theme="dark"] .section-header {
-    background: transparent !important;
-}
-
-[data-theme="dark"] .section-header h2 {
-    color: #f8f9fa !important;
-}
-
-/* 2. 按钮使用深色背景 + 浅色文字（保持对比度） */
-[data-theme="dark"] .btn-primary,
-[data-theme="dark"] .btn-secondary,
-[data-theme="dark"] button {
-    color: #ffffff !important;
-}
-
-/* 3. 确保图标可见 */
-[data-theme="dark"] i,
-[data-theme="dark"] .icon,
-[data-theme="dark"] [class*="icon"] {
-    color: #f8f9fa !important;
-}
-
-/* 4. 输入框设置深色背景 + 浅色文字 */
-[data-theme="dark"] input,
-[data-theme="dark"] textarea,
-[data-theme="dark"] select {
-    background: #2a2a3e !important;
-    color: #f8f9fa !important;
-    border-color: #3a3a4e !important;
-}
-
-/* SVG 图标在深色模式下可见 */
-[data-theme="dark"] svg,
-[data-theme="dark"] svg path,
-[data-theme="dark"] svg g {
-    fill: #f8f9fa !important;
-    stroke: #f8f9fa !important;
-}
-
-/* 深色模式滚动条 */
-[data-theme="dark"] ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-track {
-    background: #2a2a2a;
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-    background: #555555;
-    border-radius: 4px;
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-    background: #777777;
-}
-
-/* 链接在深色模式下可见 */
-[data-theme="dark"] a,
-[data-theme="dark"] a:visited,
-[data-theme="dark"] a:hover {
-    color: #8E34EB !important;
-}
-
-/* 表格在深色模式下 */
-[data-theme="dark"] table,
-[data-theme="dark"] th,
-[data-theme="dark"] td {
-    color: #f8f9fa !important;
-}
-
-/* 模态框综合深色模式 */
-[data-theme="dark"] .modal {
-    background: rgba(30, 30, 40, 0.95) !important;
-}
-
-[data-theme="dark"] .modal-header,
-[data-theme="dark"] .modal-body,
-[data-theme="dark"] .modal-footer {
-    background: #1e1e28 !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .modal h1,
-[data-theme="dark"] .modal h2,
-[data-theme="dark"] .modal h3,
-[data-theme="dark"] .modal h4,
-[data-theme="dark"] .modal h5,
-[data-theme="dark"] .modal h6,
-[data-theme="dark"] .modal p,
-[data-theme="dark"] .modal span,
-[data-theme="dark"] .modal div {
-    color: #f8f9fa !important;
-}
-
-/* 关闭按钮在深色模式下可见 */
-[data-theme="dark"] .close-btn,
-[data-theme="dark"] .close-btn *,
-[data-theme="dark"] [class*="close"] {
-    color: #f8f9fa !important;
-}
-
-/* 下拉箭头图标 */
-[data-theme="dark"] .form-select,
-[data-theme="dark"] select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f8f9fa' d='M6 8L1 3h10z'/%3E%3C/svg%3E") !important;
-}
-
-/* =========================================
-   深色模式终极修复：表单、笔记、评分面板背景适配
-   ========================================= */
-
-/* --- 1. 添加书籍表单：标签和复选框文字提亮 --- */
-[data-theme="dark"] .form-group label,
-[data-theme="dark"] .checkbox-label {
-    color: #e9ecef !important;
-}
-
-/* 标签输入区域深色模式 */
-[data-theme="dark"] .tag-input {
-    background: rgba(255, 255, 255, 0.1);
-    color: #f8f9fa;
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .tag-input::placeholder {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .preset-tag-label,
-[data-theme="dark"] .section-label {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .preset-tag {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e9ecef;
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .preset-tag:hover {
-    background: var(--primary-gradient);
-    color: #4a2c4a;
-}
-
-/* 深色模式自定义标签 */
-[data-theme="dark"] .preset-tag.custom-tag {
-    background: rgba(46, 125, 50, 0.3);
-    border-color: #4caf50;
-    color: #a5d6a7;
-}
-
-[data-theme="dark"] .tag-delete {
-    color: #ef9a9a;
-}
-
-[data-theme="dark"] .tag-delete:hover {
-    background: rgba(231, 76, 60, 0.3);
-    color: #ef5350;
-}
-
-[data-theme="dark"] .selected-tag {
-    background: rgba(255, 255, 255, 0.15);
-    color: #f8f9fa;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .selected-tag .remove-tag {
-    color: #f8f9fa;
-}
-
-/* =========================================
-   三区式标签系统深色模式
-   ========================================= */
-
-/* 第一区：已选展示区 */
-[data-theme="dark"] .selected-tags-area {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="dark"] .selected-tags-area .no-tags-tip {
-    color: #adb5bd;
-}
-
-/* 已选标签 - 半透明深紫色 */
-[data-theme="dark"] .selected-tags-area .selected-tag {
-    background: rgba(180, 100, 180, 0.3);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .selected-tags-area .selected-tag .remove-tag {
-    color: #ffffff;
-    opacity: 0.8;
-}
-
-[data-theme="dark"] .selected-tags-area .selected-tag .remove-tag:hover {
-    opacity: 1;
-}
-
-/* 深色模式：题材标签高亮 */
-[data-theme="dark"] .selected-tags-area .tag-format-active {
-    background: rgba(155, 89, 182, 0.25) !important;
-    color: #d192e8 !important;
-    border: 1px solid rgba(155, 89, 182, 0.4) !important;
-    font-weight: 700 !important;
-}
-
-/* 深色模式：普通类型标签 */
-[data-theme="dark"] .selected-tags-area .tag-genre-item {
-    background: rgba(180, 100, 180, 0.3) !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-
-/* 深色模式：预设标签选中状态 */
-[data-theme="dark"] .preset-tag.active {
-    background: rgba(180, 100, 180, 0.4) !important;
-    color: #ffffff !important;
-    border-color: rgba(155, 89, 182, 0.6) !important;
-    font-weight: 600 !important;
-}
-
-/* 第二区：自定义输入 */
-[data-theme="dark"] .tag-input-wrapper .form-control {
-    background: rgba(0, 0, 0, 0.2);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .tag-input-wrapper .form-control::placeholder {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .tag-input-wrapper .form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(221, 160, 221, 0.25);
-}
-
-/* 第三区：双分类推荐区 */
-[data-theme="dark"] .tag-group-title {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .preset-tags-container .preset-tag {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .preset-tags-container .preset-tag:hover {
-    background: var(--primary-gradient);
-    color: #4a2c4a;
-    border-color: var(--primary-color);
-}
-
-/* --- 2. 笔记面板：消灭刺眼的白色大雪糕 --- */
-/* 历史笔记大容器、当前书籍信息框、底部输入大框 */
-[data-theme="dark"] .notes-list-container,
-[data-theme="dark"] .current-book-info,
-[data-theme="dark"] .notes-input-section {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 笔记多行文本输入框、搜索框 */
-[data-theme="dark"] #newNoteContent,
-[data-theme="dark"] #noteSearchInput {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    color: #f8f9fa !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* 单条笔记卡片 */
-[data-theme="dark"] .note-item {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-[data-theme="dark"] .note-content {
-    color: #e9ecef !important;
-}
-
-/* --- 3. 评分面板：左侧指标卡片漂黑 --- */
-/* 移除左右两侧的默认纯白背景 */
-[data-theme="dark"] .rating-workspace,
-[data-theme="dark"] .rating-actions {
-    background-color: transparent !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 25个指标卡片及内部文字 */
-[data-theme="dark"] .rating-metric-box {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-[data-theme="dark"] .rating-metric-box .metric-name {
-    color: #f8f9fa !important;
-}
-
-/* -1 / 0 / 1 打分按钮常态 */
-[data-theme="dark"] .rating-btn {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: #adb5bd !important;
-}
-
-/* 选中打分按钮时保持白字 (强制覆盖以防失效) */
-[data-theme="dark"] .rating-btn.active[data-v="-1"],
-[data-theme="dark"] .rating-btn.active[data-v="0"],
-[data-theme="dark"] .rating-btn.active[data-v="1"] {
-    color: #ffffff !important;
-}
-
-/* 右侧总分卡片半透明化 */
-[data-theme="dark"] .rating-total-card {
-    background: rgba(0, 0, 0, 0.2) !important;
-    box-shadow: none !important;
-}
-
-/* =========================================
-   终极抹杀深色模式下复选框/标签的死亡白块
-   ========================================= */
-
-/* 1. 强制清空包含 checkbox 的所有标签和容器背景 */
-[data-theme="dark"] label:has(input[type="checkbox"]),
-[data-theme="dark"] .checkbox-label,
-[data-theme="dark"] .form-group:has(input[type="checkbox"]) {
-    background: transparent !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    color: #f8f9fa !important; /* 强制白字 */
-    border: none !important;
-}
-
-/* 2. 鼠标悬浮时给予极其微弱的高级深灰，绝不刺眼 */
-[data-theme="dark"] label:has(input[type="checkbox"]):hover,
-[data-theme="dark"] .checkbox-label:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    color: #ffffff !important;
-    border-radius: 6px !important;
-}
-
-/* 3. 勾选框本身的强调色 */
-[data-theme="dark"] input[type="checkbox"] {
-    accent-color: var(--primary-color) !important;
-    cursor: pointer;
-}
-
-/* =========================================
-   深色模式终极修复 2.0：筛选面板完美融合
-   ========================================= */
-
-/* 1. 筛选面板主背景：精准匹配系统的深紫灰色 */
-[data-theme="dark"] #filterPanel {
-    background-color: #282430 !important; /* 匹配你系统的紫灰色背景 */
-    border-color: rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* 2. 彻底抹杀头部和底部的白色长条！(无论它叫 header 还是 action) */
-[data-theme="dark"] #filterPanel .filter-header,
-[data-theme="dark"] #filterPanel .filter-actions {
-    background-color: transparent !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="dark"] .filter-top-row,
-[data-theme="dark"] .filter-bottom-row {
-    background-color: #282430 !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="dark"] .filter-tags-group .tag-filter-list {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 3. 筛选面板内的标题、文字提亮 */
-[data-theme="dark"] #filterPanel,
-[data-theme="dark"] #filterPanel h3,
-[data-theme="dark"] #filterPanel label,
-[data-theme="dark"] #filterPanel .filter-label,
-[data-theme="dark"] .checkbox-label,
-[data-theme="dark"] .date-range span,
-[data-theme="dark"] .rating-range span,
-[data-theme="dark"] .duration-range span,
-[data-theme="dark"] .filter-tag-category {
-    color: #f8f9fa !important;
-}
-
-/* 确保筛选面板行背景与 #filterPanel 完全一致 */
-[data-theme="dark"] .filter-top-row,
-[data-theme="dark"] .filter-bottom-row {
-    background-color: #282430 !important;
-}
-
-[data-theme="dark"] .date-range input,
-[data-theme="dark"] .rating-range input,
-[data-theme="dark"] .duration-range input {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: #f8f9fa !important;
-}
-
-[data-theme="dark"] .date-range input:focus,
-[data-theme="dark"] .rating-range input:focus,
-[data-theme="dark"] .duration-range input:focus {
-    border-color: rgba(180, 100, 180, 0.6) !important;
-    box-shadow: 0 0 0 3px rgba(180, 100, 180, 0.2) !important;
-}
-
-/* 4. 修复"暂无标签"区域和各种输入框 */
-[data-theme="dark"] #filterTagsContainer,
-[data-theme="dark"] .tag-filter-list,
-[data-theme="dark"] input[type="number"],
-[data-theme="dark"] #filterPanel input[type="date"] {
-    background-color: rgba(0, 0, 0, 0.25) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    color: #e9ecef !important;
-}
-
-[data-theme="dark"] .tag-filter-list {
-    background-color: rgba(0, 0, 0, 0.25) !important;
-}
-
-/* 筛选面板标签分类深色模式 */
-[data-theme="dark"] .filter-tag-category {
-    color: #d192e8 !important;
-    border-right-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-[data-theme="dark"] .filter-tag-item {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    color: #e9ecef !important;
-}
-
-[data-theme="dark"] .filter-tag-item:hover {
-    background: rgba(155, 89, 182, 0.2) !important;
-    border-color: rgba(155, 89, 182, 0.4) !important;
-}
-
-[data-theme="dark"] .filter-tag-item input[type="checkbox"] {
-    accent-color: #d192e8;
-}
-
-[data-theme="dark"] .checkbox-label input[type="checkbox"] {
-    accent-color: rgba(180, 100, 180, 0.8);
-}
-
-[data-theme="dark"] .tag-name {
-    color: #e9ecef !important;
-}
-
-/* 深色模式标签选中状态 - 核心修复 */
-[data-theme="dark"] .filter-tag-item:has(input:checked) {
-    background: rgba(180, 100, 180, 0.3) !important;
-    border-color: rgba(180, 100, 180, 0.5) !important;
-    color: #ffffff !important;
-}
-
-[data-theme="dark"] .filter-tag-item:has(input:checked) .tag-name {
-    color: #ffffff !important;
-    font-weight: 600;
-}
-
-/* 浅色模式标签选中状态 */
-.filter-tag-item:has(input:checked) {
-    background: rgba(248, 131, 121, 0.15) !important;
-    border-color: #F88379 !important;
-    color: #333;
-}
-
-.filter-tag-item:has(input:checked) .tag-name {
-    color: #333;
-    font-weight: 600;
-}
-
-/* 深色模式标签复选框样式 */
-[data-theme="dark"] .tag-checkbox,
-[data-theme="dark"] .tag-format-checkbox {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="dark"] .tag-checkbox:hover,
-[data-theme="dark"] .tag-format-checkbox:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-[data-theme="dark"] .tag-checkbox input[type="checkbox"],
-[data-theme="dark"] .tag-format-checkbox input[type="checkbox"] {
-    accent-color: #d192e8;
-}
-
-/* 深色模式标签复选框选中状态 */
-[data-theme="dark"] .tag-checkbox:has(input:checked),
-[data-theme="dark"] .tag-format-checkbox:has(input:checked) {
-    background: rgba(180, 100, 180, 0.3) !important;
-    border-color: rgba(180, 100, 180, 0.5) !important;
-    color: #ffffff !important;
-}
-
-/* 深色模式题材标签基础样式 */
-[data-theme="dark"] .tag-format-checkbox {
-    background: rgba(155, 89, 182, 0.15);
-    border-color: rgba(155, 89, 182, 0.3);
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .tag-format-checkbox:hover {
-    background: rgba(155, 89, 182, 0.25);
-    border-color: rgba(155, 89, 182, 0.5);
-}
-
-[data-theme="dark"] .tag-format-checkbox:has(input:checked) {
-    background: rgba(180, 100, 180, 0.3) !important;
-    border-color: rgba(180, 100, 180, 0.5) !important;
-    color: #ffffff !important;
-}
-
-/* 深色模式状态复选框选中文字高亮 */
-[data-theme="dark"] .checkbox-label:has(input:checked) {
-    color: #ffffff !important;
-    background-color: rgba(180, 100, 180, 0.2) !important;
-}
-
-[data-theme="dark"] .checkbox-label:hover {
-    background-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-/* 5. 修复底部操作按钮的颜色适配 */
-[data-theme="dark"] #applyFilterBtn {
-    background: var(--primary-color) !important; /* 恢复主色丁香紫 */
-    color: #fff !important;
-}
-
-[data-theme="dark"] #clearFilterBtn {
-    background: rgba(255, 255, 255, 0.1) !important; /* 清除按钮变成低调的高级灰 */
-    color: #f8f9fa !important;
-}
-
-/* 6. 关闭按钮(X)常态和悬浮修复 */
-[data-theme="dark"] #filterPanel .close-btn {
-    background: transparent !important;
-    color: #ff6b6b !important;
-}
-[data-theme="dark"] #filterPanel .close-btn:hover {
-    background-color: rgba(255, 107, 107, 0.1) !important;
-}
-
-/* =========================================
-   深色模式终极修复：阅读统计面板 (Stats Modal)
-   ========================================= */
-
-/* 1. 彻底抹杀统计面板中所有刺眼的白色卡片背景 */
-[data-theme="dark"] #statsModal .stat-card,
-[data-theme="dark"] #statsModal .chart-card,
-[data-theme="dark"] #statsModal .chart-container,
-[data-theme="dark"] #statsModal .overview-cards > div,
-[data-theme="dark"] #statsModal .charts-grid > div,
-[data-theme="dark"] #statsModal [style*="background: white"],
-[data-theme="dark"] #statsModal [style*="background-color: #fff"] {
-    background-color: rgba(255, 255, 255, 0.05) !important; /* 替换为高级半透明深色 */
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    box-shadow: none !important;
-}
-
-/* 2. 提亮面板内的标题、数字和普通文字 */
-[data-theme="dark"] #statsModal h2,
-[data-theme="dark"] #statsModal h3,
-[data-theme="dark"] #statsModal h4,
-[data-theme="dark"] #statsModal .stat-value,
-[data-theme="dark"] #statsModal .stat-label,
-[data-theme="dark"] #statsModal .chart-title,
-[data-theme="dark"] #statsModal p,
-[data-theme="dark"] #statsModal span {
-    color: #f8f9fa !important;
-}
-
-/* 3. 保护彩色图标容器不被影响（左侧的红/绿/黄圆角背景） */
-[data-theme="dark"] #statsModal .stat-icon {
-    border: none !important;
-}
-
-/* =========================================
-   深色模式终极修复 3.0：导入/导出及所有模态框死角
-   ========================================= */
-
-/* 1. 彻底干掉所有模态框底部的白色操作栏 (Footer/Actions) */
-[data-theme="dark"] .modal-footer,
-[data-theme="dark"] .modal-actions,
-[data-theme="dark"] .export-actions,
-[data-theme="dark"] .import-actions,
-[data-theme="dark"] .stats-actions,
-[data-theme="dark"] .modal-content > div:last-child {
-    background: transparent !important;
-    background-color: transparent !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* ===== 新建文件夹弹窗深色模式 ===== */
-[data-theme="dark"] .folder-input {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
-[data-theme="dark"] .folder-input:focus {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(221, 160, 221, 0.2);
-}
-
-[data-theme="dark"] .folder-cancel-btn {
-    color: #adb5bd !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="dark"] .folder-cancel-btn:hover {
-    background: rgba(255, 255, 255, 0.05) !important;
-}
-
-/* 文件夹弹窗按钮容器深色模式 */
-[data-theme="dark"] #folderModal .modal-actions {
-    background: transparent !important;
-    border-top: none !important;
-}
-
-/* 2. 修复导出弹窗 (Export) 的选项卡文字颜色 */
-[data-theme="dark"] .export-option,
-[data-theme="dark"] .radio-group label,
-[data-theme="dark"] .export-modal label {
-    color: #f8f9fa !important; /* 主标题纯白 */
-}
-[data-theme="dark"] .export-option small,
-[data-theme="dark"] .export-option p,
-[data-theme="dark"] .export-modal span {
-    color: #adb5bd !important; /* 副标题/描述用浅灰色 */
-}
-
-/* 3. 修复导入弹窗 (Import) 那个巨大的白色虚线上传框 */
-[data-theme="dark"] .file-drop-area,
-[data-theme="dark"] #fileDropArea {
-    background-color: rgba(0, 0, 0, 0.25) !important; /* 镂空的高级深灰 */
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: #f8f9fa !important;
-}
-[data-theme="dark"] .file-drop-area * {
-    color: #adb5bd !important; /* 虚线框里面的图标和文字提亮 */
-}
-
-/* 4. 导入弹窗悬浮状态（拖拽文件进入时） */
-[data-theme="dark"] .file-drop-area.drag-over,
-[data-theme="dark"] #fileDropArea.drag-over {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    border-color: var(--primary-color) !important;
-}
-
-/* 5. 修复阅读统计底部的白条和个别漏网的文字 */
-[data-theme="dark"] .stats-modal .modal-content > div {
-    background: transparent !important;
-}
-[data-theme="dark"] .stat-card .stat-label {
-    color: #adb5bd !important;
-}
-
-/* =========================================
-   深色模式终极修复 4.0：强制提亮导出/导入面板文字
-   ========================================= */
-
-/* 1. 无差别强制提亮导出/导入面板内的所有常见文本容器 */
-[data-theme="dark"] #exportModal label,
-[data-theme="dark"] #exportModal span,
-[data-theme="dark"] #exportModal div,
-[data-theme="dark"] #importModal label,
-[data-theme="dark"] #importModal span,
-[data-theme="dark"] #importModal div {
-    color: #f8f9fa !important; /* 强制全部变成亮白色 */
-}
-
-/* 2. 针对底部的描述性小字（如：导出所有书籍数据...），稍微调暗一点点以增加层次感 */
-[data-theme="dark"] #exportModal p,
-[data-theme="dark"] #exportModal small,
-[data-theme="dark"] #exportModal .text-muted,
-[data-theme="dark"] #importModal p,
-[data-theme="dark"] #importModal small {
-    color: #adb5bd !important; /* 浅灰色 */
-}
-
-/* 3. 保护底部的操作按钮，防止被上面的 div 选择器误伤 */
-[data-theme="dark"] #exportModal button,
-[data-theme="dark"] #importModal button {
-    color: #ffffff !important;
-}
-
-/* 4. 修复单选框被选中时的边框颜色（可选，让它更搭深色模式） */
-[data-theme="dark"] .radio-group label,
-[data-theme="dark"] .export-options label {
-    border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* =========================================
-   深色模式终极修复 5.0：核弹级文字提亮（针对导出导入面板）
-   ========================================= */
-
-/* 1. 选中导出和导入弹窗主体区域内的【所有元素】，强制设为白色！ */
-[data-theme="dark"] #exportModal .modal-body *,
-[data-theme="dark"] #importModal .modal-body *,
-[data-theme="dark"] #exportModal .export-options *,
-[data-theme="dark"] #exportModal [class*="option"] * {
-    color: #f8f9fa !important;
-}
-
-/* 2. 重新把辅助说明的小字（如：导出所有书籍数据...）压暗一点点，保持层次感 */
-[data-theme="dark"] #exportModal p,
-[data-theme="dark"] #exportModal small,
-[data-theme="dark"] #exportModal .text-muted,
-[data-theme="dark"] #importModal p,
-[data-theme="dark"] #importModal small,
-[data-theme="dark"] #importModal .text-muted {
-    color: #adb5bd !important; 
-}
-
-/* 3. 保护右上角的红色关闭按钮不被误伤 */
-[data-theme="dark"] #exportModal .close-btn,
-[data-theme="dark"] #importModal .close-btn {
-    color: #ff6b6b !important;
-}
-
-/* =========================================
-   深色模式终极修复 6.0：统计面板顽固白块彻底清除
-   ========================================= */
-
-/* 1. 击碎所有图表卡片顶部的白色标题栏 (Chart Headers) */
-[data-theme="dark"] #statsModal .chart-card > div:first-child,
-[data-theme="dark"] #statsModal .chart-header,
-[data-theme="dark"] #statsModal .card-header {
-    background-color: transparent !important; /* 让它继承外层的深色 */
-    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 2. 击碎底部巨大的"详细报告/最近活动"白色大板块 */
-[data-theme="dark"] #statsModal .report-section,
-[data-theme="dark"] #statsModal .detailed-report,
-[data-theme="dark"] #statsModal .activity-section,
-[data-theme="dark"] #statsModal .report-card {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 3. 连带修复"最近活动"列表中可能存在的浅色卡片和看不清的灰字 */
-[data-theme="dark"] #statsModal .activity-item {
-    background-color: rgba(255, 255, 255, 0.03) !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
-}
-[data-theme="dark"] #statsModal .activity-meta,
-[data-theme="dark"] #statsModal .activity-meta * {
-    color: #adb5bd !important; /* 调整为清晰的浅灰色 */
-}
-
-/* 4. 核弹级兜底：无差别清理统计面板内所有自带 bg-white 类的元素 */
-[data-theme="dark"] #statsModal .bg-white {
-    background-color: transparent !important;
-}
-
-/* =========================================
-   深色模式终极修复 7.0：统计报告底部栏彻底净化
-   ========================================= */
-
-/* 1. 彻底干掉带【导出报告】按钮那一栏的白色背景 */
-[data-theme="dark"] #statsModal .report-header,
-[data-theme="dark"] #statsModal .report-action-bar,
-[data-theme="dark"] #statsModal .report-card > div:first-child,
-[data-theme="dark"] #statsModal .report-card header {
-    background: transparent !important;
-    background-color: transparent !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 2. 强制点亮"阅读效率"和"最近活动"等特定的深色标题字 */
-[data-theme="dark"] #statsModal .report-section h3,
-[data-theme="dark"] #statsModal .report-section h4,
-[data-theme="dark"] #statsModal .report-title,
-[data-theme="dark"] #statsModal .section-title,
-[data-theme="dark"] #statsModal .text-primary,
-[data-theme="dark"] #statsModal .text-dark,
-[data-theme="dark"] #statsModal [style*="color"] {
-    color: #ffffff !important;
-}
-
-/* 3. 顺手修复可能被影响的图标颜色（如左上角那个绿色的小文档图标） */
-[data-theme="dark"] #statsModal .report-header i,
-[data-theme="dark"] #statsModal .report-card > div:first-child i {
-    color: #2ecc71 !important; /* 保持图标的亮绿色 */
 }
 
-/* =========================================
-   深色模式终极修复 8.0：抹杀白线与深蓝字体
-   ========================================= */
-
-/* 1. 物理超度所有刺眼的白色分割线 (hr 标签与边框) */
-[data-theme="dark"] #statsModal hr,
-[data-theme="dark"] #statsModal .report-section,
-[data-theme="dark"] #statsModal .report-section h3,
-[data-theme="dark"] #statsModal .report-section h4 {
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    border-top-color: rgba(255, 255, 255, 0.1) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-    background-color: transparent !important; /* 确保 hr 本身没有白底 */
-}
-
-/* 2. 强制点亮深蓝色的顽固字体（阅读效率、最近活动标题、具体书名） */
-[data-theme="dark"] #statsModal .report-section h3,
-[data-theme="dark"] #statsModal .report-section h4,
-[data-theme="dark"] #statsModal .activity-title,
-[data-theme="dark"] #statsModal .text-primary {
-    color: #ffffff !important;
-}
-
-/* =========================================
-   深色模式终极修复 9.0：无差别文本翻白与图表适配
-   ========================================= */
-
-/* 1. 强制统计面板里的所有常规元素文本变白 (地毯式覆盖所有 div 和文字标签) */
-[data-theme="dark"] #statsModal .modal-body div,
-[data-theme="dark"] #statsModal .modal-body span,
-[data-theme="dark"] #statsModal .modal-body h1,
-[data-theme="dark"] #statsModal .modal-body h2,
-[data-theme="dark"] #statsModal .modal-body h3,
-[data-theme="dark"] #statsModal .modal-body h4,
-[data-theme="dark"] #statsModal .modal-body h5,
-[data-theme="dark"] #statsModal .modal-body h6,
-[data-theme="dark"] #statsModal .modal-body p,
-[data-theme="dark"] #statsModal .modal-body label {
-    color: #e9ecef !important;
-}
-
-/* 2. 单独把次要信息（如：平均阅读时间，阅读完成率，日期，各种小字等）压暗成灰色 */
-[data-theme="dark"] #statsModal .modal-body .text-muted,
-[data-theme="dark"] #statsModal .modal-body .activity-meta,
-[data-theme="dark"] #statsModal .modal-body .activity-meta span,
-[data-theme="dark"] #statsModal .modal-body .activity-date,
-[data-theme="dark"] #statsModal .modal-body .activity-date span,
-[data-theme="dark"] #statsModal .modal-body [style*="color: #666"],
-[data-theme="dark"] #statsModal .modal-body [style*="color: #999"] {
-    color: #adb5bd !important;
-}
-
-/* 3. 保护统计卡片最上面的四个彩底大方块里的图标和字不被搞乱 */
-[data-theme="dark"] #statsModal .stat-card i,
-[data-theme="dark"] #statsModal .stat-icon i {
-    color: #ffffff !important;
-}
 
 /* =========================================
    终极全屏沉浸式布局修复补丁 (彻底消灭底边)
@@ -5056,111 +3976,6 @@ html, body {
     flex-shrink: 0 !important;
 }
 
-/* 6. 状态栏死死钉在最底部 */
-.app-footer {
-    flex-shrink: 0 !important;
-    margin-top: 0 !important; /* 清除刚才加的无效代码 */
-    position: relative;
-    z-index: 100;
-}
-
-/* 强制提升深色模式评分文字亮度 */
-[data-theme="dark"] .book-card .评分文字的类名, 
-[data-theme="dark"] .book-card span:contains("评分") {
-    color: #f8f9fa !important; /* 极浅的灰色，近乎白色 */
-    font-weight: 600 !important;
-    opacity: 0.9;
-}
-
-/* 如果你的评分是用 span 写的，直接用这个更保险 */
-[data-theme="dark"] .book-card {
-    --text-muted: #adb5bd; /* 统一定义深色模式下的次要文字颜色 */
-}
-
-/* 深色模式进度条 */
-[data-theme="dark"] .book-progress {
-    border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme="dark"] .progress-bar {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme="dark"] .progress-text {
-    color: #adb5bd;
-}
-
-[data-theme="dark"] .book-progress.completed .progress-fill {
-    background: linear-gradient(90deg, #2ecc71, #27ae60);
-}
-
-[data-theme="dark"] .book-progress.completed .progress-text {
-    color: #2ecc71;
-}
-
-/* 深色模式未开始状态进度条 */
-[data-theme="dark"] .book-progress.not-started .progress-bar {
-    border-color: #555;
-}
-
-[data-theme="dark"] .book-progress.not-started .progress-text {
-    color: #6c757d;
-}
-
-/* 深色模式进度输入 */
-[data-theme="dark"] .progress-num,
-[data-theme="dark"] .progress-unit-select {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e9ecef;
-}
-
-[data-theme="dark"] .progress-num:focus,
-[data-theme="dark"] .progress-unit-select:focus {
-    border-color: #b564c9;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* =========================================
-   深色模式评分文字高亮 - 最终补丁
-   ========================================= */
-
-/* 1. 针对卡片右上角所有可能的文字容器进行提亮 */
-[data-theme="dark"] .book-card .book-header span,
-[data-theme="dark"] .book-card .book-rating,
-[data-theme="dark"] .book-card [class*="rating"],
-[data-theme="dark"] .book-card [class*="score"] {
-    color: #ffffff !important;      /* 纯白色，保证最高对比度 */
-    font-weight: 700 !important;   /* 加粗，让数字更有存在感 */
-    text-shadow: 0 0 5px rgba(0,0,0,0.5); /* 增加微弱阴影，防止背景太乱 */
-    opacity: 1 !important;         /* 确保没有被设置半透明 */
-}
-
-/* 2. 专门针对”评分：”这三个字及其后面的数字 */
-[data-theme=”dark”] .book-card *:contains(“评分”) {
-    color: #ffe4e1 !important;     /* 使用浅粉白，既清晰又符合你的主题色 */
-}
-
-/* 深色模式荣誉徽章 */
-[data-theme=”dark”] .honor-badge {
-    background: linear-gradient(135deg, #b8960c 0%, #f4e04d 25%, #d4af37 50%, #8b7023 75%, #b8960c 100%);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.3);
-    border-color: #f4e04d;
-}
-
-[data-theme=”dark”] .honor-badge {
-    background: linear-gradient(135deg, #ffa500, #ff8c00);
-    color: #2d1f00;
-    box-shadow: 0 2px 8px rgba(255, 165, 0, 0.5);
-}
-
-[data-theme=”dark”] .book-footer {
-    border-top-color: rgba(255, 255, 255, 0.1);
-}
-
 /* ======== 评分对比模态框 ======== */
 #compareRatingModal {
     overflow-y: auto;
@@ -5168,7 +3983,7 @@ html, body {
 }
 
 #compareRatingModal .modal-content {
-    max-width: 1100px;
+    max-width: 1200px;
     width: 95%;
     max-height: 90vh;
     display: flex;
@@ -5178,11 +3993,19 @@ html, body {
     margin: 5vh auto;
 }
 
+/* Modal body - 真正的滚动区域 */
+#compareRatingModal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: calc(90vh - 70px);
+    display: flex;
+    flex-direction: column;
+}
+
 /* 固定不动的 Header 区域 */
-.compare-modal .compare-header {
+#compareRatingModal .modal-header {
     flex-shrink: 0;
-    background: var(--bg-color);
-    border-bottom: 1px solid var(--border-color, #eee);
 }
 
 .compare-header-top {
@@ -5266,8 +4089,8 @@ html, body {
 }
 
 .compare-book-item.selected {
-    border-color: var(--primary-color);
-    background: var(--primary-light);
+    border-color: #db7093;
+    background: rgba(219, 112, 147, 0.12);
 }
 
 .compare-book-checkbox {
@@ -5294,6 +4117,8 @@ html, body {
 
 .compare-results {
     overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 20px;
 }
 
 .compare-total-scores {
@@ -5329,9 +4154,11 @@ html, body {
 .compare-table {
     width: 100%;
     min-width: 600px;
+    max-height: 400px;
     border-collapse: collapse;
     margin-top: 20px;
     font-size: 0.85rem;
+    overflow-y: auto;
 }
 
 .compare-table th,
@@ -5351,10 +4178,10 @@ html, body {
 }
 
 .compare-layer-row td {
-    background: var(--primary-light);
-    font-weight: 600;
+    background: rgba(219, 112, 147, 0.2);
+    font-weight: 700;
     text-align: left;
-    color: var(--primary-color);
+    color: #333;
 }
 
 .diff-positive {
@@ -5413,54 +4240,6 @@ html, body {
     height: 380px;
 }
 
-/* 深色模式对比模态框 */
-[data-theme=”dark”] .compare-book-item {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme=”dark”] .compare-book-item.selected {
-    background: rgba(52, 152, 219, 0.2);
-    border-color: #3498db;
-}
-
-[data-theme=”dark”] .compare-total-item {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme=”dark”] .compare-table th {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme=”dark”] .compare-layer-row td {
-    background: rgba(52, 152, 219, 0.15);
-}
-
-[data-theme=”dark”] .compare-radar-container {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme=”dark”] .compare-modal .compare-header {
-    background: #2d2d2d;
-    border-bottom-color: #444;
-}
-
-[data-theme=”dark”] .compare-header-top .close-btn:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-[data-theme=”dark”] .diff-positive {
-    color: #2ecc71;
-}
-
-[data-theme=”dark”] .diff-negative {
-    color: #e74c3c;
-}
-
-[data-theme=”dark”] .diff-highlight-cell {
-    color: #f1c40f;
-    background: rgba(241, 196, 15, 0.2);
-}
 
 /* =========================================
    每日记录模块样式
@@ -6062,18 +4841,6 @@ html, body {
     white-space: nowrap;
 }
 
-/* 深色模式关闭按钮 */
-[data-theme="dark"] .journal-stats-modal .close-stats-btn {
-    color: #aaa;
-}
-
-[data-theme="dark"] .journal-stats-modal .close-stats-btn:hover {
-    color: #fff;
-}
-
-[data-theme="dark"] .journal-stats-modal .stat-label {
-    color: #aaa;
-}
 
 /* 日历热力图样式 */
 .journal-stats-modal .heatmap-section {
@@ -6091,13 +4858,6 @@ html, body {
     gap: 8px;
 }
 
-[data-theme="dark"] .journal-stats-modal .heatmap-section {
-    border-top-color: #444;
-}
-
-[data-theme="dark"] .journal-stats-modal .heatmap-section h4 {
-    color: #eee;
-}
 
 /* 日记阅读模态框（只读模式） */
 .journal-view-content {
@@ -6139,31 +4899,6 @@ html, body {
     border: 1px solid var(--border-color);
 }
 
-/* 深色模式阅读模态框 */
-[data-theme="dark"] .journal-view-header {
-    border-bottom-color: #444;
-}
-
-[data-theme="dark"] .journal-view-header h3 {
-    color: #eee;
-}
-
-[data-theme="dark"] .journal-view-body {
-    color: #ddd;
-}
-
-[data-theme="dark"] .journal-view-body::-webkit-scrollbar {
-    width: 8px;
-}
-
-[data-theme="dark"] .journal-view-body::-webkit-scrollbar-track {
-    background: #333;
-}
-
-[data-theme="dark"] .journal-view-body::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 4px;
-}
 
 /* ===== 日记阅读模态框按钮样式 ===== */
 
@@ -6196,59 +4931,8 @@ html, body {
     border-color: #dcdfe6;
 }
 
-/* 深色模式关闭按钮 */
-[data-theme="dark"] #closeJournalViewBtn {
-    border-color: #555;
-    color: #aaa;
 }
 
-[data-theme="dark"] #closeJournalViewBtn:hover {
-    background: #333 !important;
-    border-color: #666;
-    color: #ccc;
-}
-
-/* 深色模式分段控制器 */
-[data-theme="dark"] .view-switcher {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme="dark"] .view-switcher-btn {
-    color: #aaa;
-}
-
-[data-theme="dark"] .view-switcher-btn:hover:not(.active) {
-    color: #fff;
-}
-
-[data-theme="dark"] .view-switcher-btn.active {
-    background-color: #2d2d2d;
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-[data-theme="dark"] .journal-card {
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme=”dark”] .journal-actions {
-    border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme=”dark”] .journal-actions button {
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme=”dark”] .mood-btn {
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme=”dark”] .journal-modal input[type=”date”],
-[data-theme=”dark”] .journal-modal textarea {
-    border-color: rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
-    color: #e9ecef;
-}
 
 /* =========================================
    AI精读模态框样式 - Apple iOS 全新风格
@@ -6260,7 +4944,7 @@ html, body {
     width: 99vw;
     min-height: 80vh;
     max-height: 92vh;
-    background: linear-gradient(180deg, #FFFFFF 0%, #F8F9FA 100%);
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 24px;
     box-shadow: 0 32px 64px rgba(142, 52, 235, 0.12);
@@ -6275,7 +4959,7 @@ html, body {
     align-items: center;
     justify-content: space-between;
     padding: 28px 48px;
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FC 100%);
+    background: var(--surface-hover);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
@@ -6290,7 +4974,7 @@ html, body {
     width: 52px;
     height: 52px;
     border-radius: 16px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6315,7 +4999,7 @@ html, body {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: #F4F4F5;
+    background: var(--surface-hover);
     border: none;
     color: var(--text-secondary);
     font-size: 16px;
@@ -6327,7 +5011,7 @@ html, body {
 }
 
 .air-close:hover {
-    background: #FEE2E2;
+    background: var(--bg-danger-light);
     color: var(--danger-color);
 }
 
@@ -6353,7 +5037,7 @@ html, body {
 }
 
 .air-panel {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 20px;
     overflow: hidden;
@@ -6376,7 +5060,7 @@ html, body {
     align-items: center;
     gap: 14px;
     padding: 20px 24px;
-    background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFA 100%);
+    background: var(--surface-hover);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -6384,7 +5068,7 @@ html, body {
     width: 42px;
     height: 42px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6414,7 +5098,7 @@ html, body {
 }
 
 .air-panel {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 20px;
     overflow: hidden;
@@ -6442,12 +5126,12 @@ html, body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    background: #FAFAFA;
+    background: var(--surface-hover);
 }
 
 .air-dropzone:hover {
     border-color: var(--primary-color);
-    background: #F8F7FC;
+    background: var(--surface-hover);
 }
 
 .air-dropzone-content {
@@ -6460,7 +5144,7 @@ html, body {
     height: 72px;
     margin: 0 auto 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6493,7 +5177,7 @@ html, body {
     gap: 16px;
     margin: 0 20px 20px;
     padding: 18px;
-    background: linear-gradient(135deg, #F8F7FC 0%, #F3E8FF 100%);
+    background: var(--bg-info-light);
     border: 1px solid var(--primary-color);
     border-radius: 14px;
 }
@@ -6502,7 +5186,7 @@ html, body {
     width: 48px;
     height: 48px;
     border-radius: 12px;
-    background: #FFFFFF;
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6542,7 +5226,7 @@ html, body {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     cursor: pointer;
@@ -6563,7 +5247,7 @@ html, body {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    background: #FAFAFA;
+    background: var(--surface-hover);
 }
 
 .air-preview-empty {
@@ -6592,7 +5276,7 @@ html, body {
 }
 
 .air-progress-card {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 24px;
@@ -6609,7 +5293,7 @@ html, body {
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6660,7 +5344,7 @@ html, body {
     align-items: center;
     justify-content: space-between;
     padding: 20px 48px;
-    background: linear-gradient(180deg, #FAFAFA 0%, #F4F4F5 100%);
+    background: var(--surface-hover);
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
 }
@@ -6747,7 +5431,7 @@ html, body {
     width: 72px;
     height: 72px;
     border-radius: 20px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6825,7 +5509,7 @@ html, body {
 }
 
 .ai-read-modal .apple-panel {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 24px;
     border: 1px solid var(--border-color);
     padding: 40px;
@@ -6873,12 +5557,12 @@ html, body {
 
 .ai-read-modal .apple-dropzone:hover {
     border-color: var(--primary-color);
-    background: #F3E8FF;
+    background: var(--bg-info-light);
 }
 
 .apple-dropzone.dragover {
     border-color: var(--primary-color);
-    background: #F3E8FF;
+    background: var(--bg-info-light);
     transform: scale(1.02);
 }
 
@@ -6911,7 +5595,7 @@ html, body {
     align-items: center;
     gap: 24px;
     padding: 32px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     border-radius: 24px;
     margin-top: 28px;
 }
@@ -7017,7 +5701,7 @@ html, body {
 }
 
 .apple-btn-secondary:hover {
-    background: #F3E8FF;
+    background: var(--bg-info-light);
     border-color: var(--primary-color);
 }
 
@@ -7027,7 +5711,7 @@ html, body {
     justify-content: center;
     gap: 24px;
     padding: 36px 56px;
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FC 100%);
+    background: var(--surface-hover);
     border-top: 1px solid var(--border-color);
 }
 
@@ -7035,7 +5719,7 @@ html, body {
 .ai-read-modal .apple-progress {
     margin-top: 32px;
     padding: 28px;
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 20px;
     border: 1px solid var(--border-color);
     box-shadow: var(--theme-shadow-light);
@@ -7082,7 +5766,7 @@ html, body {
     align-items: flex-start;
     gap: 20px;
     padding: 24px;
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 20px;
     border: 1px solid var(--border-color);
     box-shadow: var(--theme-shadow-light);
@@ -7095,7 +5779,7 @@ html, body {
     width: 52px;
     height: 52px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7151,7 +5835,7 @@ html, body {
     width: 99vw;
     min-height: 80vh;
     max-height: 90vh;
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 28px;
     overflow: hidden;
@@ -7161,7 +5845,7 @@ html, body {
 }
 
 .preferences-modal .modal-header {
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FC 100%);
+    background: var(--surface-hover);
     border-bottom: 1px solid var(--border-color);
     border-radius: 28px 28px 0 0;
     padding: 40px 56px;
@@ -7199,7 +5883,7 @@ html, body {
 }
 
 .preferences-modal .modal-header .close-btn:hover {
-    background: #F3E8FF;
+    background: var(--bg-info-light);
     color: var(--primary-color);
 }
 
@@ -7225,7 +5909,7 @@ html, body {
 }
 
 .preferences-modal .modal-content {
-    background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFC 100%);
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 24px;
     box-shadow: 0 24px 80px rgba(142, 52, 235, 0.15);
@@ -7238,7 +5922,7 @@ html, body {
     align-items: center;
     justify-content: space-between;
     padding: 32px 48px;
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FC 100%);
+    background: var(--surface-hover);
     border-bottom: 1px solid var(--border-color);
     position: relative;
 }
@@ -7253,7 +5937,7 @@ html, body {
     width: 56px;
     height: 56px;
     border-radius: 16px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7355,7 +6039,7 @@ html, body {
 
 /* 偏好卡片通用样式 */
 .pref-card {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 20px;
     overflow: hidden;
@@ -7373,14 +6057,14 @@ html, body {
     gap: 16px;
     padding: 24px;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFC 100%);
+    background: var(--surface-card);
 }
 
 .pref-card-icon {
     width: 48px;
     height: 48px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7436,7 +6120,7 @@ html, body {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(142, 52, 235, 0.1);
-    background: #FFFFFF;
+    background: var(--surface-card);
 }
 
 .pref-form-actions {
@@ -7486,7 +6170,7 @@ html, body {
 }
 
 .pref-btn-outline:hover {
-    background: #F3E8FF;
+    background: var(--bg-info-light);
 }
 
 .pref-result {
@@ -7516,7 +6200,7 @@ html, body {
 .pref-stat-item {
     text-align: center;
     padding: 16px;
-    background: #FAFAFC;
+    background: var(--surface-hover);
     border-radius: 12px;
 }
 
@@ -7576,7 +6260,7 @@ html, body {
     align-items: center;
     gap: 16px;
     padding: 20px 24px;
-    background: #FAFAFC;
+    background: var(--surface-hover);
     cursor: pointer;
     transition: background-color 0.2s ease;
     user-select: none;
@@ -7600,7 +6284,7 @@ html, body {
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7658,7 +6342,7 @@ html, body {
     flex-direction: column;
     gap: 12px;
     padding: 16px 8px 16px 16px;
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.2s ease;
@@ -7710,7 +6394,7 @@ html, body {
 
 .condition-input:focus {
     outline: none;
-    background: #FFFFFF;
+    background: var(--surface-card);
     box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
 }
 
@@ -7731,7 +6415,7 @@ html, body {
     align-items: center;
     justify-content: space-between;
     padding: 24px 48px;
-    background: linear-gradient(180deg, #FAFAFC 0%, #F4F4F5 100%);
+    background: var(--surface-hover);
     border-top: 1px solid var(--border-color);
 }
 
@@ -7795,7 +6479,7 @@ html, body {
 
 /* 偏好卡片 - Apple 明亮风格 */
 .preference-card {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
     overflow: hidden;
@@ -7821,7 +6505,7 @@ html, body {
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -8435,7 +7119,7 @@ html, body {
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+    background: linear-gradient(90deg, var(--color-primary-300), var(--color-primary-500));
     transition: width 0.3s ease;
     border-radius: 999px;
 }
@@ -8874,7 +7558,7 @@ html, body {
 
 .dashboard-progress-bar .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    background: linear-gradient(90deg, #FF8C9E, #FF6F7D);
     border-radius: 3px;
     transition: width 0.3s ease;
 }
@@ -8907,7 +7591,7 @@ html, body {
     justify-content: space-between;
     align-items: center;
     padding: 40px 56px;
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FC 100%);
+    background: var(--surface-hover);
     border-bottom: 1px solid var(--border-color);
     border-radius: 24px 24px 0 0;
     margin: 0;
@@ -8923,7 +7607,7 @@ html, body {
     width: 68px;
     height: 68px;
     border-radius: 18px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -8952,7 +7636,7 @@ html, body {
     font-size: 32px;
     font-weight: 700;
     color: var(--primary-color);
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     padding: 12px 24px;
     border-radius: 14px;
 }
@@ -8968,7 +7652,7 @@ html, body {
 }
 
 .apple-dashboard .apple-metric-card {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 24px;
     padding: 36px;
     display: flex;
@@ -8988,7 +7672,7 @@ html, body {
     width: 68px;
     height: 68px;
     border-radius: 18px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9017,7 +7701,7 @@ html, body {
 /* 进度条 */
 .apple-dashboard .apple-progress-bar {
     padding: 24px 32px;
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
 }
@@ -9058,7 +7742,7 @@ html, body {
 }
 
 .apple-dashboard .apple-score-column {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border-radius: 28px;
     padding: 40px;
     border: 1px solid var(--border-color);
@@ -9078,7 +7762,7 @@ html, body {
     width: 52px;
     height: 52px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #F3E8FF 0%, #EDE9FE 100%);
+    background: var(--bg-info-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9114,7 +7798,7 @@ html, body {
 }
 
 .apple-dashboard .apple-score-item:hover {
-    background: #F8F7FC;
+    background: var(--surface-hover);
     border-color: var(--primary-color);
     transform: translateX(4px);
 }
@@ -9184,7 +7868,7 @@ html, body {
     display: flex;
     justify-content: center;
     padding: 28px 32px;
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FC 100%);
+    background: var(--surface-hover);
     border-top: 1px solid var(--border-color);
     border-radius: 0 0 20px 20px;
 }
@@ -9506,7 +8190,7 @@ html, body {
 
 /* Apple 卡片样式 - 明亮主题 */
 .glass-card {
-    background: #FFFFFF;
+    background: var(--surface-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 1.5rem;
@@ -9597,7 +8281,7 @@ html, body {
 
 .btn-primary-modern:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 10px 20px rgba(255, 111, 125, 0.3);
 }
 
 /* 滚动条美化 */
@@ -10450,19 +9134,6 @@ html, body {
     justify-content: center !important;
 }
 
-/* 顺便修复深色模式下变大的关闭按钮颜色 */
-[data-theme="dark"] .pref-close,
-[data-theme="dark"] .preferences-modal .modal-header .close-btn {
-    color: #ff6b6b !important;
-    background: transparent !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-[data-theme="dark"] .pref-close:hover,
-[data-theme="dark"] .preferences-modal .modal-header .close-btn:hover {
-    background: rgba(255, 107, 107, 0.15) !important;
-    color: #ff4d4f !important;
-}
 
 /* =========================================
    修复 AI精读（自主评分）图标与发光背景不对齐问题
@@ -10558,4 +9229,1430 @@ html, body {
 .score-badges,
 .rating-item > span:not(.rating-name) {
     flex-shrink: 0 !important;
+}
+
+/* ============================================
+   灵感记录样式 (Inspiration Records)
+   ============================================ */
+
+/* 灵感记录区域 */
+.inspiration-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.inspiration-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 0 20px;
+}
+
+.inspiration-section .section-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inspiration-section .section-header h2 i {
+    color: var(--color-primary-500);
+}
+
+.inspiration-section .section-count {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    font-weight: 400;
+}
+
+.inspiration-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.inspiration-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.inspiration-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: var(--color-primary-500);
+}
+
+.inspiration-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.inspiration-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+    flex: 1;
+}
+
+.inspiration-card-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    margin-left: 12px;
+}
+
+.inspiration-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.inspiration-card-book {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.inspiration-card-book i {
+    color: var(--color-primary-500);
+    font-size: 11px;
+}
+
+.inspiration-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--color-primary-500);
+    color: white;
+    border-radius: 10px;
+    opacity: 0.8;
+}
+
+.inspiration-card-preview {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.inspiration-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.inspiration-card-source {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+/* 灵感记录模态框 */
+/* 灵感记录模态框 - 紧凑无滚动设计 */
+.inspiration-modal {
+    max-width: 640px;
+    width: 95%;
+}
+
+.inspiration-modal .modal-content {
+    max-height: 90vh;
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
+}
+
+.inspiration-modal .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.inspiration-modal .modal-header h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inspiration-modal .modal-header h3 i {
+    color: var(--color-primary-500);
+}
+
+/* 表单区域 - 紧凑布局 */
+.inspiration-form {
+    padding: 16px 20px;
+    flex: 1;
+}
+
+.inspiration-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.inspiration-form .form-group {
+    margin-bottom: 14px;
+}
+
+.inspiration-form .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.inspiration-form .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.inspiration-form .form-group input[type="text"],
+.inspiration-form .form-group textarea,
+.inspiration-form .book-select-wrapper select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--surface-card);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.inspiration-form .form-group input[type="text"]:focus,
+.inspiration-form .form-group textarea:focus,
+.inspiration-form .book-select-wrapper select:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px rgba(255, 111, 125, 0.15);
+}
+
+.inspiration-form .form-group textarea {
+    resize: none;
+    line-height: 1.4;
+}
+
+.core-translation-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+
+.core-translation-label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.core-translation-label-row label {
+    margin: 0;
+}
+
+.btn-bold {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-bold:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.core-translation-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.core-translation-editor {
+    flex: 1;
+    min-height: 200px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-card);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-y: auto;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.core-translation-editor:focus {
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 3px rgba(255, 111, 125, 0.15);
+}
+
+.core-translation-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.core-translation-editor b {
+    font-weight: 600;
+}
+
+.core-translation-wrapper textarea {
+    flex: 1;
+    min-height: 200px;
+    resize: none;
+}
+
+/* Apple 风格的下拉选择器 */
+.book-select-wrapper {
+    position: relative;
+}
+
+.book-select-wrapper select {
+    padding-right: 32px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.book-select-wrapper .select-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    font-size: 11px;
+    pointer-events: none;
+}
+
+/* 标签容器优化 - 紧凑模式 */
+.inspiration-form .selected-tags-area.compact {
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 36px;
+}
+
+.inspiration-form .preset-tags-container.compact {
+    margin-top: 8px;
+}
+
+.inspiration-form .preset-tags-container.compact .preset-tag {
+    padding: 3px 8px;
+    font-size: 12px;
+    border-radius: 10px;
+}
+
+/* 模态框操作按钮 - 紧凑 */
+.inspiration-modal .modal-actions {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.inspiration-modal .modal-actions .btn-secondary,
+.inspiration-modal .modal-actions .btn-primary {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.inspiration-modal .modal-actions .btn-primary {
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+}
+
+.inspiration-modal .modal-actions .btn-primary:hover {
+    background: var(--color-primary-700);
+    border-color: var(--color-primary-700);
+}
+
+.inspiration-modal .modal-actions .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.inspiration-modal .modal-actions .btn-secondary:hover {
+    background: var(--surface-hover);
+}
+
+/* 灵感工具栏 - 幽灵按钮 */
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-card);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-ghost:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+}
+
+.inspiration-toolbar .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    flex-wrap: nowrap;
+}
+
+.inspiration-search-box {
+    flex: 0 0 280px;
+}
+
+/* 筛选气泡卡片包装器 */
+.filter-popover-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* 筛选气泡卡片 - 使用 fixed 定位 */
+.filter-popover {
+    position: fixed;
+    width: 320px;
+    background: #FFFFFF;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+    z-index: 10000;
+    padding: 16px;
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.filter-popover.visible {
+    display: flex;
+}
+
+.filter-popover .filter-section {
+    margin-bottom: 0;
+}
+
+.filter-popover .filter-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* 下拉选择器 */
+.filter-popover .book-select-wrapper {
+    position: relative;
+}
+
+.filter-popover .book-select-wrapper select {
+    width: 100%;
+    padding: 10px 32px 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    background: #FFFFFF;
+    color: var(--text-primary);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.filter-popover .book-select-wrapper select:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+}
+
+.filter-popover .book-select-wrapper .select-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    font-size: 10px;
+    pointer-events: none;
+}
+
+/* 标签多选 */
+.filter-tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-tag-pill {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-tag-pill:hover {
+    border-color: var(--color-primary-300);
+    color: var(--text-primary);
+}
+
+.filter-tag-pill.selected {
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+    color: white;
+}
+
+/* 时间胶囊选择 */
+.time-pills {
+    display: flex;
+    gap: 6px;
+}
+
+.time-pill {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.time-pill:hover {
+    border-color: var(--color-primary-300);
+    color: var(--text-primary);
+}
+
+.time-pill.active {
+    background: var(--color-primary-500);
+    border-color: var(--color-primary-500);
+    color: white;
+}
+
+/* 日期范围 */
+.filter-date-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.filter-date-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 12px;
+    background: #FFFFFF;
+    color: var(--text-primary);
+}
+
+.filter-date-input:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+}
+
+.date-sep {
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+/* 筛选面板底部 */
+.filter-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-reset {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--surface-hover);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-reset:hover {
+    background: var(--border-color);
+}
+
+.btn-apply {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--color-primary-500);
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-apply:hover {
+    background: var(--color-primary-700);
+}
+
+.inspiration-modal .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* 灵感模态框中的预设标签容器 */
+.inspiration-modal .preset-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.inspiration-modal .preset-tags-container .preset-tag {
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.inspiration-modal .preset-tags-container .preset-tag:hover {
+    border-color: var(--color-primary-500);
+    background: var(--color-primary-500);
+    color: white;
+}
+
+.inspiration-modal .preset-tags-container .preset-tag.selected {
+    background: var(--color-primary-500);
+    color: white;
+    border-color: var(--color-primary-500);
+}
+
+.connection-links-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.connection-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.connection-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.connection-group input {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+}
+
+.connection-group input:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+}
+
+/* 灵感查看模态框 */
+.inspiration-view-content {
+    max-width: 700px;
+    width: 95%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.inspiration-view-content .modal-header {
+    padding: 24px 36px;
+    border-bottom: none;
+    box-shadow: 0 1px 0 var(--border-color), 0 4px 12px rgba(0,0,0,0.04);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--surface-card);
+}
+
+.inspiration-view-content .modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.inspiration-view-body {
+    padding: 32px 36px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* 灵感弹窗滚动条弱化 */
+.inspiration-view-body::-webkit-scrollbar {
+    width: 4px;
+}
+.inspiration-view-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.inspiration-view-body::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 2px;
+}
+.inspiration-view-body:hover::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.3);
+}
+
+.inspiration-view-content .modal-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface-card);
+    z-index: 10;
+}
+
+.inspiration-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.inspiration-tags .inspiration-tag {
+    font-size: 11px;
+    padding: 3px 10px;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.inspiration-section {
+    margin-bottom: 32px;
+}
+
+/* Apple 风格 - 灵感记录搜索框 */
+.inspiration-toolbar {
+    margin-top: 0 !important;
+    padding: 20px 20px !important;
+    background: transparent !important;
+    border-bottom: none !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: visible !important;
+    position: relative;
+    z-index: 10000;
+}
+
+.inspiration-toolbar .toolbar-left {
+    flex: 1;
+    max-width: none;
+    overflow: visible !important;
+    position: static;
+}
+
+.inspiration-search-box {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    padding: 0 16px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.inspiration-search-box i {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    margin-right: 8px;
+}
+
+.inspiration-search-box input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    color: var(--text-primary);
+    width: 100%;
+}
+
+.inspiration-search-box input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* 灵感工具栏中的添加按钮 */
+#addInspirationBtn {
+    height: 40px;
+    padding: 0 16px;
+    background: var(--color-primary-500) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#addInspirationBtn:hover {
+    background: var(--color-primary-700) !important;
+}
+
+/* 锁定书籍指示器 */
+.locked-book-indicator {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px 6px 12px;
+    background: var(--color-primary-100, #E8F5E9);
+    border: 1px solid var(--color-primary-300, #A5D6A7);
+    border-radius: 16px;
+    font-size: 13px;
+    color: var(--color-primary-700, #2E7D32);
+    height: 36px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.locked-book-indicator .locked-book-name {
+    font-weight: 500;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.locked-book-indicator .locked-book-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--color-primary-700, #2E7D32);
+    font-size: 10px;
+    transition: background 0.2s;
+}
+
+.locked-book-indicator .locked-book-clear:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Apple 风格 - 灵感卡片 */
+.inspiration-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.inspiration-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: var(--color-primary-300);
+}
+
+.inspiration-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.inspiration-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inspiration-card-title i {
+    color: var(--color-primary-500);
+    font-size: 14px;
+}
+
+.inspiration-section h4 {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.inspiration-text {
+    font-size: 17px;
+    line-height: 1.9;
+    color: var(--text-primary);
+    background: transparent;
+    padding: 0;
+}
+
+.inspiration-connections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.inspiration-connections .connection-item {
+    background: var(--hover-bg);
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.inspiration-connections .connection-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+}
+
+.inspiration-connections .connection-value {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.inspiration-source {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--hover-bg);
+    padding: 12px 16px;
+    border-radius: 8px;
+}
+
+.inspiration-source .quote {
+    margin-top: 8px;
+    font-style: italic;
+    color: var(--text-tertiary);
+    padding-left: 12px;
+    border-left: 3px solid var(--color-primary-500);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .inspiration-modal .form-row,
+    .connection-links-grid,
+    .inspiration-connections {
+        grid-template-columns: 1fr;
+    }
+
+    .inspiration-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 玫瑰图容器样式 */
+.compare-rose-container {
+    margin-top: 30px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    min-height: 450px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.compare-rose-container h4 {
+    margin: 0 0 15px 0;
+    text-align: center;
+    color: var(--text-color);
+    font-size: 16px;
+}
+
+.compare-rose-chart {
+    width: 100%;
+    height: 400px;
+}
+
+/* 新的评分对比模态框样式 */
+.compare-modal-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.compare-selectors {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: 10px;
+}
+
+.compare-selector-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.compare-selector-group label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.compare-book-select {
+    min-width: 250px;
+}
+
+.compare-charts-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-height: 75vh;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.compare-radar-chart {
+    width: 100%;
+    height: 200px;
+}
+
+.compare-scatter-chart {
+    width: 100%;
+    height: 200px;
+}
+
+.compare-scatter-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.compare-scatter-toggle .toggle-btn {
+    padding: 6px 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.compare-scatter-toggle .toggle-btn:hover {
+    background: var(--hover-bg);
+}
+
+.compare-scatter-toggle .toggle-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.toggle-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border-color);
+    margin: 0 5px;
+}
+
+.scatter-tag-filter {
+    margin-bottom: 10px;
+}
+
+.scatter-tag-filter select {
+    max-width: 200px;
+}
+
+/* 权重调节面板 - 左侧抽屉 */
+.weight-adjuster-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 320px;
+    height: 100vh;
+    background: var(--card-bg);
+    border-right: 1px solid var(--border-color);
+    z-index: 10000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+}
+
+.weight-adjuster-panel.open {
+    transform: translateX(0);
+}
+
+.weight-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.weight-panel-header h4 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.weight-panel-header .close-btn {
+    font-size: 20px;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.weight-sliders-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.weight-slider-group {
+    margin-bottom: 15px;
+}
+
+.weight-slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.weight-slider-group .weight-value {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.weight-slider-group input[type="range"] {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    background: var(--border-color);
+    border-radius: 3px;
+    outline: none;
+}
+
+.weight-slider-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.weight-slider-group input[type="range"]:disabled {
+    opacity: 0.5;
+}
+
+.weight-slider-group.disabled label {
+    color: var(--text-muted);
+}
+
+/* 标签分组标题 */
+.weight-tag-group {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 15px 0 8px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.compare-chart-section {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.compare-chart-section h4 {
+    margin: 0 0 8px 0;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.compare-stacked-bar-chart {
+    width: 100%;
+    height: 200px;
+}
+
+.compare-heatmap-chart {
+    width: 100%;
+    height: 350px;
+}
+
+/* 评分对比弹窗响应式：小屏幕单列布局 */
+@media (max-width: 900px) {
+    .compare-charts-container {
+        grid-template-columns: 1fr;
+    }
+
+    .compare-heatmap-chart {
+        height: 280px;
+    }
+
+    .compare-stacked-bar-chart,
+    .compare-radar-chart,
+    .compare-scatter-chart {
+        height: 180px;
+    }
+}
+
+/* =========================================
+   深色模式终极修复补丁：Apple风格新组件适配
+   ========================================= */
+
+/* 1. 清除模态框主体的白色渐变，统一使用底色 */
+[data-theme="dark"] .ai-read-modal .modal-content,
+[data-theme="dark"] .preferences-modal .modal-content,
+[data-theme="dark"] .ai-read-modal .apple-body {
+    background: var(--bg-base) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* 2. 彻底透明化头部和底部区域，消除割裂感 */
+[data-theme="dark"] .air-header,
+[data-theme="dark"] .air-footer,
+[data-theme="dark"] .air-panel-header,
+[data-theme="dark"] .apple-actions,
+[data-theme="dark"] .pref-header,
+[data-theme="dark"] .pref-footer,
+[data-theme="dark"] .pref-card-header,
+[data-theme="dark"] .apple-dashboard-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    border-top: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 3. 面板卡片主体统一为高级深紫灰 */
+[data-theme="dark"] .air-panel,
+[data-theme="dark"] .apple-panel,
+[data-theme="dark"] .pref-card,
+[data-theme="dark"] .apple-metric-card,
+[data-theme="dark"] .apple-score-column {
+    background: var(--surface-card) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
+}
+
+/* 4. 内部拖拽区、预览区和输入框（下沉区域）使用半透明加深处理 */
+[data-theme="dark"] .air-dropzone,
+[data-theme="dark"] .apple-dropzone,
+[data-theme="dark"] .air-preview,
+[data-theme="dark"] .apple-preview,
+[data-theme="dark"] .pref-input,
+[data-theme="dark"] .pref-select,
+[data-theme="dark"] .apple-progress,
+[data-theme="dark"] .condition-input {
+    background: rgba(0, 0, 0, 0.25) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 5. 修复文件信息卡片，使用主题色微光 */
+[data-theme="dark"] .air-file-card,
+[data-theme="dark"] .apple-file-info {
+    background: rgba(164, 103, 196, 0.1) !important;
+    border-color: rgba(164, 103, 196, 0.3) !important;
+}
+[data-theme="dark"] .air-file-icon,
+[data-theme="dark"] .apple-file-icon {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 6. 强制所有深色模式下的特定组件文本翻转为浅色 */
+[data-theme="dark"] .air-header-text h2,
+[data-theme="dark"] .air-panel-title h3,
+[data-theme="dark"] .air-dropzone-content h4,
+[data-theme="dark"] .file-name,
+[data-theme="dark"] .pref-header-text h2,
+[data-theme="dark"] .pref-card-title h3,
+[data-theme="dark"] .header-text h3,
+[data-theme="dark"] .panel-header,
+[data-theme="dark"] .extracted-title,
+[data-theme="dark"] .criteria-item-name {
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .air-header-text p,
+[data-theme="dark"] .air-dropzone-content p,
+[data-theme="dark"] .file-meta,
+[data-theme="dark"] .header-text p {
+    color: var(--text-secondary) !important;
+}
+
+/* 7. 次要按钮去除白底，改为微透玻璃态 */
+[data-theme="dark"] .air-btn-secondary,
+[data-theme="dark"] .apple-btn-secondary,
+[data-theme="dark"] .pref-btn-secondary,
+[data-theme="dark"] .btn-secondary {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .air-btn-secondary:hover,
+[data-theme="dark"] .apple-btn-secondary:hover,
+[data-theme="dark"] .pref-btn-secondary:hover,
+[data-theme="dark"] .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* =========================================
+   全量兜底补丁：旧组件白底残留清理
+   ========================================= */
+
+/* 通用容器与信息栏 */
+[data-theme="dark"] .list-info { background: var(--surface-card) !important; }
+[data-theme="dark"] .note-source { background: rgba(0,0,0,0.15) !important; }
+[data-theme="dark"] .import-preview { background: var(--surface-card) !important; }
+[data-theme="dark"] .preview-content { background: var(--surface-card) !important; }
+
+/* 评分模态框全链路覆盖 */
+[data-theme="dark"] .rating-workspace { background: var(--bg-base) !important; }
+[data-theme="dark"] .rating-actions { background: var(--surface-hover) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .rating-left { background: var(--surface-card) !important; }
+[data-theme="dark"] .rating-right { background: var(--bg-base) !important; }
+[data-theme="dark"] .rating-sidebar { background: var(--bg-base) !important; }
+[data-theme="dark"] .rating-total-card { background: rgba(255,255,255,0.05) !important; }
+
+/* 标签与筛选系统 */
+[data-theme="dark"] .tag-checkbox { background: var(--surface-card) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .tag-checkbox:hover { background: var(--bg-danger-light) !important; }
+[data-theme="dark"] .filter-tag-item { background: var(--surface-card) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .filter-tag-item:hover { background: var(--bg-danger-light) !important; }
+
+/* 搜索与输入 */
+[data-theme="dark"] #noteSearchInput { background: var(--surface-card) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .folder-input { background: var(--surface-card) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .folder-input:focus { background: rgba(0,0,0,0.15) !important; }
+
+/* 右键菜单 */
+[data-theme="dark"] .context-menu li:hover { background: var(--surface-hover) !important; }
+[data-theme="dark"] .context-menu .submenu li:hover { background: var(--surface-hover) !important; }
+
+/* 单选标签 */
+[data-theme="dark"] .radio-label:hover { background: var(--bg-danger-light) !important; }
+
+/* 文件拖拽区 */
+[data-theme="dark"] .file-drop-area:hover { background: var(--bg-danger-light) !important; }
+
+/* 模态框操作按钮 */
+[data-theme="dark"] #cancelJournalDeleteBtn:hover,
+[data-theme="dark"] #cancelDeleteBtn:hover,
+[data-theme="dark"] #closeJournalViewBtn:hover,
+[data-theme="dark"] .modal-actions .btn-secondary:hover {
+    background: rgba(255,255,255,0.08) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 统计与报告头部 */
+[data-theme="dark"] .chart-header { background: var(--surface-hover) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .report-header { background: var(--surface-hover) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .report-section { background: var(--surface-card) !important; }
+
+/* 视图切换器 */
+[data-theme="dark"] .view-switcher-btn.active { background-color: var(--surface-card) !important; color: var(--text-primary) !important; }
+
+/* 全局表单输入框下沉处理 */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background: rgba(0,0,0,0.2) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: var(--text-tertiary) !important;
+}
+
+/* 全局标题/标签文字兜底（覆盖未单独列出的组件） */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] label {
+    color: var(--text-secondary) !important;
+}
+[data-theme="dark"] p {
+    color: var(--text-primary) !important;
 }

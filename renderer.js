@@ -1,6 +1,44 @@
 // =========================================
-// 评分系统默认配置 - 25指标权重
+// 评分标准配置 - 从外部JSON文件动态加载
 // =========================================
+let RATING_CRITERIA = null;
+let volatileCriteria = null; // 临时权重（对比时使用）
+
+// 深拷贝函数
+function deepCloneCriteria(criteria) {
+  if (!criteria) return null;
+  return JSON.parse(JSON.stringify(criteria));
+}
+
+// 防抖函数
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// 初始化临时权重（深拷贝）
+function initVolatileCriteria() {
+  volatileCriteria = deepCloneCriteria(RATING_CRITERIA);
+}
+
+// 重置临时权重
+function resetVolatileCriteria() {
+  volatileCriteria = deepCloneCriteria(RATING_CRITERIA);
+}
+
+// 获取当前使用的权重配置
+function getActiveCriteria() {
+  return volatileCriteria || RATING_CRITERIA;
+}
+
+// 兼容旧版评分系统（中文键名）
 const DEFAULT_RATING_PROFILE = {
   "标准配置": {
     "作者层面": [
@@ -21,57 +59,163 @@ const DEFAULT_RATING_PROFILE = {
 };
 const DEFAULT_PROFILE_NAME = "标准配置";
 
+async function loadRatingCriteriaConfig() {
+  try {
+    if (window.electronAPI && typeof window.electronAPI.loadRatingCriteria === 'function') {
+      RATING_CRITERIA = await window.electronAPI.loadRatingCriteria();
+      console.log('评分标准已加载:', RATING_CRITERIA);
+    } else {
+      console.warn('electronAPI.loadRatingCriteria 不可用，使用内置默认值');
+      RATING_CRITERIA = getDefaultRatingCriteria();
+    }
+  } catch (error) {
+    console.error('加载评分标准失败:', error);
+    RATING_CRITERIA = getDefaultRatingCriteria();
+  }
+}
+
+function getDefaultRatingCriteria() {
+  return {
+    "author_layer": [
+      { id: "theme_author", name: "作品主题", weight: 4 },
+      { id: "plot_architecture", name: "情节架构", weight: 1.5 },
+      { id: "character_design", name: "人物设计", weight: 1 },
+      { id: "worldview", name: "世界观", weight: 1.5 },
+      { id: "narrative_time", name: "叙事时间", weight: 0.5 },
+      { id: "symbolism", name: "象征与意象", weight: 1 },
+      { id: "era_background", name: "时代背景", weight: 0.5 }
+    ],
+    "text_layer": [
+      { id: "plot_storytelling", name: "情节故事性", weight: 1 },
+      { id: "character_development", name: "登场人物塑造", weight: 3 },
+      { id: "relationship_network", name: "人物关系网络", weight: 1.5 },
+      { id: "background_description", name: "背景描写", weight: 2 },
+      { id: "theme_expression", name: "主题表达", weight: 6 },
+      { id: "narrative_perspective", name: "叙述视角", weight: 1.5 },
+      { id: "writing_style", name: "文笔文风信息量", weight: 2 },
+      { id: "rhetorical_devices", name: "修辞手法", weight: 1.5 },
+      { id: "dialogue_depth", name: "对话可咀嚼度", weight: 1.5 }
+    ],
+    "reader_layer": [
+      { id: "pre_reading_horizon", name: "阅读前视野", weight: 1 },
+      { id: "immersion", name: "代入感", weight: 0.5 },
+      { id: "plot_understanding", name: "情节理解", weight: 3 },
+      { id: "character_understanding", name: "人物理解", weight: 3 },
+      { id: "theme_understanding", name: "主题理解", weight: 4 },
+      { id: "overall_aesthetics", name: "整体审美", weight: 2 },
+      { id: "knowledge_acquisition", name: "知识获取", weight: 1.5 },
+      { id: "paradigm_shift", name: "观念改变", weight: 2.5 },
+      { id: "behavioral_impact", name: "行为影响", weight: 2.5 }
+    ]
+  };
+}
+
+function calculateWeightedScores(book, criteria) {
+  const details = book.rating_details || {};
+  let authorLayer = 0, textLayer = 0, readerLayer = 0;
+
+  if (criteria.author_layer) {
+    criteria.author_layer.forEach(dim => {
+      const value = details[dim.id] || 0;
+      authorLayer += value * dim.weight;
+    });
+  }
+  if (criteria.text_layer) {
+    criteria.text_layer.forEach(dim => {
+      const value = details[dim.id] || 0;
+      textLayer += value * dim.weight;
+    });
+  }
+  if (criteria.reader_layer) {
+    criteria.reader_layer.forEach(dim => {
+      const value = details[dim.id] || 0;
+      readerLayer += value * dim.weight;
+    });
+  }
+
+  const total = authorLayer + textLayer + readerLayer;
+  return { authorLayer, textLayer, readerLayer, total };
+}
+
+function getAllDimensions() {
+  const criteria = getActiveCriteria();
+  if (!criteria) return [];
+  const layerMap = {
+    'author_layer': '作者层面',
+    'text_layer': '文本层面',
+    'reader_layer': '读者层面'
+  };
+  const dimensions = [];
+  Object.entries(criteria).forEach(([layerKey, dims]) => {
+    dims.forEach(dim => {
+      dimensions.push({
+        id: dim.id,
+        name: dim.name,
+        weight: dim.weight,
+        layer: layerMap[layerKey] || layerKey
+      });
+    });
+  });
+  return dimensions;
+}
+
 // =========================================
 // 调试开关 - 上线前设为 false
 // =========================================
 const DEBUG = false;
 const log = DEBUG ? console.log.bind(console) : () => {};
 
-// 预编译正则表达式（性能优化）
-const _WIN_PATH_REGEX = /^[a-zA-Z]:\\/;
-
 // =========================================
-// 日记数据模型
+// 灵感记录数据模型 - 原子笔记 (Atomic Note)
 // =========================================
-class JournalEntry {
+class InspirationEntry {
     constructor(data = {}) {
         this.id = data.id || this.generateId();
-        this.date = data.date || new Date().toISOString().split('T')[0];
-        this.content = data.content || '';
-        this.mood = data.mood || '';
-        this.relatedBookIds = data.relatedBookIds || [];  // 关联作品ID数组
-        this.images = data.images || [];  // 图片路径数组
+        this.bookId = data.bookId || '';  // 关联作品ID
+        this.title = data.title || '';  // 概念标题
+        this.tags = data.tags || [];  // 标签数组
+        this.coreTranslation = data.coreTranslation || '';  // 核心转译
+        this.contextExamples = {
+            personal: data.contextExamples?.personal || '',  // 个人经验关联
+            case: data.contextExamples?.case || ''  // 具体案例
+        };
+        this.connections = {
+            parent: data.connections?.parent || [],  // 上级链接
+            child: data.connections?.child || [],  // 下级链接
+            related: data.connections?.related || [],  // 相似链接
+            opposing: data.connections?.opposing || []  // 对立链接
+        };
+        this.source = {
+            reference: data.source?.reference || '',  // 信息源头
+            quote: data.source?.quote || ''  // 原始金句
+        };
         this.createdAt = data.createdAt || new Date().toISOString();
         this.updatedAt = data.updatedAt || new Date().toISOString();
     }
 
     generateId() {
-        return 'journal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        return new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
     }
 
     toJSON() {
         return {
             id: this.id,
-            date: this.date,
-            content: this.content,
-            mood: this.mood,
-            relatedBookIds: this.relatedBookIds,
-            images: this.images,
+            bookId: this.bookId,
+            title: this.title,
+            tags: this.tags,
+            coreTranslation: this.coreTranslation,
+            contextExamples: this.contextExamples,
+            connections: this.connections,
+            source: this.source,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt
         };
     }
 
     static fromJSON(json) {
-        return new JournalEntry(json);
+        return new InspirationEntry(json);
     }
 }
-
-// =========================================
-// 评分相关全局函数（在class外，供HTML onclick调用）
-// =========================================
-let ratingApp = null;
-
 
 // ExportService类定义（导入/导出服务）
 class ExportService {
@@ -230,6 +374,7 @@ class ExportService {
           rating: bookData.rating || null,
           tags: bookData.tags || [],
           enableRating: bookData.enableRating || false,
+          enableInspiration: bookData.enableInspiration || false,
           createdAt: bookData.createdAt || new Date().toISOString(),
           updatedAt: bookData.updatedAt || new Date().toISOString()
         };
@@ -464,6 +609,7 @@ class Book {
     rating = null,
     tags = [],
     enableRating = false,
+    enableInspiration = false,
     folderId = 'all',
     currentProgress = 0,
     totalLength = 0,
@@ -481,6 +627,7 @@ class Book {
     this.rating = rating;
     this.tags = tags;
     this.enableRating = enableRating;
+    this.enableInspiration = enableInspiration;
     this.folderId = folderId;
     this.currentProgress = currentProgress;
     this.totalLength = totalLength;
@@ -497,14 +644,25 @@ class Book {
       const end = new Date(this.endDate);
       if (start > end) errors.push('开始日期不能晚于结束日期');
     }
-    if (!['未开始', '阅读中', '已读完'].includes(this.status)) {
+    // 接受所有题材的状态称谓（包括跨题材的变体）
+    const validStatuses = [
+      // 书籍类
+      '未开始', '阅读中', '已读完', '已完成',
+      // 影视类
+      '观看中', '已看完',
+      // 游戏类
+      '游玩中', '已玩完',
+      // 内部值（防止旧数据或错误数据）
+      'completed', 'reading', 'unstarted'
+    ];
+    if (!validStatuses.includes(this.status)) {
       errors.push('状态必须是未开始、阅读中或已读完');
     }
     return { isValid: errors.length === 0, errors };
   }
 
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'folderId', 'currentProgress', 'totalLength', 'progressUnit'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'enableInspiration', 'folderId', 'currentProgress', 'totalLength', 'progressUnit'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) this[field] = updates[field];
     });
@@ -514,17 +672,24 @@ class Book {
   getReadingDuration() {
     if (!this.startDate) return null;
     const start = new Date(this.startDate);
+    if (isNaN(start.getTime())) return null;
     const end = this.endDate ? new Date(this.endDate) : new Date();
+    if (isNaN(end.getTime())) return null;
     const diffTime = Math.abs(end - start);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // 同一天计为1天，之后每多一天加1天
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
 
   getFormattedStartDate() {
-    return this.startDate ? new Date(this.startDate).toLocaleDateString('zh-CN') : '未开始';
+    if (!this.startDate) return '未开始';
+    const date = new Date(this.startDate);
+    return isNaN(date.getTime()) ? '未开始' : date.toLocaleDateString('zh-CN');
   }
 
   getFormattedEndDate() {
-    return this.endDate ? new Date(this.endDate).toLocaleDateString('zh-CN') : '进行中';
+    if (!this.endDate) return '进行中';
+    const date = new Date(this.endDate);
+    return isNaN(date.getTime()) ? '进行中' : date.toLocaleDateString('zh-CN');
   }
 
   toJSON() {
@@ -532,7 +697,7 @@ class Book {
       id: this.id, title: this.title, author: this.author,
       startDate: this.startDate, endDate: this.endDate,
       status: this.status, notes: this.notes, rating: this.rating,
-      tags: this.tags, enableRating: this.enableRating,
+      tags: this.tags, enableRating: this.enableRating, enableInspiration: this.enableInspiration,
       folderId: this.folderId,
       currentProgress: this.currentProgress,
       totalLength: this.totalLength,
@@ -1856,23 +2021,26 @@ class BookApp {
     });
 
     this.storageService = new StorageService();
-    this.currentSortField = 'title';
-    this.currentSortOrder = 'asc';
+    this.currentSortField = 'startDate';
+    this.currentSortOrder = 'desc';
     this.isEditing = false;
     this.currentBookId = null;
     this.currentFolderId = 'all';
 
-    // 日记相关状态
-    this.journals = [];
-    this.currentView = 'knowledge'; // knowledge | journal
-    this.currentMoodFilter = null; // 当前心情筛选
-    this.currentJournalSearchTerm = ''; // 当前日记搜索关键词
-    this.journalStartDate = null; // 日期筛选开始日期
-    this.journalEndDate = null; // 日期筛选结束日期
-    this.currentJournalImages = []; // 当前日记图片数组
-    this.currentJournalToDelete = null; // 待删除的日记ID
-    this.statsCurrentPage = 0; // 统计模态框当前页码
-    this._statsWheelHandler = null; // 滚轮事件处理函数
+    // 灵感相关状态
+    this.inspirations = [];
+    this.currentView = 'knowledge'; // knowledge | inspiration
+    this.currentInspirationSearchTerm = ''; // 当前灵感搜索关键词
+    this.currentInspirationToDelete = null; // 待删除的灵感ID
+
+    // 灵感筛选状态
+    this.inspirationFilters = {
+      bookId: null,
+      tags: [],
+      timeOption: 'all', // all | week | month
+      dateFrom: null,
+      dateTo: null
+    };
 
     // 过滤相关状态
     this.activeFilters = {
@@ -1884,14 +2052,29 @@ class BookApp {
     };
     this.isFilterPanelOpen = false;
 
+    // 灵感标签相关
+    this.currentInspirationTags = [];
+    this.inspirationPresetTags = [
+      '经济学', '心理学', '哲学', '社会学', '方法论', '思维模型', '认知', '决策', '效率', '创作', '设计', '技术', '历史', '文学', '艺术',
+      '物理学', '数学', '生物学', '化学', '地理', '政治', '法律', '伦理', '宗教', '文化', '语言', '教育', '管理', '营销', '投资', '创业'
+    ];
+
     this.initializeElements();
     this._initDomCache();  // 初始化 DOM 缓存
+    // 加载评分标准配置
+    await loadRatingCriteriaConfig();
     this.bindEvents();
     this.initTheme();
-    await this.storageService.loadFolders();
-    this.renderFolders();
-    await this.loadBooks();
-    await this.loadJournals();
+    // 先加载文件夹，再加载书籍（渲染时需要文件夹数据）
+    this.storageService.loadFolders().then(() => {
+      this.loadBooks();
+    });
+    // 灵感数据延迟加载，不阻塞主界面
+    setTimeout(() => this.loadJournals(), 100);
+    // 确保 overlay 初始为隐藏状态
+    this.overlay.classList.remove('active');
+    // 确保右键菜单初始为隐藏状态（使用 class 控制，显示时添加 .visible）
+    this.contextMenu.classList.remove('visible');
   }
 
   initializeElements() {
@@ -1906,6 +2089,7 @@ class BookApp {
     this.totalLengthInput = document.getElementById('totalLength');
     this.progressUnitSelect = document.getElementById('progressUnit');
     this.enableRatingCheckbox = document.getElementById('enableRating');
+    this.enableInspirationCheckbox = document.getElementById('enableInspiration');
 
     // 标签相关元素
     this.customTagInput = document.getElementById('customTagInput');
@@ -1923,13 +2107,15 @@ class BookApp {
     this.cancelBtn = document.getElementById('cancelBtn');
     this.sortFieldSelect = document.getElementById('sortField');
     this.sortOrderSelect = document.getElementById('sortOrder');
+    // 同步默认排序值到下拉框
+    this.sortFieldSelect.value = this.currentSortField;
+    this.sortOrderSelect.value = this.currentSortOrder;
 
     this.bookListContainer = document.getElementById('bookListContainer');
     this.bookFormSection = document.getElementById('bookFormSection');
     this.emptyState = document.getElementById('emptyState');
 
     this.bookCountElement = document.getElementById('bookCount');
-    this.statusMessageElement = document.getElementById('statusMessage');
 
     this.deleteModal = document.getElementById('deleteModal');
     this.overlay = document.getElementById('overlay');
@@ -1937,19 +2123,6 @@ class BookApp {
     this.cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     this.deleteMessage = document.getElementById('deleteMessage');
     this.bookToDelete = null;
-
-    this.notesModal = document.getElementById('notesModal');
-    this.closeNotesModalBtn = document.getElementById('closeNotesModalBtn');
-    this.currentBookTitle = document.getElementById('currentBookTitle');
-    this.currentBookAuthor = document.getElementById('currentBookAuthor');
-    this.notesListContainer = document.getElementById('notesListContainer');
-    this.notesCount = document.getElementById('notesCount');
-    this.importNotesBtn = document.getElementById('importNotesBtn');
-    this.newNoteContent = document.getElementById('newNoteContent');
-    this.saveNoteBtn = document.getElementById('saveNoteBtn');
-    this.currentNotesBookId = null;
-    this.noteSearchInput = document.getElementById('noteSearchInput');
-    this.editingNoteId = null;
 
     // 评分模态框相关元素
     this.ratingModal = document.getElementById('ratingModal');
@@ -2011,17 +2184,19 @@ class BookApp {
   // 初始化 DOM 缓存（性能优化）
   _initDomCache() {
     this.domCache.bookSection = document.getElementById('bookListSection');
-    this.domCache.journalSection = document.getElementById('journalContainer');
-    this.domCache.aiReadSection = document.getElementById('aiReadContainer');
+    this.domCache.inspirationSection = document.getElementById('inspirationContainer');
     this.domCache.viewKnowledge = document.getElementById('viewKnowledge');
-    this.domCache.viewJournal = document.getElementById('viewJournal');
-    this.domCache.viewAiRead = document.getElementById('viewAiRead');
+    this.domCache.viewInspiration = document.getElementById('viewInspiration');
     this.domCache.kbSidebar = document.querySelector('.kb-sidebar');
-    this.domCache.journalSidebar = document.getElementById('journalSidebar');
     this.domCache.kbToolbar = document.querySelector('.kb-toolbar');
-    this.domCache.journalToolbar = document.querySelector('.journal-toolbar');
-    this.domCache.journalList = document.getElementById('journalList');
-    this.domCache.journalEmptyState = document.getElementById('journalEmptyState');
+    this.domCache.inspirationToolbar = document.querySelector('.inspiration-toolbar');
+    this.domCache.inspirationList = document.getElementById('inspirationList');
+    this.domCache.inspirationEmptyState = document.getElementById('inspirationEmptyState');
+    this.domCache.inspirationFilterPanel = document.getElementById('inspirationFilterPanel');
+    this.domCache.filterBookId = document.getElementById('filterBookId');
+    this.domCache.filterTagsContainer = document.getElementById('filterTagsContainer');
+    this.domCache.filterDateFrom = document.getElementById('filterDateFrom');
+    this.domCache.filterDateTo = document.getElementById('filterDateTo');
   }
 
   bindEvents() {
@@ -2106,132 +2281,108 @@ class BookApp {
     this.compareResults = document.getElementById('compareResults');
     this.compareRatingBtn.addEventListener('click', () => this.showCompareModal());
 
-    // 日记表单事件
-    const journalForm = document.getElementById('journalForm');
-    journalForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.saveJournalFromForm();
-    });
-
-    // 心情选择器事件
-    document.querySelectorAll('.mood-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        document.getElementById('journalMood').value = btn.dataset.mood;
-      });
-    });
-
-    // 心情筛选按钮事件（侧边栏）
-    document.querySelectorAll('.mood-filter .mood-tag').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const mood = btn.dataset.mood;
-        if (this.currentMoodFilter === mood) {
-          // 取消筛选
-          this.currentMoodFilter = null;
-          btn.classList.remove('active');
-        } else {
-          // 应用筛选
-          this.currentMoodFilter = mood;
-          document.querySelectorAll('.mood-filter .mood-tag').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-        }
-        this.renderJournalList();
-      });
-    });
-
-    // 日记统计按钮事件
-    const journalStatsBtn = document.getElementById('journalStatsBtn');
-    if (journalStatsBtn) {
-      journalStatsBtn.addEventListener('click', () => this.showJournalStats());
+    // 权重调节面板事件
+    const toggleWeightPanelBtn = document.getElementById('toggleWeightPanel');
+    if (toggleWeightPanelBtn) {
+      toggleWeightPanelBtn.addEventListener('click', () => this.toggleWeightPanel());
+    }
+    const closeWeightPanelBtn = document.getElementById('closeWeightPanelBtn');
+    if (closeWeightPanelBtn) {
+      closeWeightPanelBtn.addEventListener('click', () => this.toggleWeightPanel());
+    }
+    const resetWeightsBtn = document.getElementById('resetWeightsBtn');
+    if (resetWeightsBtn) {
+      resetWeightsBtn.addEventListener('click', () => this.resetWeights());
     }
 
-    // 日记搜索框防抖事件
-    const journalSearch = document.getElementById('journalSearch');
-    if (journalSearch) {
-      let journalSearchTimeout;
-      journalSearch.addEventListener('input', (e) => {
-        clearTimeout(journalSearchTimeout);
-        journalSearchTimeout = setTimeout(() => {
-          this.currentJournalSearchTerm = e.target.value.trim();
-          this.renderJournalList();
+    // 灵感表单事件
+    const inspirationForm = document.getElementById('inspirationForm');
+    if (inspirationForm) {
+      inspirationForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(inspirationForm);
+        // 手动获取 contenteditable 内容
+        const coreTranslationEl = document.getElementById('inspirationCoreTranslation');
+        formData.set('coreTranslation', coreTranslationEl.innerHTML);
+        this.saveInspiration(formData);
+      });
+
+      // 灵感标签点击事件
+      inspirationForm.addEventListener('click', (e) => {
+        const presetTag = e.target.closest('.preset-tag');
+        if (presetTag) {
+          const tag = presetTag.textContent.trim();
+          this.toggleInspirationTag(tag);
+          return;
+        }
+        const removeTag = e.target.closest('.remove-tag');
+        if (removeTag) {
+          const tagSpan = removeTag.closest('.selected-tag');
+          const tag = tagSpan.textContent.trim().replace('×', '').trim();
+          this.removeInspirationTag(tag);
+          return;
+        }
+      });
+    }
+
+    // 灵感搜索框防抖事件
+    const inspirationSearch = document.getElementById('inspirationSearch');
+    if (inspirationSearch) {
+      let inspirationSearchTimeout;
+      inspirationSearch.addEventListener('input', (e) => {
+        clearTimeout(inspirationSearchTimeout);
+        inspirationSearchTimeout = setTimeout(() => {
+          this.currentInspirationSearchTerm = e.target.value.trim();
+          this.renderInspirationList();
         }, 300);
       });
     }
 
-    // 日期筛选事件
-    const journalStartDate = document.getElementById('journalStartDate');
-    const journalEndDate = document.getElementById('journalEndDate');
-    const journalDateFilterBtn = document.getElementById('journalDateFilterBtn');
-    const journalClearDateFilterBtn = document.getElementById('journalClearDateFilterBtn');
+    // 灵感筛选面板 - 点击外部关闭
+    document.addEventListener('click', (e) => {
+      const panel = this.domCache.inspirationFilterPanel;
+      const filterBtn = document.getElementById('filterBtn');
+      if (!panel || !panel.classList.contains('visible')) return;
 
-    if (journalDateFilterBtn) {
-      journalDateFilterBtn.addEventListener('click', () => {
-        this.journalStartDate = journalStartDate ? journalStartDate.value : null;
-        this.journalEndDate = journalEndDate ? journalEndDate.value : null;
-        this.renderJournalList();
-      });
+      // 如果点击在面板内或筛选按钮内，不关闭
+      if (panel.contains(e.target) || (filterBtn && filterBtn.contains(e.target))) return;
+
+      // 关闭面板
+      panel.classList.remove('visible');
+    });
+
+    // 灵感删除确认事件
+    const confirmInspirationDeleteBtn = document.getElementById('confirmInspirationDeleteBtn');
+    if (confirmInspirationDeleteBtn) {
+      confirmInspirationDeleteBtn.addEventListener('click', () => this.confirmDeleteInspiration());
     }
 
-    if (journalClearDateFilterBtn) {
-      journalClearDateFilterBtn.addEventListener('click', () => {
-        this.journalStartDate = null;
-        this.journalEndDate = null;
-        if (journalStartDate) journalStartDate.value = '';
-        if (journalEndDate) journalEndDate.value = '';
-        this.renderJournalList();
-      });
+    const cancelInspirationDeleteBtn = document.getElementById('cancelInspirationDeleteBtn');
+    if (cancelInspirationDeleteBtn) {
+      cancelInspirationDeleteBtn.addEventListener('click', () => this.cancelDeleteInspiration());
     }
 
-    this.fileDropArea.addEventListener('click', () => this.importFile.click());
-    this.fileDropArea.addEventListener('dragover', (e) => this.handleDragOver(e));
-    this.fileDropArea.addEventListener('drop', (e) => this.handleFileDrop(e));
+    this.fileDropArea?.addEventListener('click', () => this.importFile?.click());
+    this.fileDropArea?.addEventListener('dragover', (e) => this.handleDragOver(e));
+    this.fileDropArea?.addEventListener('drop', (e) => this.handleFileDrop(e));
 
-    this.sortFieldSelect.addEventListener('change', (e) => {
+    this.sortFieldSelect?.addEventListener('change', (e) => {
       this.currentSortField = e.target.value;
       this.renderBooks();
     });
 
-    this.sortOrderSelect.addEventListener('change', (e) => {
+    this.sortOrderSelect?.addEventListener('change', (e) => {
       this.currentSortOrder = e.target.value;
       this.renderBooks();
     });
 
-    this.confirmDeleteBtn.addEventListener('click', () => this.confirmDelete());
-    this.cancelDeleteBtn.addEventListener('click', () => this.hideDeleteModal());
+    this.confirmDeleteBtn?.addEventListener('click', () => this.confirmDelete());
+    this.cancelDeleteBtn?.addEventListener('click', () => this.hideDeleteModal());
 
-    // 日记删除确认按钮事件绑定
-    const confirmJournalDeleteBtn = document.getElementById('confirmJournalDeleteBtn');
-    const cancelJournalDeleteBtn = document.getElementById('cancelJournalDeleteBtn');
-    if (confirmJournalDeleteBtn) {
-      confirmJournalDeleteBtn.addEventListener('click', () => this.confirmDeleteJournal());
-    }
-    if (cancelJournalDeleteBtn) {
-      cancelJournalDeleteBtn.addEventListener('click', () => this.hideJournalDeleteModal());
-    }
-
-    // 日记阅读模态框关闭按钮事件绑定
-    const closeJournalViewBtn = document.getElementById('closeJournalViewBtn');
-    if (closeJournalViewBtn) {
-      closeJournalViewBtn.addEventListener('click', () => this.closeJournalViewModal());
-    }
-
-    this.closeNotesModalBtn.addEventListener('click', () => this.hideNotesModal());
-    this.importNotesBtn.addEventListener('click', () => this.importNotes());
-    this.noteSearchInput.addEventListener('input', () => this.handleNoteSearch());
-    this.saveNoteBtn.addEventListener('click', () => this.saveNote());
     // 点击overlay时关闭所有模态框
-    this.overlay.addEventListener('click', (e) => {
+    this.overlay?.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
-        this.hideNotesModal();
-        this.closeJournalModal();
-        this.closeJournalStatsModal();
-        this.hideJournalDeleteModal();
-        this.closeJournalViewModal();
-        this.hideFilterPanel();
-        this.hideCompareModal();
-        // 隐藏overlay
-        this.overlay.style.display = 'none';
+        this.closeAllModals();
       }
     });
 
@@ -2246,6 +2397,25 @@ class BookApp {
     document.addEventListener('keydown', (e) => this.handleKeydown(e));
     document.addEventListener('click', (e) => this.handleDocumentClick(e));
     document.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+
+    // 灵感筛选面板 - 标签按钮点击事件
+    document.addEventListener('click', (e) => {
+      // 标签筛选
+      if (e.target.classList.contains('filter-tag-pill')) {
+        e.target.classList.toggle('selected');
+      }
+      // 时间筛选
+      if (e.target.classList.contains('time-pill')) {
+        document.querySelectorAll('.time-pill').forEach(p => p.classList.remove('active'));
+        e.target.classList.add('active');
+
+        // 如果选择"自定义"显示日期选择器
+        const dateRange = document.querySelector('.filter-date-range');
+        if (dateRange) {
+          dateRange.style.display = e.target.dataset.time === 'custom' ? 'flex' : 'none';
+        }
+      }
+    });
 
     // 文件夹事件绑定
     this.initFolderEvents();
@@ -2279,7 +2449,7 @@ class BookApp {
 
     // 隐藏 overlay，避免遮挡输入框
     if (this.overlay) {
-      this.overlay.style.display = 'none';
+      this.overlay.classList.remove('active');
     }
 
     folderNameInput.focus();
@@ -2315,7 +2485,7 @@ class BookApp {
     document.getElementById('folderModal').style.display = 'none';
     // 隐藏 overlay
     if (this.overlay) {
-      this.overlay.style.display = 'none';
+      this.overlay.classList.remove('active');
     }
   }
 
@@ -2356,114 +2526,95 @@ class BookApp {
   }
 
   async loadBooks() {
-    this.showLoading();
-    log('开始加载书籍...');
-    log('electronAPI 可用:', !!window.electronAPI);
     try {
       const books = await this.storageService.loadBooks();
-      log('书籍加载完成, 数量:', books.length);
       this.renderBooks();
       this.renderFolders();
       this.updateBookCount();
     } catch (error) {
       console.error('加载书籍失败:', error);
-      this.showToast('加载书籍失败', 'error');
-    } finally {
-      this.hideLoading();
     }
   }
 
   // 加载日记
   async loadJournals() {
     try {
-      let journalsData;
-      if (window.electronAPI && typeof window.electronAPI.loadJournals === 'function') {
-        journalsData = await window.electronAPI.loadJournals();
+      let inspirationsData;
+      if (window.electronAPI && typeof window.electronAPI.loadInspirations === 'function') {
+        inspirationsData = await window.electronAPI.loadInspirations();
       } else {
-        const stored = localStorage.getItem('mybook_journals');
-        journalsData = stored ? JSON.parse(stored) : [];
+        const stored = localStorage.getItem('mybook_inspirations');
+        inspirationsData = stored ? JSON.parse(stored) : [];
       }
-      this.journals = journalsData.map(j => JournalEntry.fromJSON(j));
-      return this.journals;
+      this.inspirations = inspirationsData.map(j => InspirationEntry.fromJSON(j));
+      return this.inspirations;
     } catch (error) {
-      console.error('加载日记失败:', error);
-      this.journals = [];
+      console.error('加载灵感失败:', error);
+      this.inspirations = [];
       return [];
     }
   }
 
-  // 保存日记
-  async saveJournals() {
+  // 保存灵感
+  async saveInspirations() {
     try {
-      const data = this.journals.map(j => j.toJSON());
-      if (window.electronAPI && typeof window.electronAPI.saveJournals === 'function') {
-        await window.electronAPI.saveJournals(data);
+      const data = this.inspirations.map(j => j.toJSON());
+      if (window.electronAPI && typeof window.electronAPI.saveInspirations === 'function') {
+        await window.electronAPI.saveInspirations(data);
       } else {
-        localStorage.setItem('mybook_journals', JSON.stringify(data));
+        localStorage.setItem('mybook_inspirations', JSON.stringify(data));
       }
       return true;
     } catch (error) {
-      console.error('保存日记失败:', error);
+      console.error('保存灵感失败:', error);
       return false;
     }
   }
 
   // 视图切换（使用 DOM 缓存优化）
-  switchView(viewName) {
+  switchView(viewName, bookId = null) {
     // 使用缓存的 DOM 引用
     const c = this.domCache;
 
-    log('switchView called:', viewName);
+    log('switchView called:', viewName, bookId);
 
     this.currentView = viewName;
+    this.currentInspirationFilterBookId = bookId;
 
-    if (viewName === 'journal') {
+    if (viewName === 'inspiration') {
       // 步骤1：立即执行 DOM 显示切换（视觉快速响应）
       if (c.kbSidebar) c.kbSidebar.style.display = 'none';
       if (c.kbToolbar) c.kbToolbar.style.display = 'none';
       if (c.bookSection) c.bookSection.style.display = 'none';
-      if (c.aiReadSection) c.aiReadSection.style.display = 'none';
 
-      // 显示日记模块
-      if (c.journalSidebar) c.journalSidebar.style.display = 'block';
-      if (c.journalToolbar) c.journalToolbar.style.display = 'flex';
-      if (c.journalSection) c.journalSection.style.display = 'block';
+      // 显示灵感模块
+      if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'flex';
+      if (c.inspirationSection) c.inspirationSection.style.display = 'block';
 
       // 更新切换按钮状态
       if (c.viewKnowledge) c.viewKnowledge.classList.remove('active');
-      if (c.viewJournal) c.viewJournal.classList.add('active');
-      if (c.viewAiRead) c.viewAiRead.classList.remove('active');
+      if (c.viewInspiration) c.viewInspiration.classList.add('active');
+
+      // 如果是从作品转跳过来，锁定作品筛选
+      if (bookId) {
+        this.inspirationFilters.bookId = bookId;
+        this.inspirationFilters.lockedBookId = bookId; // 标记为锁定状态
+        // 更新筛选面板的下拉框显示
+        if (c.filterBookId) {
+          c.filterBookId.value = bookId;
+        }
+        // 更新锁定书籍指示器
+        this._updateLockedBookIndicator();
+      }
 
       // 步骤2：异步执行渲染（不阻塞 UI）
       requestAnimationFrame(() => {
-        this.renderJournalList();
+        this.renderInspirationList();
       });
-    } else if (viewName === 'airead') {
-      // 隐藏知识库和日记模块
-      if (c.kbSidebar) c.kbSidebar.style.display = 'none';
-      if (c.kbToolbar) c.kbToolbar.style.display = 'none';
-      if (c.bookSection) c.bookSection.style.display = 'none';
-      if (c.journalSidebar) c.journalSidebar.style.display = 'none';
-      if (c.journalToolbar) c.journalToolbar.style.display = 'none';
-      if (c.journalSection) c.journalSection.style.display = 'none';
-
-      // 显示AI精读模块
-      if (c.aiReadSection) c.aiReadSection.style.display = 'block';
-
-      // 更新切换按钮状态
-      if (c.viewKnowledge) c.viewKnowledge.classList.remove('active');
-      if (c.viewJournal) c.viewJournal.classList.remove('active');
-      if (c.viewAiRead) c.viewAiRead.classList.add('active');
     } else {
-      // 隐藏日记和AI精读模块
-      if (c.journalSidebar) c.journalSidebar.style.display = 'none';
-      if (c.journalToolbar) c.journalToolbar.style.display = 'none';
-      if (c.journalSection) c.journalSection.style.display = 'none';
-      if (c.aiReadSection) c.aiReadSection.style.display = 'none';
-
-      // 清除日记日期筛选状态
-      this.journalStartDate = null;
-      this.journalEndDate = null;
+      // 隐藏灵感模块
+      if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'none';
+      if (c.inspirationSection) c.inspirationSection.style.display = 'none';
 
       // 显示知识库模块
       if (c.kbSidebar) c.kbSidebar.style.display = 'block';
@@ -2471,104 +2622,347 @@ class BookApp {
       if (c.bookSection) c.bookSection.style.display = 'block';
 
       // 更新切换按钮状态
-      if (c.viewJournal) c.viewJournal.classList.remove('active');
-      if (c.viewAiRead) c.viewAiRead.classList.remove('active');
+      if (c.viewInspiration) c.viewInspiration.classList.remove('active');
       if (c.viewKnowledge) c.viewKnowledge.classList.add('active');
+
+      // 清除灵感筛选状态
+      this.currentInspirationFilterBookId = null;
+      this.inspirationFilters.lockedBookId = null;
+      this._hideLockedBookIndicator();
     }
   }
 
-  // 获取排序后的日记（带缓存）
-  _getSortedJournals() {
+  // 更新锁定书籍指示器（显示在筛选按钮右侧）
+  _updateLockedBookIndicator() {
+    const lockedBookId = this.inspirationFilters.lockedBookId;
+    if (!lockedBookId) return;
+
+    const book = this.storageService.books.find(b => b.id === lockedBookId);
+    if (!book) return;
+
+    // 创建或更新锁定指示器
+    let indicator = document.getElementById('lockedBookIndicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'lockedBookIndicator';
+      indicator.className = 'locked-book-indicator';
+      // 插入到 .filter-popover-wrapper 后面（在 .toolbar-left 内）
+      const wrapper = document.querySelector('.filter-popover-wrapper');
+      if (wrapper && wrapper.parentNode) {
+        wrapper.parentNode.insertBefore(indicator, wrapper.nextSibling);
+      }
+    }
+
+    indicator.innerHTML = `
+      <span class="locked-book-name">《${book.title}》</span>
+      <button class="locked-book-clear" onclick="window.clearLockedBook()">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    indicator.style.display = 'flex';
+  }
+
+  // 隐藏锁定书籍指示器
+  _hideLockedBookIndicator() {
+    const indicator = document.getElementById('lockedBookIndicator');
+    if (indicator) {
+      indicator.style.display = 'none';
+    }
+  }
+
+  // 清除锁定书籍（但保留筛选状态，允许查看所有灵感）
+  clearLockedBook() {
+    this.inspirationFilters.lockedBookId = null;
+    this.inspirationFilters.bookId = null;
+    this.currentInspirationFilterBookId = null;
+    this._hideLockedBookIndicator();
+    // 清空筛选面板的下拉框
+    const filterBookId = document.getElementById('filterBookId');
+    if (filterBookId) {
+      filterBookId.value = '';
+    }
+    this.renderInspirationList();
+  }
+
+  // 获取排序后的灵感（带缓存）
+  _getSortedInspirations() {
     // 生成当前状态的哈希值
     const currentHash = JSON.stringify({
-      journals: this.journals.map(j => j.id),  // 只用 ID 减少计算量
-      filter: this.currentMoodFilter,
-      search: this.currentJournalSearchTerm,
-      startDate: this.journalStartDate,
-      endDate: this.journalEndDate
+      inspirations: this.inspirations.map(j => j.id),
+      search: this.currentInspirationSearchTerm,
+      filters: this.inspirationFilters
     });
 
-    if (this._journalsHash !== currentHash) {
+    if (this._inspirationsHash !== currentHash) {
       // 数据变化，重新排序
-      this._journalsHash = currentHash;
-      let filtered = this.journals;
+      this._inspirationsHash = currentHash;
+      let filtered = this.inspirations;
 
-      if (this.currentMoodFilter) {
-        filtered = filtered.filter(j => j.mood === this.currentMoodFilter);
-      }
-      if (this.currentJournalSearchTerm) {
-        const term = this.currentJournalSearchTerm.toLowerCase();
-        filtered = filtered.filter(j =>
-          (j.content && j.content.toLowerCase().includes(term)) ||
-          j.date.includes(term)
+      // 搜索过滤
+      if (this.currentInspirationSearchTerm) {
+        const term = this.currentInspirationSearchTerm.toLowerCase();
+        filtered = filtered.filter(i =>
+          (i.title && i.title.toLowerCase().includes(term)) ||
+          (i.coreTranslation && i.coreTranslation.toLowerCase().includes(term)) ||
+          (i.tags && i.tags.some(t => t.toLowerCase().includes(term)))
         );
       }
-      // 日期范围筛选
-      if (this.journalStartDate || this.journalEndDate) {
-        filtered = filtered.filter(j => {
-          const journalDate = new Date(j.date);
-          const start = this.journalStartDate ? new Date(this.journalStartDate) : null;
-          const end = this.journalEndDate ? new Date(this.journalEndDate) : null;
-          // 设置结束日期为当天的最后一刻
-          if (end) {
-            end.setHours(23, 59, 59, 999);
-          }
-          if (start && journalDate < start) return false;
-          if (end && journalDate > end) return false;
-          return true;
-        });
+
+      // 按书籍筛选
+      if (this.inspirationFilters.bookId) {
+        filtered = filtered.filter(i => i.bookId === this.inspirationFilters.bookId);
       }
 
-      this._sortedJournals = [...filtered].sort((a, b) =>
-        new Date(b.date) - new Date(a.date)
-      );
+      // 按标签筛选
+      if (this.inspirationFilters.tags.length > 0) {
+        filtered = filtered.filter(i =>
+          i.tags && i.tags.some(tag => this.inspirationFilters.tags.includes(tag))
+        );
+      }
+
+      // 按时间筛选
+      if (this.inspirationFilters.timeOption !== 'all' || this.inspirationFilters.dateFrom || this.inspirationFilters.dateTo) {
+        const now = new Date();
+        let startDate = null;
+        let endDate = null;
+
+        if (this.inspirationFilters.timeOption === 'week') {
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (this.inspirationFilters.timeOption === 'month') {
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        } else if (this.inspirationFilters.dateFrom) {
+          startDate = new Date(this.inspirationFilters.dateFrom);
+        }
+
+        if (this.inspirationFilters.dateTo) {
+          endDate = new Date(this.inspirationFilters.dateTo);
+          endDate.setHours(23, 59, 59, 999);
+        }
+
+        if (startDate || endDate) {
+          filtered = filtered.filter(i => {
+            const createdAt = new Date(i.createdAt);
+            if (startDate && createdAt < startDate) return false;
+            if (endDate && createdAt > endDate) return false;
+            return true;
+          });
+        }
+      }
+
+      // 按创建时间倒序
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      this._sortedInspirations = filtered;
     }
 
-    return this._sortedJournals || [];
+    return this._sortedInspirations || [];
   }
 
-  // 清除日记缓存（数据变化时调用）
-  _invalidateJournalCache() {
-    this._sortedJournals = null;
-    this._journalsHash = '';
-  }
+  // 切换筛选面板显示/隐藏
+  toggleInspirationFilterPanel() {
+    const panel = this.domCache.inspirationFilterPanel;
+    if (!panel) return;
 
-  // 渲染日记列表（第三轮极限优化）
-  renderJournalList() {
-    // 取消上一次渲染任务
-    if (this._renderController) {
-      this._renderController.aborted = true;
+    if (!panel.classList.contains('visible')) {
+      panel.classList.add('visible');
+      // 填充书籍下拉选项
+      this._populateFilterBookOptions();
+      // 填充标签选项
+      this._populateFilterTagOptions();
+
+      // 使用 fixed 定位时，需要计算相对于视口的位置
+      const filterBtn = document.getElementById('filterBtn');
+      if (filterBtn) {
+        const rect = filterBtn.getBoundingClientRect();
+        panel.style.top = (rect.bottom + 8) + 'px';
+        panel.style.left = rect.left + 'px';
+      }
+    } else {
+      panel.classList.remove('visible');
     }
-    this._renderController = { aborted: false };
+  }
 
-    // 使用缓存的 DOM 引用
-    const container = this.domCache.journalList;
-    const emptyState = this.domCache.journalEmptyState;
-    const BATCH_SIZE = 10;  // 首屏优先
+  // 填充筛选面板中的书籍选项
+  _populateFilterBookOptions() {
+    const select = this.domCache.filterBookId;
+    if (!select) return;
 
-    log('renderJournalList called, journals:', this.journals.length, 'moodFilter:', this.currentMoodFilter);
+    // 只显示开启了灵感功能的书籍
+    const books = (this.storageService.books || []).filter(book => book.enableInspiration);
+    const currentValue = select.value;
 
-    // 强制确保container存在
+    select.innerHTML = '<option value="">全部作品</option>' +
+      books.map(book => `<option value="${book.id}">${this.escapeHtml(book.title)}</option>`).join('');
+
+    if (currentValue) {
+      select.value = currentValue;
+    }
+  }
+
+  // 填充筛选面板中的标签选项（与新增灵感同步）
+  _populateFilterTagOptions() {
+    const container = document.getElementById('filterTagsContainer');
+    if (!container) return;
+
+    const tags = this.inspirationPresetTags;
+    const currentSelectedTags = this.inspirationFilters.tags || [];
+
+    container.innerHTML = tags.map(tag => {
+      const isSelected = currentSelectedTags.includes(tag);
+      return `<button type="button" class="filter-tag-pill ${isSelected ? 'selected' : ''}" data-tag="${this.escapeHtml(tag)}">${this.escapeHtml(tag)}</button>`;
+    }).join('');
+  }
+
+  // 重置筛选条件
+  resetInspirationFilter() {
+    const select = this.domCache.filterBookId;
+    const dateFrom = this.domCache.filterDateFrom;
+    const dateTo = this.domCache.filterDateTo;
+
+    if (select) select.value = '';
+    if (dateFrom) dateFrom.value = '';
+    if (dateTo) dateTo.value = '';
+
+    // 取消所有标签选中
+    const tagPills = document.querySelectorAll('.filter-tag-pill');
+    tagPills.forEach(pill => pill.classList.remove('selected'));
+
+    // 重置时间选项 - 使用 time-pill 按钮
+    const timePills = document.querySelectorAll('.time-pill');
+    timePills.forEach(pill => {
+      pill.classList.remove('active');
+      if (pill.dataset.time === 'all') {
+        pill.classList.add('active');
+      }
+    });
+
+    // 隐藏自定义日期范围
+    const dateRange = document.querySelector('.filter-date-range');
+    if (dateRange) dateRange.style.display = 'none';
+
+    // 重置内部状态
+    this.inspirationFilters = {
+      bookId: null,
+      tags: [],
+      timeOption: 'all',
+      dateFrom: null,
+      dateTo: null,
+      lockedBookId: null
+    };
+
+    // 清除转跳时设置的临时筛选ID
+    this.currentInspirationFilterBookId = null;
+
+    // 隐藏锁定书籍指示器
+    this._hideLockedBookIndicator();
+  }
+
+  // 应用筛选
+  applyInspirationFilter() {
+    // 获取筛选值
+    const bookId = this.domCache.filterBookId?.value || '';
+    const dateFrom = this.domCache.filterDateFrom?.value || '';
+    const dateTo = this.domCache.filterDateTo?.value || '';
+    const selectedTags = Array.from(document.querySelectorAll('.filter-tag-pill.selected')).map(el => el.dataset.tag);
+    const timeOption = document.querySelector('.time-pill.active')?.dataset.time || 'all';
+
+    // 保存筛选状态（保留锁定书籍ID，如果下拉框的值与锁定ID不同则更新锁定状态）
+    const newLockedBookId = bookId || null;
+    this.inspirationFilters = {
+      bookId: bookId || null,
+      tags: selectedTags,
+      timeOption: timeOption,
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
+      lockedBookId: newLockedBookId
+    };
+
+    // 如果有锁定书籍，更新指示器
+    if (newLockedBookId) {
+      this._updateLockedBookIndicator();
+    } else {
+      this._hideLockedBookIndicator();
+    }
+
+    // 关闭面板
+    const panel = this.domCache.inspirationFilterPanel;
+    if (panel) panel.classList.remove('visible');
+
+    // 显示筛选指示器
+    const indicator = document.getElementById('inspirationFilterIndicator');
+    const indicatorText = document.getElementById('inspirationFilterText');
+
+    if (indicator && indicatorText) {
+      const conditions = [];
+      if (bookId) {
+        const book = this.storageService.books.find(b => b.id === bookId);
+        if (book) conditions.push(`作品: ${book.title}`);
+      }
+      if (selectedTags.length > 0) {
+        conditions.push(`标签: ${selectedTags.join(', ')}`);
+      }
+      if (timeOption !== 'all') {
+        const timeLabel = timeOption === 'week' ? '最近一周' : '最近一个月';
+        conditions.push(`时间: ${timeLabel}`);
+      } else if (dateFrom || dateTo) {
+        conditions.push(`时间: ${dateFrom || '开始'} ~ ${dateTo || '结束'}`);
+      }
+
+      if (conditions.length > 0) {
+        indicator.style.display = 'flex';
+        indicatorText.textContent = conditions.join(' | ');
+      } else {
+        indicator.style.display = 'none';
+      }
+    }
+
+    // 重新渲染列表
+    this.renderInspirationList();
+  }
+
+  // 渲染灵感列表
+  renderInspirationList() {
+    const container = this.domCache.inspirationList;
+    const emptyState = this.domCache.inspirationEmptyState;
+    const filterIndicator = document.getElementById('inspirationFilterIndicator');
+
     if (!container) {
-      console.error('journalList container not found');
+      console.error('inspirationList container not found');
       return;
     }
 
-    // 如果没有日记数据，直接显示空状态
-    if (!this.journals || this.journals.length === 0) {
+    // 如果有锁定书籍，不显示原来的指示器（锁定信息现在显示在工具栏）
+    // 只有非锁定筛选才显示原来的指示器
+    if (this.inspirationFilters.lockedBookId) {
+      // 锁定状态下不显示原来的筛选指示器
+      if (filterIndicator) {
+        filterIndicator.style.display = 'none';
+      }
+    } else if (this.inspirationFilters.bookId) {
+      // 非锁定但有书籍筛选时显示指示器
+      const filterText = document.getElementById('inspirationFilterText');
+      const book = this.storageService.books.find(b => b.id === this.inspirationFilters.bookId);
+      if (book && filterText && filterIndicator) {
+        filterText.textContent = `显示《${book.title}》的灵感`;
+        filterIndicator.style.display = 'flex';
+      }
+    } else {
+      if (filterIndicator) {
+        filterIndicator.style.display = 'none';
+      }
+    }
+
+    if (!this.inspirations || this.inspirations.length === 0) {
       container.innerHTML = '';
       if (emptyState) {
         container.appendChild(emptyState);
         emptyState.style.display = 'block';
       }
-      this._invalidateJournalCache();
       return;
     }
 
-    // 获取排序后的日记（使用缓存）
-    const sorted = this._getSortedJournals();
+    const sorted = this._getSortedInspirations();
 
-    // 筛选后为空，显示空状态提示
     if (!sorted || sorted.length === 0) {
       container.innerHTML = '';
       if (emptyState) {
@@ -2578,995 +2972,351 @@ class BookApp {
       return;
     }
 
-    // 隐藏空状态元素
     if (emptyState) {
       emptyState.style.display = 'none';
     }
 
-    // 清空容器
-    container.innerHTML = '';
-
-    // 使用 setTimeout 让出主线程
-    setTimeout(() => {
-      // 立即渲染前 20 条，保证视觉响应
-      const initialBatch = sorted.slice(0, BATCH_SIZE);
-      container.innerHTML = this._renderJournalCards(initialBatch);
-
-      // 异步渲染剩余条目
-      if (sorted.length > BATCH_SIZE) {
-        const remaining = sorted.slice(BATCH_SIZE);
-        requestAnimationFrame(() => {
-          this._renderRemainingJournals(remaining, container);
-        });
-      }
-    }, 0);
+    container.innerHTML = sorted.map(inspiration => this._renderInspirationCard(inspiration)).join('');
   }
 
-  // 渲染单批日记卡片
-  _renderJournalCards(journals) {
-    return journals.map(journal => this._renderJournalCard(journal)).join('');
-  }
-
-  // 渲染单条日记卡片
-  _renderJournalCard(journal) {
-    const date = new Date(journal.date);
-    const dateStr = `${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
-    const moodEmoji = this.getMoodEmoji(journal.mood);
-
-    // 获取关联作品信息（使用已优化的 bookMap）
-    const relatedBooksHtml = journal.relatedBookIds && journal.relatedBookIds.length > 0
-      ? journal.relatedBookIds.map(bookId => {
-          const book = this.storageService.getBookById(bookId);
-          if (!book) return '';
-          const firstTag = book.tags && book.tags.length > 0 ? book.tags[0] : '';
-          // 继承作品的动态主题色
-          const theme = this.getCardThemeColor(book.status, book.tags);
-          return `<span class="journal-related-book"
-              style="background: ${theme.bg}; color: ${theme.main}; border: 1px solid ${theme.border}"
-              onclick="event.stopPropagation(); window.jumpToBook('${bookId}')">
-              <i class="fas fa-link"></i> [${firstTag}] ${this.escapeHtml(book.title)}
-          </span>`;
-        }).join('')
+  // 渲染单条灵感卡片
+  _renderInspirationCard(inspiration) {
+    const date = new Date(inspiration.createdAt);
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const tagsHtml = inspiration.tags && inspiration.tags.length > 0
+      ? inspiration.tags.map(tag => `<span class="inspiration-tag">${this.escapeHtml(tag)}</span>`).join('')
       : '';
-
-    // 获取图片信息（支持 dataUrl 和路径两种格式）- 预编译正则优化
-    const imagesHtml = journal.images && journal.images.length > 0
-      ? journal.images.map(imgData => {
-          let imgSrc = '';
-          let imgKey = '';
-          // 处理对象格式（dataUrl 或 path）
-          if (typeof imgData === 'object') {
-            if (imgData.dataUrl) {
-              imgSrc = imgData.dataUrl;
-              imgKey = imgData.dataUrl;
-            } else if (imgData.path) {
-              imgSrc = imgData.path;
-              if (_WIN_PATH_REGEX.test(imgSrc)) {
-                imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-              }
-              imgKey = imgData.path;
-            }
-          } else {
-            // 字符串格式（旧数据）
-            imgSrc = imgData;
-            if (_WIN_PATH_REGEX.test(imgSrc)) {
-              imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-            }
-            imgKey = imgData;
-          }
-          return `<img src="${imgSrc}" class="journal-image-thumb" loading="lazy" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
-        }).join('')
+    const preview = inspiration.coreTranslation
+      ? (() => {
+          // 去掉HTML标签和 &nbsp; 等实体后截断
+          const stripped = inspiration.coreTranslation.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, '').replace(/ /g, '');
+          const text = stripped.length > 100 ? stripped.substring(0, 100) + '...' : stripped;
+          return this.escapeHtml(text);
+        })()
+      : '';
+    // 关联作品
+    const bookHtml = inspiration.bookId
+      ? (() => {
+          const book = this.storageService.books.find(b => b.id === inspiration.bookId);
+          return book ? `<div class="inspiration-card-book"><i class="fas fa-book"></i> 《${this.escapeHtml(book.title)}》</div>` : '';
+        })()
       : '';
 
     return `
-      <div class="journal-card" data-id="${journal.id}" onclick="openJournalView('${journal.id}')">
-        <div class="journal-header">
-          <span class="journal-date">${dateStr}</span>
-          <span class="journal-mood ${journal.mood}">${moodEmoji} ${journal.mood}</span>
+      <div class="inspiration-card" data-id="${inspiration.id}" onclick="openInspirationView('${inspiration.id}')">
+        <div class="inspiration-card-header">
+          <div class="inspiration-card-title">${this.escapeHtml(inspiration.title)}</div>
+          <div class="inspiration-card-date">${dateStr}</div>
         </div>
-        <div class="journal-preview">${this.escapeHtml(journal.content)}</div>
-        ${imagesHtml ? `<div class="journal-images">${imagesHtml}</div>` : ''}
-        ${relatedBooksHtml ? `<div class="journal-related-books">${relatedBooksHtml}</div>` : ''}
-        <div class="journal-actions">
-          <button onclick="event.stopPropagation(); editJournal('${journal.id}')"><i class="fas fa-edit"></i> 编辑</button>
-          <button class="delete" onclick="event.stopPropagation(); deleteJournal('${journal.id}')"><i class="fas fa-trash"></i> 删除</button>
+        ${bookHtml}
+        ${tagsHtml ? `<div class="inspiration-card-tags">${tagsHtml}</div>` : ''}
+        <div class="inspiration-card-preview">${preview}</div>
+        <div class="inspiration-card-footer">
+          ${inspiration.source?.reference ? `<div class="inspiration-card-source">${this.escapeHtml(inspiration.source.reference)}</div>` : ''}
         </div>
       </div>
     `;
   }
 
-  // 异步渲染剩余日记（使用 requestIdleCallback）
-  _renderRemainingJournals(remaining, container) {
-    const BATCH = 10;
-    let index = 0;
+  // 打开灵感查看模态框
+  openInspirationView(inspirationId) {
+    const inspiration = this.inspirations.find(i => i.id === inspirationId);
+    if (!inspiration) return;
 
-    const renderBatch = () => {
-      // 检查是否已取消
-      if (this._renderController && this._renderController.aborted) {
-        return;
+    // 保存当前查看的灵感ID，供编辑和删除按钮使用
+    window.currentViewInspirationId = inspirationId;
+
+    document.getElementById('viewInspirationTitle').textContent = inspiration.title;
+
+    const tagsHtml = inspiration.tags && inspiration.tags.length > 0
+      ? inspiration.tags.map(tag => `<span class="inspiration-tag">${this.escapeHtml(tag)}</span>`).join('')
+      : '';
+    document.getElementById('viewInspirationTags').innerHTML = tagsHtml;
+
+    // 处理核心转译的换行格式
+    const coreTranslationEl = document.getElementById('viewInspirationCoreTranslation');
+    if (inspiration.coreTranslation) {
+        const text = inspiration.coreTranslation;
+        const formatted = text.split('\n\n').map(p => p.replace(/\n/g, '<br>')).join('</p><p>');
+        coreTranslationEl.innerHTML = `<p>${formatted}</p>`;
+    } else {
+        coreTranslationEl.innerHTML = '暂无';
+    }
+
+    const inspirationViewModal = document.getElementById('inspirationViewModal');
+    if (inspirationViewModal) inspirationViewModal.style.display = 'flex';
+    document.getElementById('overlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  // 关闭灵感查看模态框
+  closeInspirationViewModal() {
+    document.getElementById('inspirationViewModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // 打开灵感编辑模态框
+  openInspirationModal(inspirationId = null, preselectedBookId = null) {
+    const modal = document.getElementById('inspirationModal');
+    const form = document.getElementById('inspirationForm');
+    const titleEl = document.getElementById('inspirationModalTitle');
+
+    form.reset();
+    document.getElementById('inspirationId').value = '';
+
+// 填充书籍下拉列表（根据来源决定是否锁定）
+    this.populateInspirationBookSelect(preselectedBookId);
+
+    // 初始化标签 - 新建时不重置，保留当前选中状态
+    if (inspirationId) {
+      const inspiration = this.inspirations.find(i => i.id === inspirationId);
+      if (inspiration) {
+        titleEl.innerHTML = '<i class="fas fa-lightbulb"></i> 编辑灵感';
+        document.getElementById('inspirationId').value = inspiration.id;
+        document.getElementById('inspirationTitle').value = inspiration.title;
+        document.getElementById('inspirationBookId').value = inspiration.bookId || '';
+        this.currentInspirationTags = [...(inspiration.tags || [])];
+        document.getElementById('inspirationCoreTranslation').innerHTML = inspiration.coreTranslation || '';
+        // 核心转译输入框自动调整高度
+        const ct = document.getElementById('inspirationCoreTranslation');
+        ct.style.height = 'auto';
+        ct.style.height = ct.scrollHeight + 'px';
       }
+    } else {
+      titleEl.innerHTML = '<i class="fas fa-lightbulb"></i> 记录灵感';
+      document.getElementById('inspirationBookId').value = preselectedBookId || '';
+      document.getElementById('inspirationCoreTranslation').innerHTML = '';
+      const ct = document.getElementById('inspirationCoreTranslation');
+      ct.style.height = 'auto';
+      // 不重置 currentInspirationTags，保留用户之前的选择
+    }
 
-      const batch = remaining.slice(index, index + BATCH);
-      const html = this._renderJournalCards(batch);
-      container.insertAdjacentHTML('beforeend', html);
-      index += BATCH;
+    // 渲染标签UI
+    this.renderInspirationTagSuggestions();
+    this.renderSelectedInspirationTags();
 
-      if (index < remaining.length) {
-        // 使用 requestIdleCallback 空闲时渲染，回退到 setTimeout
-        if ('requestIdleCallback' in window) {
-          requestIdleCallback(renderBatch);
+    modal.style.display = 'flex';
+    document.getElementById('overlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+
+    // 核心转译输入框 auto-resize
+    const ct = document.getElementById('inspirationCoreTranslation');
+    ct.removeEventListener('input', this._inspirationAutoResize);
+    this._inspirationAutoResize = () => {
+      ct.style.height = 'auto';
+      ct.style.height = ct.scrollHeight + 'px';
+    };
+    ct.addEventListener('input', this._inspirationAutoResize);
+
+    // 加粗按钮
+    document.getElementById('inspirationBoldBtn').onclick = () => {
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0 && sel.toString().length > 0) {
+        // 检查选中区域是否已在 b 标签内
+        const range = sel.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const bEl = container.nodeType === 3 ? container.parentElement.closest('b') : container.closest('b');
+        if (bEl) {
+          // 取消加粗：替换 b 为其内容
+          const parent = bEl.parentNode;
+          while (bEl.firstChild) parent.insertBefore(bEl.firstChild, bEl);
+          parent.removeChild(bEl);
         } else {
-          setTimeout(renderBatch, 16);
+          // 加粗
+          document.execCommand('bold', false, null);
         }
       }
+      ct.focus();
     };
 
-    // 首帧后开始渲染
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(renderBatch);
+    // 输入后将光标移出 b 标签，防止后续输入继承加粗
+    ct.removeEventListener('input', this._inspirationMoveCursorOut);
+    this._inspirationMoveCursorOut = () => {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const node = sel.anchorNode;
+      if (!node) return;
+      const bEl = node.parentElement?.closest?.('b');
+      if (!bEl) return;
+      // 如果光标在 b 标签内部且在末尾，将光标移到 b 之后
+      if (sel.isCollapsed && bEl.contains(node)) {
+        const range = document.createRange();
+        range.setStartAfter(bEl);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    };
+    ct.addEventListener('input', this._inspirationMoveCursorOut);
+  }
+
+  // 填充灵感表单的书籍下拉选择器
+  // preselectedBookId: 如果有值则锁定为该作品（从作品转跳），否则显示所有启用了灵感功能的作品
+  populateInspirationBookSelect(preselectedBookId = null) {
+    const select = document.getElementById('inspirationBookId');
+    if (!select) return;
+
+    select.innerHTML = '';
+    select.disabled = false;
+
+    if (preselectedBookId) {
+      // 方式二：从作品转跳过来，锁定为该作品
+      const book = this.storageService.books.find(b => b.id === preselectedBookId);
+      if (book) {
+        const option = document.createElement('option');
+        option.value = book.id;
+        option.textContent = book.title;
+        select.appendChild(option);
+        select.disabled = true; // 锁定不可更改
+      }
     } else {
-      requestAnimationFrame(renderBatch);
+      // 方式一：直接新增，只显示启用了灵感功能的作品
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = '请选择作品';
+      select.appendChild(defaultOption);
+
+      this.storageService.books
+        .filter(book => book.enableInspiration === true)
+        .forEach(book => {
+          const option = document.createElement('option');
+          option.value = book.id;
+          option.textContent = book.title;
+          select.appendChild(option);
+        });
     }
   }
 
-  // 获取星期几
-  getWeekday(date) {
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    return weekdays[date.getDay()];
+  // 关闭灵感编辑模态框
+  closeInspirationModal() {
+    document.getElementById('inspirationModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
   }
 
-  // 获取心情Emoji
-  getMoodEmoji(mood) {
-    const emojis = {
-      '完美': '🌟', '充实': '😊', '平淡': '😐',
-      '疲惫': '😮‍💨', '糟糕': '🌧️'
-    };
-    return emojis[mood] || '😐';
+  // 渲染预设灵感标签
+  renderInspirationTagSuggestions() {
+    const container = document.getElementById('inspirationTagSuggestions');
+    if (!container) return;
+
+    container.innerHTML = this.inspirationPresetTags.map(tag => {
+      const isSelected = this.currentInspirationTags.includes(tag);
+      return `<span class="preset-tag ${isSelected ? 'selected' : ''}" data-tag="${tag}">${tag}</span>`;
+    }).join('');
   }
 
-  // 显示日记统计
-  showJournalStats() {
-    const total = this.journals.length;
-    if (total === 0) {
-      this.showToast('暂无日记记录', 'warning');
+  // 渲染已选中的灵感标签
+  renderSelectedInspirationTags() {
+    const container = document.getElementById('selectedInspirationTags');
+    if (!container) return;
+
+    if (this.currentInspirationTags.length === 0) {
+      container.innerHTML = '<span class="no-tags-tip">点击下方标签进行选择</span>';
       return;
     }
 
-    // 统计各心情数量
-    const moodCounts = {};
-    let totalChars = 0;
-    this.journals.forEach(j => {
-      if (j.mood) {
-        moodCounts[j.mood] = (moodCounts[j.mood] || 0) + 1;
-      }
-      if (j.content) {
-        totalChars += j.content.length;
-      }
-    });
+    container.innerHTML = this.currentInspirationTags.map(tag => {
+      return `<span class="selected-tag" data-tag="${tag}">
+        ${tag}
+        <span class="remove-tag" data-action="remove">&times;</span>
+      </span>`;
+    }).join('');
 
-    // 找出最常心情
-    let maxMood = null;
-    let maxCount = 0;
-    Object.entries(moodCounts).forEach(([mood, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
-        maxMood = mood;
-      }
-    });
-
-    // 更新DOM元素
-    document.getElementById('journalTotalDays').textContent = total;
-    document.getElementById('journalTotalChars').textContent = totalChars;
-    document.getElementById('journalTopMood').textContent = this.getMoodEmoji(maxMood) + ' ' + maxMood;
-
-    // 显示模态框
-    const modal = document.getElementById('journalStatsModal');
-    modal.style.display = 'flex';
-    document.getElementById('overlay').style.display = 'block';
-
-    // 重置到第一页
-    this.resetStatsPage();
-
-    // 绑定滚轮切换事件
-    this.bindStatsWheelEvent();
-
-    // ===== 修复：确保模态框完全显示后再渲染图表 =====
-    // 饼图渲染 - 延迟150ms确保DOM已撑开
-    setTimeout(() => {
-      const chartDom = document.getElementById('journalMoodChart');
-      if (!chartDom || this.journalStatsChart) return;
-
-      // 获取当前心情统计数据（确保在正确作用域内）
-      const currentMoodCounts = {};
-      let currentTotalChars = 0;
-      this.journals.forEach(j => {
-        if (j.mood) {
-          currentMoodCounts[j.mood] = (currentMoodCounts[j.mood] || 0) + 1;
-        }
-        if (j.content) {
-          currentTotalChars += j.content.length;
-        }
-      });
-
-      const moodColors = {
-        '完美': '#f1c40f',
-        '充实': '#27ae60',
-        '平淡': '#95a5a6',
-        '疲惫': '#e67e22',
-        '糟糕': '#e74c3c'
-      };
-
-      const chartData = Object.entries(currentMoodCounts).map(([mood, count]) => ({
-        name: this.getMoodEmoji(mood) + ' ' + mood,
-        value: count,
-        itemStyle: { color: moodColors[mood] || '#999' }
-      }));
-
-      const option = {
-        backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'item',
-          formatter: '{b}: {c}次 ({d}%)'
-        },
-        legend: {
-          bottom: 0,
-          data: chartData.map(d => d.name)
-        },
-        series: [{
-          type: 'pie',
-          radius: ['40%', '70%'],
-          center: ['50%', '45%'],
-          data: chartData,
-          label: {
-            show: true,
-            formatter: '{b}: {c}'
-          }
-        }]
-      };
-
-      this.journalStatsChart = echarts.init(chartDom);
-      this.journalStatsChart.setOption(option);
-
-      // 修复：强制resize确保在display:block后能正确渲染
-      this.journalStatsChart.resize();
-    }, 100);
-
-    // 渲染热力图 - 延迟350ms确保模态框完全显示并过渡动画完成
-    // 保存journals引用确保在正确作用域内
-    const journalsForHeatmap = this.journals;
-    setTimeout(() => {
-      const heatmapDom = document.getElementById('journalHeatmap');
-      if (!heatmapDom || !journalsForHeatmap.length) return;
-
-      // 销毁已存在的热力图
-      if (this.journalHeatmapChart) {
-        this.journalHeatmapChart.dispose();
-      }
-
-      // ===== 第一步：修复日期格式 =====
-      // 确保日期为严格的 YYYY-MM-DD 格式
-      const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-
-      // 处理热力图数据：[日期字符串YYYY-MM-DD, 字数, 心情, ID]
-      // ===== 第一步：防御性提取日期字段 =====
-      const heatmapData = journalsForHeatmap.map(j => {
-        const charCount = j.content ? j.content.length : 0;
-
-        // 动态获取日期：优先使用 date，其次 createdAt，最后尝试 id（可能存储日期戳）
-        const rawDate = j.date || j.createdAt || j.id;
-
-        // 转换为标准 Date 对象
-        const d = new Date(rawDate);
-
-        // 关键拦截：如果日期无效，直接返回 null
-        if (isNaN(d.getTime())) {
-          console.warn('无效日期:', rawDate, j);
-          return null;
-        }
-
-        // 强制组装 YYYY-MM-DD 格式，使用 padStart 补齐前导零
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const formattedDate = `${year}-${month}-${day}`;
-
-        return [formattedDate, charCount, j.mood, j.id];
-      }).filter(Boolean); // 过滤掉 null 值
-
-      log('Heatmap data:', heatmapData);
-
-      // ===== 第三步：测试探针（用于验证渲染逻辑） =====
-  
-
-      // 获取当前年份
-      const currentYear = new Date().getFullYear();
-
-      // 心情emoji映射
-      const moodEmojiMap = {
-        '完美': '🌟',
-        '充实': '😊',
-        '平淡': '😐',
-        '疲惫': '😮‍💨',
-        '糟糕': '😢'
-      };
-
-      // 计算最大字数用于visualMap
-      const maxCharCount = Math.max(...heatmapData.map(d => d[1]), 100);
-
-      // ===== 第二步：重构 ECharts 视觉配置 =====
-      // ===== 彻底重构后的 ECharts 热力图配置 =====
-      const heatmapOption = {
-        tooltip: {
-          trigger: 'item',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          borderColor: '#ddd',
-          borderWidth: 1,
-          padding: [10, 14],
-          formatter: function(params) {
-            if (!params.data) return '没有记录';
-            const date = params.data[0];
-            const charCount = params.data[1];
-            const mood = params.data[2] || '无';
-            return `<div style="font-size: 13px; color: #333;">
-                      <b>${date}</b><br/>
-                      心情: ${mood}<br/>
-                      字数: <b>${charCount}</b> 字
-                    </div>`;
-          }
-        },
-        // 将连续型渐变改为分段型（Piecewise），类似 GitHub 绿格子，更稳定更清晰
-        visualMap: {
-          type: 'piecewise',
-          dimension: 1, // 👈 关键修复：强制读取数组的第2项（字数）来映射颜色
-          orient: 'horizontal',
-          left: 'center',
-          bottom: 0,
-          pieces: [
-            { min: 1, max: 50, color: '#f3e5f5', label: '1-50字' },
-            { min: 51, max: 200, color: '#ce93d8', label: '51-200字' },
-            { min: 201, max: 500, color: '#ab47bc', label: '201-500字' },
-            { min: 501, color: '#6a1b9a', label: '500字以上' }
-          ],
-          outOfRange: {
-            color: '#f5f5f5' // 0字或没数据的格子颜色
-          },
-          textStyle: { color: '#666' },
-          itemWidth: 14,
-          itemHeight: 14
-        },
-        calendar: {
-          range: currentYear.toString(), // 确保是如 '2026' 的字符串
-          top: 40,
-          left: 30,
-          right: 30,
-          bottom: 60,
-          cellSize: ['auto', 16], // 宽度自适应防止挤压，高度固定16px
-          itemStyle: {
-            color: '#f5f5f5',
-            borderWidth: 2,
-            borderColor: '#ffffff' // 白色缝隙
-          },
-          splitLine: { show: false }, // 隐藏多余的分割线
-          yearLabel: { show: false },
-          monthLabel: { nameMap: 'zh-CN', color: '#999', fontSize: 12 },
-          dayLabel: { nameMap: 'zh-CN', color: '#999', fontSize: 10 }
-        },
-        series: [{
-          type: 'heatmap',
-          coordinateSystem: 'calendar',
-          calendarIndex: 0, // 强制绑定到第一个日历坐标系
-          data: heatmapData // 接收 [ ['2026-03-08', 999, '心情', 'ID'] ] 格式
-        }]
-      };
-
-      this.journalHeatmapChart = echarts.init(heatmapDom);
-      this.journalHeatmapChart.setOption(heatmapOption);
-
-      // 修复：强制resize确保渲染正确
-      this.journalHeatmapChart.resize();
-
-      // ===== 第三步：打通点击跳转逻辑 =====
-      // 先清除可能重复绑定的事件
-      this.journalHeatmapChart.off('click');
-
-      // 绑定点击事件：跳转到对应日记
-      this.journalHeatmapChart.on('click', (params) => {
-        if (!params || !params.value || !params.value[3]) return;
-        const journalId = params.value[3];
-        if (journalId) {
-          // 1. 重置翻页状态到第一页
-          this.resetStatsPage();
-          // 2. 关闭统计模态框和遮罩
-          this.closeJournalStatsModal();
-          // 3. 打开日记阅读视图
-          this.openJournalView(journalId);
-        }
-      });
-    }, 350);
+    // 更新hidden input
+    document.getElementById('inspirationTags').value = this.currentInspirationTags.join(',');
   }
 
-  // 重置统计页面到第一页
-  resetStatsPage() {
-    const track = document.getElementById('statsTrack');
-    const dots = document.querySelectorAll('.pagination-dot');
-    if (track) {
-      track.style.transform = 'translateY(0)';
+  // 切换灵感标签选中状态
+  toggleInspirationTag = (tag) => {
+    const index = this.currentInspirationTags.indexOf(tag);
+    if (index === -1) {
+      this.currentInspirationTags.push(tag);
+    } else {
+      this.currentInspirationTags.splice(index, 1);
     }
-    dots.forEach((dot, index) => {
-      dot.classList.toggle('active', index === 0);
-    });
-    this.statsCurrentPage = 0;
-  }
+    this.renderSelectedInspirationTags();
+    this.renderInspirationTagSuggestions();
+  };
 
-  // 绑定滚轮切换事件
-  bindStatsWheelEvent() {
-    const viewport = document.getElementById('statsViewport');
-    const track = document.getElementById('statsTrack');
-    const dots = document.querySelectorAll('.pagination-dot');
-
-    if (!viewport) return;
-
-    // 移除之前的事件监听器，防止重复绑定
-    viewport.removeEventListener('wheel', this._statsWheelHandler);
-
-    // 创建带防抖的滚动处理函数
-    this._statsWheelHandler = (e) => {
-      // 防止默认滚动
-      e.preventDefault();
-
-      if (e.deltaY > 0 && this.statsCurrentPage === 0) {
-        // 向下滚动，从第一页切到第二页
-        this.statsCurrentPage = 1;
-        if (track) track.style.transform = 'translateY(-480px)';
-        dots.forEach((dot, index) => {
-          dot.classList.toggle('active', index === 1);
-        });
-        // 切换到第二页后，调用resize确保热力图正确渲染（使用 requestAnimationFrame 优化）
-        requestAnimationFrame(() => {
-          if (this.journalHeatmapChart) {
-            this.journalHeatmapChart.resize();
-          }
-        });
-      } else if (e.deltaY < 0 && this.statsCurrentPage === 1) {
-        // 向上滚动，从第二页切回第一页
-        this.statsCurrentPage = 0;
-        if (track) track.style.transform = 'translateY(0)';
-        dots.forEach((dot, index) => {
-          dot.classList.toggle('active', index === 0);
-        });
-        // 切回第一页后，调用resize确保饼图正确渲染（使用 requestAnimationFrame 优化）
-        requestAnimationFrame(() => {
-          if (this.journalStatsChart) {
-            this.journalStatsChart.resize();
-          }
-        });
-      }
-    };
-
-    // 添加事件监听器
-    viewport.addEventListener('wheel', this._statsWheelHandler, { passive: false });
-
-    // 绑定分页指示器点击事件
-    dots.forEach((dot) => {
-      dot.addEventListener('click', (e) => {
-        const page = parseInt(e.target.dataset.page);
-        this.statsCurrentPage = page;
-        if (track) track.style.transform = `translateY(-${page * 480}px)`;
-        dots.forEach((d, index) => {
-          d.classList.toggle('active', index === page);
-        });
-        // 切换到第二页时调用resize
-        if (page === 1 && this.journalHeatmapChart) {
-          requestAnimationFrame(() => {
-            this.journalHeatmapChart.resize();
-          });
-        }
-        // 切换回第一页时调用resize
-        if (page === 0 && this.journalStatsChart) {
-          requestAnimationFrame(() => {
-            this.journalStatsChart.resize();
-          });
-        }
-      });
-    });
-  }
-
-  // 关闭日记统计模态框
-  closeJournalStatsModal() {
-    document.getElementById('journalStatsModal').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
-
-    // 移除滚轮事件监听器
-    const viewport = document.getElementById('statsViewport');
-    if (viewport && this._statsWheelHandler) {
-      viewport.removeEventListener('wheel', this._statsWheelHandler);
-      this._statsWheelHandler = null;
-    }
-
-    // 重置页面状态
-    this.resetStatsPage();
-    this.statsCurrentPage = 0;
-
-    // 销毁热力图实例，防止内存泄漏
-    if (this.journalHeatmapChart) {
-      this.journalHeatmapChart.dispose();
-      this.journalHeatmapChart = null;
-    }
-  }
-
-  // 打开日记阅读模态框（只读模式）
-  openJournalView(journalId) {
-    const journal = this.journals.find(j => j.id === journalId);
-    if (!journal) return;
-
-    const date = new Date(journal.date);
-    const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${this.getWeekday(date)}`;
-    const moodEmoji = this.getMoodEmoji(journal.mood);
-
-    document.getElementById('viewJournalDate').textContent = dateStr;
-    document.getElementById('viewJournalMood').textContent = `${moodEmoji} ${journal.mood}`;
-
-    // 获取关联作品信息
-    const relatedBooksHtml = journal.relatedBookIds && journal.relatedBookIds.length > 0
-      ? journal.relatedBookIds.map(bookId => {
-          const book = this.storageService.getBookById(bookId);
-          if (!book) return '';
-          const firstTag = book.tags && book.tags.length > 0 ? book.tags[0] : '';
-          const theme = this.getCardThemeColor(book.status, book.tags);
-          return `<span class="journal-related-book"
-              style="background: ${theme.bg}; color: ${theme.main}; border: 1px solid ${theme.border}"
-              onclick="event.stopPropagation(); window.jumpToBook('${bookId}')">
-              <i class="fas fa-link"></i> [${firstTag}] ${this.escapeHtml(book.title)}
-          </span>`;
-        }).join('')
-      : '';
-
-    // 获取图片信息（支持 dataUrl 和路径两种格式）- 预编译正则优化
-    const imagesHtml = journal.images && journal.images.length > 0
-      ? journal.images.map(imgData => {
-          let imgSrc = '';
-          let imgKey = '';
-          // 处理对象格式（dataUrl 或 path）
-          if (typeof imgData === 'object') {
-            if (imgData.dataUrl) {
-              imgSrc = imgData.dataUrl;
-              imgKey = imgData.dataUrl;
-            } else if (imgData.path) {
-              imgSrc = imgData.path;
-              if (_WIN_PATH_REGEX.test(imgSrc)) {
-                imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-              }
-              imgKey = imgData.path;
-            }
-          } else {
-            // 字符串格式（旧数据）
-            imgSrc = imgData;
-            if (_WIN_PATH_REGEX.test(imgSrc)) {
-              imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-            }
-            imgKey = imgData;
-          }
-          return `<img src="${imgSrc}" class="journal-image-thumb" loading="lazy" onclick="event.stopPropagation(); window.viewJournalImage('${imgKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">`;
-        }).join('')
-      : '';
-
-    document.getElementById('viewJournalText').innerHTML = this.escapeHtml(journal.content) +
-      (imagesHtml ? `<div class="journal-images">${imagesHtml}</div>` : '') +
-      (relatedBooksHtml ? `<div class="journal-related-books">${relatedBooksHtml}</div>` : '');
-
-    document.getElementById('journalViewModal').style.display = 'flex';
-    document.getElementById('overlay').style.display = 'block';
-  }
-
-  // 关闭日记阅读模态框
-  closeJournalViewModal() {
-    document.getElementById('journalViewModal').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
-  }
-
-  // 显示日记删除确认模态框
-  showJournalDeleteModal(journalId) {
-    this.currentJournalToDelete = journalId;
-    document.getElementById('journalDeleteModal').style.display = 'flex';
-    document.getElementById('overlay').style.display = 'block';
-  }
-
-  // 隐藏日记删除确认模态框
-  hideJournalDeleteModal() {
-    this.currentJournalToDelete = null;
-    document.getElementById('journalDeleteModal').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
-  }
-
-  // 执行确认删除日记
-  async confirmDeleteJournal() {
-    if (!this.currentJournalToDelete) return;
-
-    const journalId = this.currentJournalToDelete;
-    const index = this.journals.findIndex(j => j.id === journalId);
-
+  // 移除灵感标签
+  removeInspirationTag = (tag) => {
+    const index = this.currentInspirationTags.indexOf(tag);
     if (index !== -1) {
-      this.journals.splice(index, 1);
-      try {
-        await this.saveJournals();
-      } catch (e) {
-        console.error('Save journals error:', e);
-      }
+      this.currentInspirationTags.splice(index, 1);
+      this.renderSelectedInspirationTags();
+      this.renderInspirationTagSuggestions();
+    }
+  };
 
-      // 清理可能的遮罩层残留
-      const overlay = document.getElementById('overlay');
-      if (overlay) overlay.style.display = 'none';
+  // 打开灵感编辑模态框
+  async saveInspiration(formData) {
+    const id = formData.get('id') || null;
 
-      // 清理textarea状态
-      const contentInput = document.getElementById('journalContent');
-      if (contentInput) {
-        contentInput.disabled = false;
-        contentInput.readOnly = false;
-        contentInput.style.pointerEvents = 'auto';
-      }
-
-      this.renderJournalList();
-      this.showToast('日记已删除', 'success');
+    // 新建时如果有锁定书籍，直接使用锁定书籍ID，不依赖表单值
+    let bookId = formData.get('bookId') || '';
+    if (!id && this.inspirationFilters.lockedBookId) {
+      bookId = this.inspirationFilters.lockedBookId;
     }
 
-    // 隐藏模态框
-    this.hideJournalDeleteModal();
-  }
-
-  // 打开日记模态框
-  openJournalModal(journalId = null) {
-    const modal = document.getElementById('journalModal');
-    const form = document.getElementById('journalForm');
-    const idInput = document.getElementById('journalId');
-    const dateInput = document.getElementById('journalDate');
-    const contentInput = document.getElementById('journalContent');
-    const moodInput = document.getElementById('journalMood');
-    const title = document.getElementById('journalModalTitle');
-
-    // ====== BUG修复：强制重置textarea状态，防止无法输入 ======
-    if (contentInput) {
-      contentInput.readOnly = false;
-      contentInput.disabled = false;
-      contentInput.style.pointerEvents = 'auto';
-      contentInput.style.cursor = 'text';
-      // 先blur再focus，确保焦点正确
-      contentInput.blur();
-    }
-
-    // 强制隐藏所有可能的遮罩层残留
-    const overlay = document.getElementById('overlay');
-    if (overlay) overlay.style.display = 'none';
-
-    // 重置心情按钮选择状态
-    document.querySelectorAll('.mood-btn').forEach(btn => btn.classList.remove('selected'));
-
-    if (journalId) {
-      // 编辑模式
-      const journal = this.journals.find(j => j.id === journalId);
-      if (!journal) return;
-
-      title.innerHTML = '<i class="fas fa-edit"></i> 编辑日记';
-      idInput.value = journal.id;
-      dateInput.value = journal.date;
-      contentInput.value = journal.content;
-      moodInput.value = journal.mood;
-
-      // 选中对应的心情按钮
-      const moodBtn = document.querySelector(`.mood-btn[data-mood="${journal.mood}"]`);
-      if (moodBtn) moodBtn.classList.add('selected');
-
-      // 加载已关联的作品
-      this.currentRelatedBookIds = journal.relatedBookIds || [];
-      this.renderSelectedRelatedBooks();
-
-      // 加载已有图片
-      this.currentJournalImages = journal.images ? [...journal.images] : [];
-      this.renderJournalImagesPreview();
-    } else {
-      // 新建模式
-      title.innerHTML = '<i class="fas fa-pen"></i> 写日记';
-      form.reset();
-      idInput.value = '';
-      dateInput.value = new Date().toISOString().split('T')[0];
-      moodInput.value = '';
-      if (contentInput) {
-        contentInput.value = '';
+    const inspirationData = {
+      id: id || new InspirationEntry().generateId(),
+      title: formData.get('title') || '',
+      bookId: bookId,
+      tags: [...this.currentInspirationTags],
+      coreTranslation: formData.get('coreTranslation') || '',
+      source: {
+        reference: formData.get('source') || ''
       }
-      // 初始化关联作品
-      this.currentRelatedBookIds = [];
-      this.renderSelectedRelatedBooks();
-
-      // 初始化图片数组
-      this.currentJournalImages = [];
-      this.renderJournalImagesPreview();
-    }
-
-    // 设置关联作品搜索事件
-    this.setupRelatedBookSearch();
-
-    // 设置图片插入按钮事件
-    this.setupJournalImageUpload();
-
-    modal.style.display = 'flex';
-    document.getElementById('overlay').style.display = 'block';
-
-    // 延迟设置焦点，确保modal完全渲染后再聚焦
-    setTimeout(() => {
-      if (contentInput) {
-        contentInput.focus();
-      }
-    }, 100);
-  }
-
-  // 设置关联作品搜索功能
-  setupRelatedBookSearch() {
-    const searchInput = document.getElementById('relatedBookSearch');
-    const suggestionsDiv = document.getElementById('relatedBookSuggestions');
-
-    if (!searchInput || !suggestionsDiv) return;
-
-    // 清空之前的事件监听器（通过克隆节点实现）
-    const newSearchInput = searchInput.cloneNode(true);
-    searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-
-    newSearchInput.addEventListener('input', (e) => {
-      const keyword = e.target.value.trim();
-      if (keyword.length < 1) {
-        suggestionsDiv.classList.remove('show');
-        return;
-      }
-
-      // 搜索作品
-      const allBooks = this.storageService.getAllBooks() || [];
-      const matchedBooks = allBooks.filter(book =>
-        book.title.toLowerCase().includes(keyword.toLowerCase()) ||
-        (book.author && book.author.toLowerCase().includes(keyword.toLowerCase()))
-      ).slice(0, 10);
-
-      if (matchedBooks.length === 0) {
-        suggestionsDiv.innerHTML = '<div class="suggestion-item">未找到匹配的作品</div>';
-      } else {
-        suggestionsDiv.innerHTML = matchedBooks.map(book => `
-          <div class="suggestion-item" data-id="${book.id}" onclick="window.bookApp.selectRelatedBook('${book.id}')">
-            <div class="book-title">${this.escapeHtml(book.title)}</div>
-            <div class="book-author">${this.escapeHtml(book.author || '未知作者')}</div>
-          </div>
-        `).join('');
-      }
-      suggestionsDiv.classList.add('show');
-    });
-
-    // 点击外部关闭建议框
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.related-books-input-wrapper')) {
-        suggestionsDiv.classList.remove('show');
-      }
-    });
-  }
-
-  // 设置图片上传按钮事件（仅处理按钮点击，事件在 bindEvents 中绑定）
-  setupJournalImageUpload() {
-    // 事件绑定已在 bindEvents 中完成，这里只需要确保按钮可用
-  }
-
-  // 处理图片上传点击
-  handleJournalImageUpload() {
-    const fileInput = document.getElementById('journalImageInput');
-    if (fileInput) {
-      fileInput.click();
-    }
-  }
-
-  // 渲染图片预览
-  renderJournalImagesPreview() {
-    const container = document.getElementById('journalImagesPreview');
-    if (!container) return;
-
-    container.innerHTML = this.currentJournalImages.map((imgData, index) => {
-      // 处理对象格式或字符串格式（兼容旧数据）
-      let imgSrc = '';
-
-      if (typeof imgData === 'object') {
-        // 优先使用 dataUrl（最可靠）
-        if (imgData.dataUrl) {
-          imgSrc = imgData.dataUrl;
-        } else if (imgData.blobUrl) {
-          imgSrc = imgData.blobUrl;
-        } else if (imgData.path) {
-          // 尝试转换路径为 file URL
-          imgSrc = imgData.path;
-          if (/^[a-zA-Z]:\\/.test(imgSrc)) {
-            imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-          }
-        }
-      } else {
-        // 字符串格式（旧数据）
-        imgSrc = imgData;
-        if (/^[a-zA-Z]:\\/.test(imgSrc)) {
-          imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-        }
-      }
-
-      return `<div class="image-preview-item" data-index="${index}">
-        <img src="${imgSrc}" alt="预览">
-        <button type="button" class="remove-image-btn" onclick="window.removeJournalImage(${index})">×</button>
-      </div>`;
-    }).join('');
-  }
-
-  // 删除图片
-  removeJournalImage(index) {
-    if (index >= 0 && index < this.currentJournalImages.length) {
-      this.currentJournalImages.splice(index, 1);
-      this.renderJournalImagesPreview();
-    }
-  }
-
-  // 选择关联作品
-  selectRelatedBook(bookId) {
-    if (!this.currentRelatedBookIds) {
-      this.currentRelatedBookIds = [];
-    }
-
-    // 避免重复选择
-    if (!this.currentRelatedBookIds.includes(bookId)) {
-      this.currentRelatedBookIds.push(bookId);
-      this.renderSelectedRelatedBooks();
-    }
-
-    // 清空搜索框和建议
-    const searchInput = document.getElementById('relatedBookSearch');
-    const suggestionsDiv = document.getElementById('relatedBookSuggestions');
-    if (searchInput) searchInput.value = '';
-    if (suggestionsDiv) suggestionsDiv.classList.remove('show');
-  }
-
-  // 移除关联作品
-  removeRelatedBook(bookId) {
-    if (!this.currentRelatedBookIds) return;
-
-    this.currentRelatedBookIds = this.currentRelatedBookIds.filter(id => id !== bookId);
-    this.renderSelectedRelatedBooks();
-  }
-
-  // 渲染已选择的关联作品
-  renderSelectedRelatedBooks() {
-    const container = document.getElementById('selectedRelatedBooks');
-    if (!container) return;
-
-    if (!this.currentRelatedBookIds || this.currentRelatedBookIds.length === 0) {
-      container.innerHTML = '';
-      return;
-    }
-
-    container.innerHTML = this.currentRelatedBookIds.map(bookId => {
-      const book = this.storageService.getBookById(bookId);
-      if (!book) return '';
-      return `
-        <span class="selected-tag">
-          ${this.escapeHtml(book.title)}
-          <span class="remove-btn" onclick="window.bookApp.removeRelatedBook('${bookId}')">&times;</span>
-        </span>
-      `;
-    }).join('');
-  }
-
-  // 关闭日记模态框
-  closeJournalModal() {
-    document.getElementById('journalModal').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
-  }
-
-  // 保存日记
-  async saveJournalFromForm() {
-    log('saveJournalFromForm called');
-    const id = document.getElementById('journalId').value;
-    const date = document.getElementById('journalDate').value;
-    const content = document.getElementById('journalContent').value;
-    const mood = document.getElementById('journalMood').value;
-    log('Form data:', { id, date, content, mood });
-
-    if (!date || !mood) {
-      this.showToast('请选择日期和心情', 'warning');
-      return;
-    }
-
-    // 提取图片数据（优先使用 dataUrl 用于持久化存储）
-    const extractImageData = (img) => {
-      if (typeof img === 'object') {
-        // 如果有 dataUrl 则使用 dataUrl（可持久化）
-        if (img.dataUrl) {
-          return { dataUrl: img.dataUrl, name: img.name };
-        }
-        // 否则使用 path（兼容旧数据）
-        return { path: img.path, name: img.name };
-      }
-      // 字符串格式（旧数据）
-      return img;
     };
-    const imagesToSave = (this.currentJournalImages || []).map(extractImageData);
 
     if (id) {
-      // 更新现有日记
-      const journal = this.journals.find(j => j.id === id);
-      if (journal) {
-        journal.date = date;
-        journal.content = content;
-        journal.mood = mood;
-        journal.relatedBookIds = this.currentRelatedBookIds || [];
-        journal.images = imagesToSave;
-        journal.updatedAt = new Date().toISOString();
+      const index = this.inspirations.findIndex(i => i.id === id);
+      if (index !== -1) {
+        inspirationData.createdAt = this.inspirations[index].createdAt;
+        inspirationData.updatedAt = new Date().toISOString();
+        this.inspirations[index] = new InspirationEntry(inspirationData);
       }
     } else {
-      // 创建新日记
-      const newJournal = new JournalEntry({
-        date,
-        content,
-        mood,
-        relatedBookIds: this.currentRelatedBookIds || [],
-        images: imagesToSave
-      });
-      this.journals.push(newJournal);
-      this._invalidateJournalCache();  // 清除缓存
+      const newInspiration = new InspirationEntry(inspirationData);
+      this.inspirations.push(newInspiration);
     }
 
-    log('Journals array:', this.journals);
-    await this.saveJournals();
-    this.closeJournalModal();
-    this.renderJournalList();
-    this.showToast('日记保存成功', 'success');
+    await this.saveInspirations();
+    this.renderInspirationList();
+    this.closeInspirationModal();
+    this.showToast('灵感已保存', 'success');
   }
 
-  // 删除日记
-  async deleteJournal(journalId) {
-    const index = this.journals.findIndex(j => j.id === journalId);
+  // 删除灵感
+  async deleteInspiration(inspirationId) {
+    this.currentInspirationToDelete = inspirationId;
+    const inspirationDeleteModal = document.getElementById('inspirationDeleteModal');
+    if (inspirationDeleteModal) inspirationDeleteModal.style.display = 'flex';
+    this.overlay.classList.add('active');
+  }
+
+  // 确认删除灵感
+  async confirmDeleteInspiration() {
+    if (!this.currentInspirationToDelete) return;
+
+    const index = this.inspirations.findIndex(i => i.id === this.currentInspirationToDelete);
     if (index !== -1) {
-      this.journals.splice(index, 1);
-      this._invalidateJournalCache();  // 清除缓存
-      log('After delete, journals count:', this.journals.length);
-      try {
-        await this.saveJournals();
-      } catch (e) {
-        console.error('Save journals error:', e);
-      }
-
-      // ====== BUG修复：彻底清理遮罩层和焦点 ======
-      // 1. 强制隐藏overlay，防止遮挡
-      const overlay = document.getElementById('overlay');
-      if (overlay) {
-        overlay.style.display = 'none';
-      }
-
-      // 2. 强制重置textarea状态，防止无法输入
-      const contentInput = document.getElementById('journalContent');
-      if (contentInput) {
-        contentInput.disabled = false;
-        contentInput.readOnly = false;
-        contentInput.style.pointerEvents = 'auto';
-        contentInput.style.cursor = 'text';
-      }
-
-      // 3. 渲染列表
-      this.renderJournalList();
-
-      // 4. 恢复焦点到输入框（如果有打开的日记表单）
-      const journalModal = document.getElementById('journalModal');
-      if (journalModal && journalModal.style.display === 'block' && contentInput) {
-        // 先blur再focus，确保焦点正确恢复
-        contentInput.blur();
-        setTimeout(() => {
-          contentInput.focus();
-        }, 50);
-      }
-
-      this.showToast('日记已删除', 'success');
+      this.inspirations.splice(index, 1);
+      await this.saveInspirations();
+      this.renderInspirationList();
+      this.showToast('灵感已删除', 'success');
     }
+
+    document.getElementById('inspirationDeleteModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+    this.currentInspirationToDelete = null;
+  }
+
+  // 取消删除灵感
+  cancelDeleteInspiration() {
+    document.getElementById('inspirationDeleteModal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+    this.currentInspirationToDelete = null;
   }
 
   // 就是这个函数被 Claude 搞丢了！现在它回来了。
@@ -3959,12 +3709,15 @@ class BookApp {
     card.style.setProperty('--theme-shadow', theme.shadow);
     card.style.setProperty('--theme-border', theme.border);
     card.style.setProperty('--theme-progress', theme.progress);
+    card.style.setProperty('--card-status-color', theme.progress);
 
     const readingDuration = book.getReadingDuration();
     const durationText = readingDuration ? `${readingDuration} 天` : '-';
 
     // 根据 enableRating 决定是否显示评分按钮
     const showRatingBtn = book.enableRating === true;
+    // 根据 enableInspiration 决定是否显示灵感按钮
+    const showInspirationBtn = book.enableInspiration === true;
     // 如果已有评分，显示评分
     const ratingHtml = (book.rating && book.rating.totalScore)
       ? `<span class="book-rating-badge">评分: ${book.rating.totalScore.toFixed(1)}</span>`
@@ -3976,9 +3729,10 @@ class BookApp {
          </button>`
       : '';
 
-    // 荣誉徽章（仅已读完状态显示）
-    const honorBadge = book.status === '已读完'
-      ? `<div class="honor-badge">🏆 已读完</div>`
+    // 荣誉徽章（仅已完成状态显示，支持所有题材的完成状态）
+    const completedStatuses = ['已读完', '已完成', '已看完', '已玩完', 'completed'];
+    const honorBadge = completedStatuses.includes(book.status)
+      ? `<div class="honor-badge">🏆 ${book.status}</div>`
       : '';
 
     card.innerHTML = `
@@ -4014,9 +3768,9 @@ class BookApp {
           <button class="action-btn delete" data-action="delete" data-id="${book.id}">
             <i class="fas fa-trash"></i> 删除
           </button>
-          <button class="action-btn notes" data-action="notes" data-id="${book.id}">
-            <i class="fas fa-sticky-note"></i> 笔记
-          </button>
+          ${showInspirationBtn ? `<button class="action-btn inspiration-link" data-action="inspiration" data-id="${book.id}">
+            <i class="fas fa-lightbulb"></i> 灵感
+          </button>` : ''}
           ${ratingButtonHtml}
         </div>
       </div>
@@ -4032,10 +3786,14 @@ class BookApp {
       this.showDeleteModal(book);
     });
 
-    card.querySelector('[data-action="notes"]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showNotesModal(book);
-    });
+    // 只有在启用灵感功能时才绑定灵感按钮事件
+    const inspirationBtn = card.querySelector('[data-action="inspiration"]');
+    if (inspirationBtn) {
+      inspirationBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.switchView('inspiration', book.id);
+      });
+    }
 
     // 只有在启用评分功能时才绑定评分按钮事件
     const ratingBtn = card.querySelector('[data-action="rating"]');
@@ -4086,6 +3844,7 @@ class BookApp {
       this.totalLengthInput.value = book.totalLength || '';
       this.progressUnitSelect.value = book.progressUnit || '章';
       this.enableRatingCheckbox.checked = book.enableRating === true;
+      this.enableInspirationCheckbox.checked = book.enableInspiration === true;
     } else {
       this.bookIdInput.value = '';
       this.titleInput.value = '';
@@ -4097,6 +3856,7 @@ class BookApp {
       this.totalLengthInput.value = '';
       this.progressUnitSelect.value = '章';
       this.enableRatingCheckbox.checked = false;
+      this.enableInspirationCheckbox.checked = false;
     }
 
     // 渲染已选标签
@@ -4169,7 +3929,7 @@ class BookApp {
 
   // 更新状态选项
   updateStatusOptions(genre) {
-    const statusSelect = document.getElementById('statusSelect');
+    const statusSelect = document.getElementById('status');
     if (!statusSelect) return;
 
     // 获取当前选中的值，以便保持数据一致性
@@ -4374,6 +4134,7 @@ class BookApp {
       totalLength: totalLength,
       progressUnit: this.progressUnitSelect.value,
       enableRating: this.enableRatingCheckbox ? this.enableRatingCheckbox.checked : false,
+      enableInspiration: this.enableInspirationCheckbox ? this.enableInspirationCheckbox.checked : false,
       folderId: (this.currentFolderId && this.currentFolderId !== 'all') ? this.currentFolderId : 'uncategorized',
       tags: [...this.currentTags],
       // 保留原有字段
@@ -4446,196 +4207,60 @@ class BookApp {
     this.renderFolders();
   }
 
-  showNotesModal(book) {
-    this.currentNotesBookId = book.id;
-
-    // 从存储服务获取最新的书籍对象，如果获取失败则使用传入的book对象
-    const latestBook = this.storageService.getBookById(book.id) || book;
-    if (!latestBook) return;
-
-    this.currentBookTitle.textContent = latestBook.title;
-    this.currentBookAuthor.textContent = latestBook.author || '未知作者';
-    this.notesModal.style.display = 'flex';
-    this.overlay.style.display = 'block';
-    this.renderNotes(latestBook);  // 使用获取到的书籍对象
-  }
-
-  // 🌟 这是我们精心打磨的终极版笔记渲染逻辑！包含图片、视频和超长防爆处理
-  renderNotes(book, searchTerm = '') {
-    // 确保使用最新的书籍对象
-    const latestBook = this.storageService.getBookById(book.id) || book;
-    const notes = latestBook.notes || [];
-    let filteredNotes = notes;
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filteredNotes = notes.filter(note =>
-        note.content && note.content.toLowerCase().includes(term)
-      );
-    }
-    const totalCount = notes.length;
-    const filteredCount = filteredNotes.length;
-    this.notesCount.textContent = searchTerm.trim() ? `${filteredCount}/${totalCount} 条笔记` : `${totalCount} 条笔记`;
-
-    if (!notes || notes.length === 0) {
-      this.notesListContainer.innerHTML = `
-        <div class="empty-notes" style="text-align: center; padding: 40px 20px; color: #999; font-size: 1rem;">
-          <i class="fas fa-sticky-note" style="font-size: 3rem; margin-bottom: 15px; color: #adb5bd;"></i>
-          <p>暂无笔记，快来添加第一条吧~</p>
-        </div>
-      `;
-      return;
-    }
-
-    this.notesListContainer.innerHTML = '';
-
-    filteredNotes.forEach(note => {
-      const noteElement = document.createElement('div');
-      noteElement.className = 'note-item';
-
-      const noteContent = note.content || '[内容为空]';
-      const contentStr = noteContent.trim();
-      let contentHtml = '';
-
-      const isShortPath = contentStr.length < 500; 
-      const isImage = isShortPath && /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(contentStr);
-      const isVideo = isShortPath && /\.(mp4|webm|ogg|avi|mov|mkv|wmv)$/i.test(contentStr);
-
-      if (isImage) {
-        let imgSrc = contentStr;
-        // URL解码处理%7B等编码字符
-        try { imgSrc = decodeURIComponent(imgSrc); } catch(e) {}
-        // 转换Windows路径为file URL
-        if (/^[a-zA-Z]:\\/.test(imgSrc)) {
-            imgSrc = `file:///${imgSrc.replace(/\\/g, '/')}`;
-        }
-        contentHtml = `<img src="${imgSrc}" alt="笔记图片" style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;">`;
-      } else if (isVideo) {
-        let vidSrc = contentStr;
-        // URL解码处理%7B等编码字符
-        try { vidSrc = decodeURIComponent(vidSrc); } catch(e) {}
-        // 转换Windows路径为file URL
-        if (/^[a-zA-Z]:\\/.test(vidSrc)) {
-            vidSrc = `file:///${vidSrc.replace(/\\/g, '/')}`;
-        }
-        contentHtml = `<video src="${vidSrc}" controls style="max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto;"></video>`;
-      } else {
-        contentHtml = `<div class="note-content" style="white-space: pre-wrap; word-break: break-all;">${this.escapeHtml(contentStr)}</div>`;
-      }
-
-      const sourceInfo = note.sourceFile ? `<span class="note-source">来源: ${note.sourceFile}</span>` : '';
-
-      // 添加删除按钮和编辑按钮
-      const deleteBtn = `<button class="note-delete-btn" data-note-id="${note.id}" title="删除笔记">
-        <i class="fas fa-trash"></i>
-      </button>`;
-      const editBtn = `<button class="note-edit-btn" data-note-id="${note.id}" title="编辑笔记">
-        <i class="fas fa-edit"></i>
-      </button>`;
-
-      noteElement.innerHTML = `
-        ${contentHtml}
-        <div class="note-meta" style="margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <span class="note-date">${new Date(note.createdAt).toLocaleString('zh-CN')}</span>
-            ${sourceInfo}
-          </div>
-          ${deleteBtn}${editBtn}
-        </div>
-      `;
-
-      // 绑定删除按钮事件
-      noteElement.querySelector('.note-delete-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (confirm('确定要删除这条笔记吗？')) {
-          await this.deleteNote(note.id);
-        }
-      });
-
-      // 绑定编辑按钮事件
-      noteElement.querySelector('.note-edit-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.editNote(note);
-      });
-
-      this.notesListContainer.appendChild(noteElement);
-    });
-  }
-
-  // 处理笔记搜索（带防抖）
-  handleNoteSearch() {
-    if (!this.currentNotesBookId) return;
-    this.resetEditState();
-
-    // 清除之前的防抖定时器
-    if (this.searchDebounceTimer) {
-      clearTimeout(this.searchDebounceTimer);
-    }
-
-    // 300ms 防抖
-    this.searchDebounceTimer = setTimeout(() => {
-      const searchTerm = this.noteSearchInput.value;
-      const book = this.storageService.getBookById(this.currentNotesBookId);
-      if (book) {
-        this.renderNotes(book, searchTerm);
-      }
-    }, 300);
-  }
-
-  // 编辑笔记（填充到文本框）
-  editNote(note) {
-    this.newNoteContent.value = note.content || '';
-    this.editingNoteId = note.id;
-    this.saveNoteBtn.innerHTML = '<i class="fas fa-save"></i> 更新笔记';
-    this.newNoteContent.focus();
-  }
-
-  // 删除笔记
-  async deleteNote(noteId) {
-    if (!this.currentNotesBookId) return;
-
-    try {
-      const book = this.storageService.getBookById(this.currentNotesBookId);
-      if (!book) return;
-
-      // 过滤掉要删除的笔记
-      book.notes = book.notes.filter(note => note.id !== noteId);
-
-      await this.storageService.updateBook(this.currentNotesBookId, { notes: book.notes });
-
-      // 重新渲染
-      const updatedBook = this.storageService.getBookById(this.currentNotesBookId);
-      if (updatedBook) {
-        this.renderNotes(updatedBook);
-      }
-
-      this.showToast('笔记删除成功', 'success');
-    } catch (error) {
-      this.showToast(`删除失败: ${error.message}`, 'error');
-    }
-  }
-
   showDeleteModal(book) {
     this.bookToDelete = book;
     this.deleteMessage.textContent = `确定要删除《${book.title}》吗？此操作无法撤销。`;
-    
+
     // 🌟 就是下面这一行，把 'block' 改成 'flex'
-    this.deleteModal.style.display = 'flex'; 
-    
-    this.overlay.style.display = 'block';
+    this.deleteModal.style.display = 'flex';
+
+    console.trace('showDeleteModal: 设置 overlay 为 block');
+    this.overlay.classList.add('active');
   }
 
   hideDeleteModal() {
     this.deleteModal.style.display = 'none';
-    this.overlay.style.display = 'none';
+    this.overlay.classList.remove('active');
     this.bookToDelete = null;
   }
 
-  hideNotesModal() {
-    this.notesModal.style.display = 'none';
-    this.overlay.style.display = 'none';
-    this.currentNotesBookId = null;
-    this.newNoteContent.value = '';
-    this.resetEditState();
+  // 统一关闭所有模态框
+  closeAllModals() {
+    // 关闭删除模态框
+    if (this.deleteModal) this.deleteModal.style.display = 'none';
+    // 关闭评分模态框
+    if (this.ratingModal) this.ratingModal.style.display = 'none';
+    // 关闭对比模态框
+    if (this.compareRatingModal) this.compareRatingModal.style.display = 'none';
+    // 关闭统计模态框
+    if (this.statsModal) this.statsModal.style.display = 'none';
+    // 关闭导出模态框
+    if (this.exportModal) this.exportModal.style.display = 'none';
+    // 关闭导入模态框
+    if (this.importModal) this.importModal.style.display = 'none';
+    // 关闭文件夹模态框
+    const folderModal = document.getElementById('folderModal');
+    if (folderModal) folderModal.style.display = 'none';
+    // 关闭灵感模态框
+    const inspirationModal = document.getElementById('inspirationModal');
+    if (inspirationModal) inspirationModal.style.display = 'none';
+    // 关闭灵感视图模态框
+    const inspirationViewModal = document.getElementById('inspirationViewModal');
+    if (inspirationViewModal) inspirationViewModal.style.display = 'none';
+    // 关闭灵感删除模态框
+    const inspirationDeleteModal = document.getElementById('inspirationDeleteModal');
+    if (inspirationDeleteModal) inspirationDeleteModal.style.display = 'none';
+    // 关闭 AI 相关模态框（加判空保护）
+    const aiReadModal = document.getElementById('aiReadModal');
+    if (aiReadModal) aiReadModal.style.display = 'none';
+    const aiSettingsModal = document.getElementById('aiSettingsModal');
+    if (aiSettingsModal) aiSettingsModal.style.display = 'none';
+    const criteriaModal = document.getElementById('criteriaModal');
+    if (criteriaModal) criteriaModal.style.display = 'none';
+    // 关闭过滤面板
+    this.hideFilterPanel();
+    // 隐藏遮罩
+    this.overlay.classList.remove('active');
   }
 
   async confirmDelete() {
@@ -4649,63 +4274,6 @@ class BookApp {
     } finally {
       this.hideDeleteModal();
     }
-  }
-
-  async saveNote() {
-    const content = this.newNoteContent.value.trim();
-    if (!content) {
-      this.showToast('请输入笔记内容', 'warning');
-      return;
-    }
-    if (!this.currentNotesBookId) return;
-
-    try {
-      const book = this.storageService.getBookById(this.currentNotesBookId);
-      if (!book) return;
-
-      if (this.editingNoteId) {
-        // 更新现有笔记
-        const noteIndex = book.notes.findIndex(note => note.id === this.editingNoteId);
-        if (noteIndex >= 0) {
-          book.notes[noteIndex].content = content;
-          book.notes[noteIndex].updatedAt = new Date().toISOString();
-          await this.storageService.updateBook(this.currentNotesBookId, { notes: book.notes });
-          this.showToast('笔记更新成功', 'success');
-        }
-      } else {
-        // 创建新笔记
-        const newNote = {
-          id: this.generateId(),
-          content: content,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          sourceFile: null,
-          tags: []
-        };
-
-        if (!book.notes) book.notes = [];
-        book.notes.push(newNote);
-        await this.storageService.updateBook(this.currentNotesBookId, { notes: book.notes });
-        this.showToast('笔记保存成功', 'success');
-      }
-
-      this.newNoteContent.value = '';
-      this.resetEditState();
-
-      // 重新从存储服务获取最新书籍对象并渲染
-      const updatedBook = this.storageService.getBookById(this.currentNotesBookId);
-      if (updatedBook) {
-        this.renderNotes(updatedBook);
-      }
-    } catch (error) {
-      this.showToast(`保存失败: ${error.message}`, 'error');
-    }
-  }
-
-  // 重置编辑状态
-  resetEditState() {
-    this.editingNoteId = null;
-    this.saveNoteBtn.innerHTML = '<i class="fas fa-save"></i> 保存笔记';
   }
 
   handleDateChange() {
@@ -4771,7 +4339,8 @@ class BookApp {
   showExportModal() {
     log('显示导出模态框');
     this.exportModal.style.display = 'flex';
-    this.overlay.style.display = 'block';
+    console.trace('showExportModal: 设置 overlay 为 block');
+    this.overlay.classList.add('active');
   }
 
   // 显示统计模态框
@@ -4785,7 +4354,8 @@ class BookApp {
       headerTitle.innerHTML = `<i class="fas fa-chart-bar"></i> ${folderTitle} - 阅读统计`;
     }
     this.statsModal.style.display = 'flex';
-    this.overlay.style.display = 'block';
+    console.trace('showStatsModal: 设置 overlay 为 block');
+    this.overlay.classList.add('active');
     this.loadStatsData();
   }
 
@@ -4799,25 +4369,220 @@ class BookApp {
   // 关闭统计模态框
   closeStatsModal() {
     this.statsModal.style.display = 'none';
-    this.overlay.style.display = 'none';
+    this.overlay.classList.remove('active');
     this.destroyAllCharts();
   }
 
   // ======== 评分对比功能 ========
 
+  // 迁移旧版评分数据到新格式 rating_details
+  migrateBookToRatingDetails(book) {
+    if (book.rating_details && Object.keys(book.rating_details).length > 0) {
+      return book; // 已经是新格式
+    }
+    if (!book.rating || !book.rating.ratings) {
+      return book; // 没有旧数据
+    }
+
+    // 建立中文名到英文ID的映射
+    const nameToIdMap = {};
+    const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+    Object.values(profile).forEach(layer => {
+      layer.forEach(dim => {
+        nameToIdMap[dim.name] = this.getDimensionIdByName(dim.name);
+      });
+    });
+
+    // 迁移
+    book.rating_details = {};
+    Object.entries(book.rating.ratings).forEach(([chineseName, value]) => {
+      const id = nameToIdMap[chineseName];
+      if (id) {
+        book.rating_details[id] = value;
+      }
+    });
+
+    return book;
+  }
+
+  // 根据中文名获取维度ID
+  getDimensionIdByName(name) {
+    const allDims = getAllDimensions();
+    const dim = allDims.find(d => d.name === name);
+    return dim ? dim.id : null;
+  }
+
   // 显示评分对比模态框
   showCompareModal() {
-    const ratedBooks = this.storageService.books.filter(b => b.rating && b.rating.ratings);
+    // 迁移旧数据到新格式
+    this.storageService.books.forEach(book => this.migrateBookToRatingDetails(book));
+
+    // 初始化临时权重
+    initVolatileCriteria();
+    this.buildWeightSliders();
+
+    const ratedBooks = this.storageService.books.filter(b => b.rating_details && Object.keys(b.rating_details).length > 0);
 
     if (ratedBooks.length < 2) {
       this.showToast('需要至少2本已评分的书籍才能对比', 'warning');
       return;
     }
 
-    this.compareResults.innerHTML = '';
-    this.renderCompareBookSelector(ratedBooks);
+    this.populateCompareSelectors(ratedBooks);
     this.compareRatingModal.style.display = 'flex';
-    this.overlay.style.display = 'block';
+    this.overlay.classList.add('active');
+  }
+
+  // 构建权重滑块
+  buildWeightSliders() {
+    const container = document.getElementById('weightSlidersContainer');
+    if (!container) return;
+    if (!volatileCriteria) {
+      initVolatileCriteria();
+    }
+    if (!volatileCriteria) return;
+
+    const layerMap = {
+      'author_layer': '作者层面',
+      'text_layer': '文本层面',
+      'reader_layer': '读者层面'
+    };
+
+    let html = '';
+    Object.entries(volatileCriteria).forEach(([layerKey, dims]) => {
+      html += `<div class="weight-tag-group">${layerMap[layerKey] || layerKey}</div>`;
+      dims.forEach(dim => {
+        const disabled = dim.weight === 0 ? 'disabled' : '';
+        const disabledClass = dim.weight === 0 ? ' disabled' : '';
+        html += `
+          <div class="weight-slider-group${disabledClass}" data-dim-id="${dim.id}">
+            <label>
+              <span>${dim.name}</span>
+              <span class="weight-value">${dim.weight}</span>
+            </label>
+            <input type="range" min="0" max="10" step="0.5" value="${dim.weight}" data-dim-id="${dim.id}">
+          </div>
+        `;
+      });
+    });
+
+    container.innerHTML = html;
+
+    // 绑定滑块事件（防抖）
+    container.querySelectorAll('input[type="range"]').forEach(slider => {
+      slider.addEventListener('input', debounce((e) => {
+        this.onWeightSliderChange(e.target.dataset.dimId, parseFloat(e.target.value));
+      }, 50));
+    });
+  }
+
+  // 权重滑块变化处理
+  onWeightSliderChange(dimId, newWeight) {
+    // 更新 volatileCriteria
+    Object.values(volatileCriteria).forEach(layer => {
+      const dim = layer.find(d => d.id === dimId);
+      if (dim) {
+        dim.weight = newWeight;
+        // 更新显示的值
+        const sliderGroup = document.querySelector(`.weight-slider-group[data-dim-id="${dimId}"]`);
+        if (sliderGroup) {
+          sliderGroup.querySelector('.weight-value').textContent = newWeight;
+          sliderGroup.classList.toggle('disabled', newWeight === 0);
+          sliderGroup.querySelector('input').disabled = (newWeight === 0);
+        }
+      }
+    });
+
+    // 重新渲染所有图表
+    this.reRenderCompareCharts();
+  }
+
+  // 重新渲染所有对比图表
+  reRenderCompareCharts() {
+    const bookAId = document.getElementById('compareBookA')?.value;
+    const bookBId = document.getElementById('compareBookB')?.value;
+    if (!bookAId || !bookBId) return;
+
+    const bookA = this.storageService.books.find(b => b.id === bookAId);
+    const bookB = this.storageService.books.find(b => b.id === bookBId);
+    if (!bookA || !bookB) return;
+
+    const dimensions = getAllDimensions();
+    this.renderCompareStackedBarChart(bookA, bookB);
+    this.renderCompareHeatmapChart(bookA, bookB, dimensions);
+    this.renderLayerRadarChart(bookA, bookB);
+    this.renderCoreRadarChart(bookA, bookB);
+    this.renderScatterChart(this.currentScatterMode || 'two');
+  }
+
+  // 重置权重
+  resetWeights() {
+    resetVolatileCriteria();
+    this.buildWeightSliders();
+    this.reRenderCompareCharts();
+  }
+
+  // 切换权重面板
+  toggleWeightPanel() {
+    const panel = document.getElementById('weightAdjusterPanel');
+    panel.classList.toggle('open');
+  }
+
+  // 填充对比书籍选择器
+  populateCompareSelectors(books) {
+    const selectA = document.getElementById('compareBookA');
+    const selectB = document.getElementById('compareBookB');
+    if (!selectA || !selectB) return;
+
+    const options = books.map(book => {
+      const scores = calculateWeightedScores(book, getActiveCriteria());
+      return `<option value="${book.id}">${book.title} (${scores.total.toFixed(1)}分)</option>`;
+    }).join('');
+
+    selectA.innerHTML = '<option value="">请选择...</option>' + options;
+    selectB.innerHTML = '<option value="">请选择...</option>' + options;
+
+    selectA.onchange = () => this.onCompareSelectionChange();
+    selectB.onchange = () => this.onCompareSelectionChange();
+  }
+
+  // 处理对比书籍选择变化
+  onCompareSelectionChange() {
+    const bookAId = document.getElementById('compareBookA').value;
+    const bookBId = document.getElementById('compareBookB').value;
+    const chartsContainer = document.getElementById('compareChartsContainer');
+
+    if (!bookAId || !bookBId) {
+      chartsContainer.style.display = 'none';
+      return;
+    }
+
+    if (bookAId === bookBId) {
+      this.showToast('请选择两本不同的书籍', 'warning');
+      return;
+    }
+
+    const bookA = this.storageService.books.find(b => b.id === bookAId);
+    const bookB = this.storageService.books.find(b => b.id === bookBId);
+    if (!bookA || !bookB) return;
+
+    chartsContainer.style.display = 'block';
+    const dimensions = getAllDimensions();
+    this.renderCompareStackedBarChart(bookA, bookB);
+    this.renderCompareHeatmapChart(bookA, bookB, dimensions);
+    this.renderLayerRadarChart(bookA, bookB);
+    this.renderCoreRadarChart(bookA, bookB);
+
+    // 重置散点图模式并渲染
+    document.querySelectorAll('.compare-scatter-toggle .toggle-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.dataset.mode === 'two') btn.classList.add('active');
+      btn.onclick = () => this.onScatterModeChange(btn.dataset.mode);
+    });
+    // 隐藏标签筛选器
+    const tagFilter = document.getElementById('scatterTagFilter');
+    if (tagFilter) tagFilter.style.display = 'none';
+    this.renderScatterChart('two');
   }
 
   // 渲染书籍选择列表
@@ -4936,30 +4701,19 @@ class BookApp {
 
     tableHtml += '</tbody></table>';
 
-    // 添加雷达图
+    // 添加玫瑰图
     tableHtml += `
-      <div class="compare-radar-container">
-        <h4>雷达图对比</h4>
-        <div class="radar-layers">
-          <div class="radar-layer-title">作者层面</div>
-          <div class="radar-layer-title">文本层面</div>
-          <div class="radar-layer-title">读者层面</div>
-        </div>
-        <div id="compareRadarChart" class="compare-radar-chart"></div>
+      <div class="compare-rose-container">
+        <h4>玫瑰图对比</h4>
+        <div id="compareRoseChart" class="compare-rose-chart"></div>
       </div>
     `;
 
     this.compareResults.innerHTML = tableHtml;
 
-    // 渲染雷达图 - 等待DOM渲染完成
+    // 渲染玫瑰图 - 等待DOM渲染完成
     setTimeout(() => {
-      const chartDom = document.getElementById('compareRadarChart');
-      if (chartDom) {
-        // 确保容器可见且有尺寸
-        chartDom.style.display = 'block';
-        chartDom.style.visibility = 'visible';
-        this.renderCompareRadarChart(selectedBooks, allDimensions);
-      }
+      this.renderCompareRoseChart(selectedBooks);
     }, 150);
   }
 
@@ -5144,17 +4898,708 @@ class BookApp {
     });
   }
 
-  // 关闭对比模态框
-  closeCompareModal() {
-    this.compareRatingModal.style.display = 'none';
-    this.overlay.style.display = 'none';
+  // 渲染玫瑰图（极坐标堆叠柱状图）
+  renderCompareRoseChart(selectedBooks) {
+    const chartDom = document.getElementById('compareRoseChart');
+    if (!chartDom) return;
+
     if (this.compareRadarChart) {
       this.compareRadarChart.dispose();
       this.compareRadarChart = null;
     }
+
+    const colors = ['#FF1744', '#3498db', '#2E7D32', '#FFB300', '#B71C1C', '#1abc9c', '#FF80AB', '#34495e'];
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+
+    // 构建极坐标数据
+    const layers = ['作者层面', '文本层面', '读者层面'];
+    const angleAxisData = [];
+
+    layers.forEach(layer => {
+      const dims = profile[layer] || [];
+      dims.forEach(d => {
+        angleAxisData.push(d.name);
+      });
+    });
+
+    const series = selectedBooks.map((book, bookIdx) => {
+      const bookRatings = book.rating && book.rating.ratings ? book.rating.ratings : {};
+      const data = angleAxisData.map(dimName => {
+        const rating = bookRatings[dimName];
+        return (rating !== undefined && rating !== null) ? rating + 2 : 1;
+      });
+
+      return {
+        type: 'bar',
+        data: data,
+        coordinateSystem: 'polar',
+        name: book.title,
+        stack: 'total',
+        itemStyle: { color: colors[bookIdx % colors.length] },
+        emphasis: { focus: 'series' }
+      };
+    });
+
+    this.compareRadarChart = echarts.init(chartDom);
+    this.compareRadarChart.setOption({
+      color: colors,
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? 'rgba(50,50,50,0.95)' : 'rgba(255,255,255,0.95)',
+        textStyle: { color: isDark ? '#fff' : '#333' }
+      },
+      legend: {
+        data: selectedBooks.map(b => b.title),
+        bottom: 10,
+        textStyle: { color: isDark ? '#aaa' : '#666' }
+      },
+      polar: { center: ['50%', '50%'], radius: '70%' },
+      radiusAxis: {
+        max: 3, min: 0,
+        axisLabel: { formatter: (val) => ['-', '0', '+'][val - 1] || '' }
+      },
+      angleAxis: {
+        type: 'category',
+        data: angleAxisData,
+        axisLabel: { fontSize: 9, rotate: 45 },
+        splitLine: { show: true }
+      },
+      series: series
+    });
+
+    // 响应窗口大小变化
+    window.addEventListener('resize', () => {
+      if (this.compareRadarChart) {
+        this.compareRadarChart.resize();
+      }
+    });
+  }
+
+  // 关闭对比模态框
+  closeCompareModal() {
+    this.compareRatingModal.style.display = 'none';
+    this.overlay.classList.remove('active');
+    if (this.compareRadarChart) {
+      this.compareRadarChart.dispose();
+      this.compareRadarChart = null;
+    }
+    if (this.compareStackedBarChart) {
+      this.compareStackedBarChart.dispose();
+      this.compareStackedBarChart = null;
+    }
+    if (this.compareHeatmapChart) {
+      this.compareHeatmapChart.dispose();
+      this.compareHeatmapChart = null;
+    }
+    if (this.compareLayerRadarChart) {
+      this.compareLayerRadarChart.dispose();
+      this.compareLayerRadarChart = null;
+    }
+    if (this.compareCoreRadarChart) {
+      this.compareCoreRadarChart.dispose();
+      this.compareCoreRadarChart = null;
+    }
+    if (this.compareScatterChart) {
+      this.compareScatterChart.dispose();
+      this.compareScatterChart = null;
+    }
+    // Clear selectors
+    const selectA = document.getElementById('compareBookA');
+    const selectB = document.getElementById('compareBookB');
+    if (selectA) selectA.value = '';
+    if (selectB) selectB.value = '';
+    const chartsContainer = document.getElementById('compareChartsContainer');
+    if (chartsContainer) chartsContainer.style.display = 'none';
+  }
+
+  // 渲染堆叠柱状图（宏观对比）
+  renderCompareStackedBarChart(bookA, bookB) {
+    const chartDom = document.getElementById('compareStackedBarChart');
+    if (!chartDom) return;
+
+    if (this.compareStackedBarChart) {
+      this.compareStackedBarChart.dispose();
+    }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f8f9fa' : '#333';
+    const scoresA = calculateWeightedScores(bookA, RATING_CRITERIA);
+    const scoresB = calculateWeightedScores(bookB, RATING_CRITERIA);
+    const maxTotal = Math.max(scoresA.total, scoresB.total);
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: isDark ? 'rgba(50,50,50,0.98)' : 'rgba(255,255,255,0.98)',
+        borderColor: isDark ? '#666' : '#ddd',
+        textStyle: { color: textColor, fontSize: 12 },
+        padding: [8, 12],
+        formatter: (params) => {
+          const bookTitle = params[0].name;
+          const bookScores = bookTitle === bookA.title ? scoresA : scoresB;
+          const totalScore = bookScores.total;
+          let result = `<strong>${bookTitle}</strong><br/>`;
+          params.forEach(param => {
+            const layerName = param.seriesName;
+            const value = param.value;
+            const percent = totalScore !== 0 ? ((value / totalScore) * 100).toFixed(1) : 0;
+            result += `${layerName}: ${value.toFixed(1)} (${percent}%)<br/>`;
+          });
+          result += `<strong>总分: ${totalScore.toFixed(1)}</strong>`;
+          return result;
+        }
+      },
+      legend: {
+        data: ['作者层面', '文本层面', '读者层面'],
+        bottom: 0,
+        textStyle: { color: textColor }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%',
+        top: '10%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: [bookA.title, bookB.title],
+        axisLabel: { color: textColor, fontSize: 12 },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } }
+      },
+      yAxis: {
+        type: 'value',
+        max: (value) => Math.ceil(value.max / 10) * 10 + 20,
+        axisLabel: { color: textColor },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' } }
+      },
+      series: [
+        {
+          name: '作者层面',
+          type: 'bar',
+          stack: 'total',
+          data: [scoresA.authorLayer, scoresB.authorLayer],
+          itemStyle: { color: '#FF1744' },
+          barWidth: '35%'
+        },
+        {
+          name: '文本层面',
+          type: 'bar',
+          stack: 'total',
+          data: [scoresA.textLayer, scoresB.textLayer],
+          itemStyle: { color: '#3498db' },
+          barWidth: '35%'
+        },
+        {
+          name: '读者层面',
+          type: 'bar',
+          stack: 'total',
+          data: [scoresA.readerLayer, scoresB.readerLayer],
+          itemStyle: { color: '#2E7D32' },
+          barWidth: '35%'
+        }
+      ]
+    };
+
+    this.compareStackedBarChart = echarts.init(chartDom);
+    this.compareStackedBarChart.setOption(option);
+  }
+
+  // 渲染热力图（微观对比）
+  renderCompareHeatmapChart(bookA, bookB, dimensions) {
+    const chartDom = document.getElementById('compareHeatmapChart');
+    if (!chartDom) return;
+
+    if (this.compareHeatmapChart) {
+      this.compareHeatmapChart.dispose();
+    }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const heatmapData = [];
+    const yAxisLabels = [];
+
+    dimensions.forEach((dim, yIdx) => {
+      yAxisLabels.push(dim.name);
+      const valA = bookA.rating_details?.[dim.id] || 0;
+      const valB = bookB.rating_details?.[dim.id] || 0;
+      heatmapData.push([0, yIdx, valA]);
+      heatmapData.push([1, yIdx, valB]);
+    });
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        position: 'top',
+        backgroundColor: isDark ? 'rgba(50,50,50,0.95)' : 'rgba(255,255,255,0.95)',
+        borderColor: isDark ? '#666' : '#ddd',
+        textStyle: { color: isDark ? '#fff' : '#333' },
+        formatter: (params) => {
+          const dimName = yAxisLabels[params.value[1]];
+          const bookName = params.value[0] === 0 ? bookA.title : bookB.title;
+          const value = params.value[2];
+          const weight = dimensions[params.value[1]].weight;
+          return `<strong>${bookName}</strong><br/>${dimName}<br/>得分: ${value > 0 ? '+' : ''}${value} (权重: ${weight})`;
+        }
+      },
+      grid: {
+        left: '22%',
+        right: '12%',
+        top: '2%',
+        bottom: '10%'
+      },
+      xAxis: {
+        type: 'category',
+        data: [bookA.title, bookB.title],
+        position: 'top',
+        axisLabel: {
+          color: isDark ? '#f8f9fa' : '#333',
+          fontSize: 11
+        },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } },
+        splitArea: { show: true, areaStyle: { color: [isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 'transparent'] } }
+      },
+      yAxis: {
+        type: 'category',
+        data: yAxisLabels,
+        inverse: true,
+        axisLabel: {
+          color: isDark ? '#f8f9fa' : '#333',
+          fontSize: 10
+        },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } },
+        splitArea: { show: true, areaStyle: { color: [isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 'transparent'] } }
+      },
+      visualMap: {
+        min: -1,
+        max: 1,
+        calculable: false,
+        orient: 'vertical',
+        right: '2%',
+        top: 'center',
+        itemWidth: 12,
+        itemHeight: 200,
+        pieces: [
+          { value: 1, color: '#2ecc71' },
+          { value: 0, color: '#95a5a6' },
+          { value: -1, color: '#e74c3c' }
+        ],
+        textStyle: { color: isDark ? '#f8f9fa' : '#333' }
+      },
+      series: [{
+        name: '评分对比',
+        type: 'heatmap',
+        data: heatmapData,
+        label: {
+          show: true,
+          formatter: (params) => dimensions[params.value[1]].weight.toString(),
+          color: isDark ? '#fff' : '#333',
+          fontSize: 9,
+          fontWeight: 'bold'
+        },
+        itemStyle: {
+          borderColor: isDark ? '#333' : '#fff',
+          borderWidth: 1
+        },
+        emphasis: {
+          itemStyle: {
+            borderColor: '#333',
+            borderWidth: 2
+          }
+        }
+      }]
+    };
+
+    this.compareHeatmapChart = echarts.init(chartDom);
+    this.compareHeatmapChart.setOption(option);
+  }
+
+  // 渲染三层雷达图（综合素质）
+  renderLayerRadarChart(bookA, bookB) {
+    const chartDom = document.getElementById('compareLayerRadarChart');
+    if (!chartDom) return;
+
+    if (this.compareLayerRadarChart) {
+      this.compareLayerRadarChart.dispose();
+    }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f8f9fa' : '#333';
+    const scoresA = calculateWeightedScores(bookA, RATING_CRITERIA);
+    const scoresB = calculateWeightedScores(bookB, RATING_CRITERIA);
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? 'rgba(50,50,50,0.95)' : 'rgba(255,255,255,0.95)',
+        borderColor: isDark ? '#666' : '#ddd',
+        textStyle: { color: textColor }
+      },
+      legend: {
+        data: [bookA.title, bookB.title],
+        bottom: 0,
+        textStyle: { color: textColor }
+      },
+      radar: {
+        indicator: [
+          { name: '作者层面', max: 10 },
+          { name: '文本层面', max: 19.5 },
+          { name: '读者层面', max: 20 }
+        ],
+        shape: 'triangle',
+        splitNumber: 4,
+        axisName: { color: textColor, fontSize: 12 },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' } },
+        splitArea: { areaStyle: { color: [isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 'transparent'] } },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } }
+      },
+      series: [{
+        type: 'radar',
+        data: [
+          {
+            value: [scoresA.authorLayer, scoresA.textLayer, scoresA.readerLayer],
+            name: bookA.title,
+            lineStyle: { color: '#FF1744', width: 2 },
+            areaStyle: { color: 'rgba(255,23,68,0.3)' },
+            itemStyle: { color: '#FF1744' }
+          },
+          {
+            value: [scoresB.authorLayer, scoresB.textLayer, scoresB.readerLayer],
+            name: bookB.title,
+            lineStyle: { color: '#3498db', width: 2 },
+            areaStyle: { color: 'rgba(52,152,219,0.3)' },
+            itemStyle: { color: '#3498db' }
+          }
+        ]
+      }]
+    };
+
+    this.compareLayerRadarChart = echarts.init(chartDom);
+    this.compareLayerRadarChart.setOption(option);
+  }
+
+  // 渲染核心指标雷达图（权重≥2，归一化到0-10）
+  renderCoreRadarChart(bookA, bookB) {
+    const chartDom = document.getElementById('compareCoreRadarChart');
+    if (!chartDom) return;
+
+    if (this.compareCoreRadarChart) {
+      this.compareCoreRadarChart.dispose();
+    }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f8f9fa' : '#333';
+
+    // 筛选权重≥2的维度
+    const allDims = getAllDimensions();
+    const coreDims = allDims.filter(d => d.weight >= 2);
+
+    // 归一化函数：selection(-1,0,1) → (0, 5, 10)
+    const normalize = (selection) => ((selection + 1) / 2) * 10;
+
+    const dataA = coreDims.map(dim => normalize(bookA.rating_details?.[dim.id] || 0));
+    const dataB = coreDims.map(dim => normalize(bookB.rating_details?.[dim.id] || 0));
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? 'rgba(50,50,50,0.95)' : 'rgba(255,255,255,0.95)',
+        borderColor: isDark ? '#666' : '#ddd',
+        textStyle: { color: textColor }
+      },
+      legend: {
+        data: [bookA.title, bookB.title],
+        bottom: 0,
+        textStyle: { color: textColor }
+      },
+      radar: {
+        indicator: coreDims.map(dim => ({ name: dim.name, max: 10 })),
+        shape: 'polygon',
+        splitNumber: 5,
+        axisName: { color: textColor, fontSize: 10 },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' } },
+        splitArea: { areaStyle: { color: [isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 'transparent'] } },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } }
+      },
+      series: [{
+        type: 'radar',
+        data: [
+          {
+            value: dataA,
+            name: bookA.title,
+            lineStyle: { color: '#FF1744', width: 2 },
+            areaStyle: { color: 'rgba(255,23,68,0.3)' },
+            itemStyle: { color: '#FF1744' }
+          },
+          {
+            value: dataB,
+            name: bookB.title,
+            lineStyle: { color: '#3498db', width: 2 },
+            areaStyle: { color: 'rgba(52,152,219,0.3)' },
+            itemStyle: { color: '#3498db' }
+          }
+        ]
+      }]
+    };
+
+    this.compareCoreRadarChart = echarts.init(chartDom);
+    this.compareCoreRadarChart.setOption(option);
+  }
+
+  // 渲染库内散点图
+  renderScatterChart(mode = 'two') {
+    const chartDom = document.getElementById('compareScatterChart');
+    if (!chartDom) return;
+
+    if (this.compareScatterChart) {
+      this.compareScatterChart.dispose();
+    }
+
+    this.currentScatterMode = mode;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f8f9fa' : '#333';
+
+    const bookAId = document.getElementById('compareBookA')?.value;
+    const bookBId = document.getElementById('compareBookB')?.value;
+
+    // 获取所有已评分的书
+    let allBooks = this.storageService.books.filter(b => b.rating_details && Object.keys(b.rating_details).length > 0);
+
+    // 基准线相关变量
+    let markLineData = [];
+    let avgTextLayer = 0;
+    let avgReaderLayer = 0;
+
+    // 处理基准线模式
+    if (mode === 'vs-all-avg') {
+      const ratedBooks = allBooks.filter(b => b.rating_details);
+      if (ratedBooks.length > 0) {
+        const totalText = ratedBooks.reduce((sum, b) => {
+          const scores = calculateWeightedScores(b, getActiveCriteria());
+          return sum + scores.textLayer;
+        }, 0);
+        const totalReader = ratedBooks.reduce((sum, b) => {
+          const scores = calculateWeightedScores(b, getActiveCriteria());
+          return sum + scores.readerLayer;
+        }, 0);
+        avgTextLayer = totalText / ratedBooks.length;
+        avgReaderLayer = totalReader / ratedBooks.length;
+
+        markLineData = [
+          {
+            xAxis: avgTextLayer,
+            lineStyle: { color: '#FFB300', type: 'dashed', width: 2 },
+            label: { formatter: `全库均值 X: ${avgTextLayer.toFixed(1)}`, position: 'end', color: '#FFB300' }
+          },
+          {
+            yAxis: avgReaderLayer,
+            lineStyle: { color: '#FFB300', type: 'dashed', width: 2 },
+            label: { formatter: `均值 Y: ${avgReaderLayer.toFixed(1)}`, position: 'end', color: '#FFB300' }
+          }
+        ];
+      }
+    } else if (mode === 'vs-tag-avg') {
+      const tagSelect = document.getElementById('scatterTagSelect');
+      const selectedTag = tagSelect?.value;
+      if (selectedTag) {
+        const tagBooks = allBooks.filter(b => b.tags && b.tags.includes(selectedTag));
+        if (tagBooks.length > 0) {
+          const totalText = tagBooks.reduce((sum, b) => {
+            const scores = calculateWeightedScores(b, getActiveCriteria());
+            return sum + scores.textLayer;
+          }, 0);
+          const totalReader = tagBooks.reduce((sum, b) => {
+            const scores = calculateWeightedScores(b, getActiveCriteria());
+            return sum + scores.readerLayer;
+          }, 0);
+          avgTextLayer = totalText / tagBooks.length;
+          avgReaderLayer = totalReader / tagBooks.length;
+
+          markLineData = [
+            {
+              xAxis: avgTextLayer,
+              lineStyle: { color: '#9C27B0', type: 'dashed', width: 2 },
+              label: { formatter: `${selectedTag}均值 X: ${avgTextLayer.toFixed(1)}`, position: 'end', color: '#9C27B0' }
+            },
+            {
+              yAxis: avgReaderLayer,
+              lineStyle: { color: '#9C27B0', type: 'dashed', width: 2 },
+              label: { formatter: `${selectedTag}均值 Y: ${avgReaderLayer.toFixed(1)}`, position: 'end', color: '#9C27B0' }
+            }
+          ];
+        }
+      }
+    }
+
+    // 按标签分组构建 series
+    const tagColors = ['#FF1744', '#3498db', '#2E7D32', '#FFB300', '#9C27B0', '#00BCD4', '#FF5722', '#607D8B'];
+    const tagMap = {};
+
+    allBooks.forEach(book => {
+      const scores = calculateWeightedScores(book, getActiveCriteria());
+      const isBookA = book.id === bookAId;
+      const isBookB = book.id === bookBId;
+      const isSelected = isBookA || isBookB;
+
+      // 获取书的第一个标签作为分组依据
+      const bookTag = (book.tags && book.tags.length > 0) ? book.tags[0] : '其他';
+
+      if (!tagMap[bookTag]) {
+        tagMap[bookTag] = [];
+      }
+
+      let size = 8;
+      let alpha = 0.6;
+
+      if (mode === 'two' && isSelected) {
+        size = 18;
+        alpha = 1;
+      } else if (mode === 'all' || mode === 'vs-all-avg' || mode === 'vs-tag-avg') {
+        if (isBookA) { size = 18; alpha = 1; }
+        else if (isBookB) { size = 18; alpha = 1; }
+        else { size = 8; alpha = 0.5; }
+      }
+
+      tagMap[bookTag].push({
+        name: book.title,
+        value: [scores.textLayer, scores.readerLayer],
+        symbolSize: size,
+        itemStyle: { opacity: alpha },
+        bookId: book.id
+      });
+    });
+
+    // 构建 series 数组
+    const series = Object.entries(tagMap).map(([tag, data], idx) => {
+      const isBookATag = allBooks.find(b => b.id === bookAId && b.tags && b.tags.includes(tag));
+      const isBookBTag = allBooks.find(b => b.id === bookBId && b.tags && b.tags.includes(tag));
+      let color;
+
+      if (isBookATag && allBooks.find(b => b.id === bookAId)) {
+        color = '#FF1744';
+      } else if (isBookBTag && allBooks.find(b => b.id === bookBId)) {
+        color = '#3498db';
+      } else {
+        color = tagColors[idx % tagColors.length];
+      }
+
+      return {
+        name: tag,
+        type: 'scatter',
+        data: data,
+        itemStyle: { color: color },
+        emphasis: {
+          itemStyle: { borderColor: '#fff', borderWidth: 2 }
+        },
+        markLine: (mode === 'vs-all-avg' || mode === 'vs-tag-avg') ? {
+          silent: true,
+          symbol: ['none', 'none'],
+          data: markLineData
+        } : undefined
+      };
+    });
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? 'rgba(50,50,50,0.95)' : 'rgba(255,255,255,0.95)',
+        borderColor: isDark ? '#666' : '#ddd',
+        textStyle: { color: textColor },
+        formatter: (params) => {
+          if (!params.data.bookId) return '';
+          const book = this.storageService.books.find(b => b.id === params.data.bookId);
+          if (!book) return '';
+          const scores = calculateWeightedScores(book, getActiveCriteria());
+          return `<strong>${book.title}</strong><br/>标签: ${params.seriesName}<br/>文本层面: ${scores.textLayer.toFixed(1)}<br/>读者层面: ${scores.readerLayer.toFixed(1)}`;
+        }
+      },
+      legend: {
+        show: true,
+        type: 'scroll',
+        bottom: 0,
+        textStyle: { color: textColor },
+        pageTextStyle: { color: textColor }
+      },
+      grid: {
+        left: '3%',
+        right: '8%',
+        top: '10%',
+        bottom: '15%'
+      },
+      xAxis: {
+        type: 'value',
+        name: '文本层面',
+        nameLocation: 'middle',
+        nameGap: 30,
+        axisLabel: { color: textColor },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' } }
+      },
+      yAxis: {
+        type: 'value',
+        name: '读者层面',
+        nameLocation: 'middle',
+        nameGap: 45,
+        axisLabel: { color: textColor },
+        axisLine: { lineStyle: { color: isDark ? '#555' : '#ccc' } },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' } }
+      },
+      series: series
+    };
+
+    this.compareScatterChart = echarts.init(chartDom);
+    this.compareScatterChart.setOption(option);
+  }
+
+  // 散点图模式切换
+  onScatterModeChange(mode) {
+    document.querySelectorAll('.compare-scatter-toggle .toggle-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    // 显示/隐藏标签筛选器
+    const tagFilter = document.getElementById('scatterTagFilter');
+    if (tagFilter) {
+      tagFilter.style.display = (mode === 'vs-tag-avg') ? 'block' : 'none';
+    }
+
+    // 如果切换到 vs-tag-avg，初始化标签选项
+    if (mode === 'vs-tag-avg') {
+      this.initTagFilter();
+    }
+
+    this.renderScatterChart(mode);
+  }
+
+  // 初始化标签筛选器
+  initTagFilter() {
+    const tagSelect = document.getElementById('scatterTagSelect');
+    if (!tagSelect) return;
+
+    const allBooks = this.storageService.books.filter(b => b.rating_details && Object.keys(b.rating_details).length > 0);
+    const tagSet = new Set();
+    allBooks.forEach(book => {
+      if (book.tags) {
+        book.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+
+    const sortedTags = Array.from(tagSet).sort();
+    tagSelect.innerHTML = '<option value="">选择标签...</option>' +
+      sortedTags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
+
+    tagSelect.onchange = () => {
+      this.renderScatterChart('vs-tag-avg');
+    };
   }
 
   // ======== 评分对比功能结束 ========
+
 
   // 加载统计数据
   async loadStatsData() {
@@ -5398,7 +5843,8 @@ class BookApp {
   // 显示导入模态框
   showImportModal() {
     this.importModal.style.display = 'flex';
-    this.overlay.style.display = 'block';
+    console.trace('showImportModal: 设置 overlay 为 block');
+    this.overlay.classList.add('active');
     this.resetImportModal();
   }
 
@@ -5681,83 +6127,15 @@ class BookApp {
   // 关闭导出模态框
   closeExportModal() {
     this.exportModal.style.display = 'none';
-    this.overlay.style.display = 'none';
+    this.overlay.classList.remove('active');
   }
 
   // 关闭导入模态框
   closeImportModal() {
     this.importModal.style.display = 'none';
-    this.overlay.style.display = 'none';
+    this.overlay.classList.remove('active');
     this.resetImportModal();
     delete this.currentImportData;
-  }
-
-  async importNotes() {
-    if (!this.currentNotesBookId) return;
-
-    try {
-      // 支持图片、视频和文本的文件选择器
-      const result = await window.electronAPI.openFileDialog({
-        filters: [
-          { name: '所有支持的媒体', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'txt', 'md'] },
-          { name: '图片', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] },
-          { name: '视频', extensions: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv'] },
-          { name: '文本', extensions: ['txt', 'md'] }
-        ]
-      });
-      if (!result.success || !result.filePath) return;
-
-      const filePath = result.filePath;
-      const ext = filePath.split('.').pop().toLowerCase();
-      const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-      const videoExts = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv'];
-
-      let content = filePath; // 对于图片/视频，存储文件路径
-      let noteType = 'text';
-
-      // 文本文件需要读取内容
-      if (!imageExts.includes(ext) && !videoExts.includes(ext)) {
-        const fileResult = await window.electronAPI.readFile(filePath);
-        if (!fileResult.success) {
-          this.showToast(`读取文件失败: ${fileResult.error}`, 'error');
-          return;
-        }
-        content = fileResult.content;
-      } else if (imageExts.includes(ext)) {
-        noteType = 'image';
-      } else if (videoExts.includes(ext)) {
-        noteType = 'video';
-      }
-
-      const book = this.storageService.getBookById(this.currentNotesBookId);
-      if (!book) return;
-
-      const newNote = {
-        id: this.generateId(),
-        content: content, // 图片/视频存储路径，文本存储内容
-        type: noteType,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        sourceFile: filePath,
-        tags: []
-      };
-
-      if (!book.notes) book.notes = [];
-      book.notes.push(newNote);
-
-      await this.storageService.updateBook(this.currentNotesBookId, { notes: book.notes });
-
-      // 重新从存储服务获取最新书籍对象并渲染
-      const updatedBook = this.storageService.getBookById(this.currentNotesBookId);
-      if (updatedBook) {
-        this.renderNotes(updatedBook);
-      }
-
-      const typeName = noteType === 'image' ? '图片' : (noteType === 'video' ? '视频' : '笔记');
-      this.showToast(`成功导入${typeName}`, 'success');
-    } catch (error) {
-      this.showToast(`导入失败: ${error.message}`, 'error');
-    }
   }
 
   // 渲染侧边栏文件夹列表
@@ -5846,11 +6224,12 @@ class BookApp {
   }
 
   showLoading() {
-    this.statusMessageElement.textContent = '加载中...';
-    this.statusMessageElement.className = 'text-muted';
+    // 加载指示器已禁用
   }
 
-  hideLoading() {}
+  hideLoading() {
+    // 加载指示器已禁用
+  }
 
   // =========================================
   // 评分系统方法
@@ -5873,7 +6252,8 @@ class BookApp {
     
     // 🌟 1. 先让弹窗显示出来，撑开 CSS 布局
     this.ratingModal.style.display = 'flex';
-    this.overlay.style.display = 'block';
+    console.trace('showRatingModal: 设置 overlay 为 block');
+    this.overlay.classList.add('active');
 
     // 🌟 2. 稍微等 50 毫秒再画图，并强制重算大小
     setTimeout(() => {
@@ -5956,28 +6336,63 @@ class BookApp {
   }
 
   async saveRating() {
-    if (!this.currentRatingBookId) return;
+    console.error('saveRating called. currentRatingBookId:', this.currentRatingBookId);
+    console.error('currentRatings:', this.currentRatings);
+
+    if (!this.currentRatingBookId) {
+      this.showToast('评分对象无效，请重新打开评分窗口', 'error');
+      return;
+    }
 
     const book = this.storageService.getBookById(this.currentRatingBookId);
-    if (!book) return;
+    console.error('book found:', book ? book.title : 'null');
+    if (!book) {
+      this.showToast('未找到对应作品，请重新打开评分窗口', 'error');
+      return;
+    }
 
-    const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
-    const scores = this.calculateTotalScore(profile, this.currentRatings);
-    const totalScore = scores.author + scores.text + scores.reader + 50;
+    try {
+      const profile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+      const scores = this.calculateTotalScore(profile, this.currentRatings);
+      const totalScore = scores.author + scores.text + scores.reader + 50;
+      console.error('totalScore calculated:', totalScore);
 
-    const ratingData = {
-      totalScore: totalScore,
-      profile: DEFAULT_PROFILE_NAME,
-      ratings: { ...this.currentRatings },
-      ratedAt: new Date().toISOString()
-    };
+      const ratingData = {
+        totalScore: totalScore,
+        profile: DEFAULT_PROFILE_NAME,
+        ratings: { ...this.currentRatings },
+        ratedAt: new Date().toISOString()
+      };
+      console.error('ratingData:', ratingData);
 
-    book.rating = ratingData;
-    await this.storageService.updateBook(this.currentRatingBookId, { rating: ratingData });
+      book.rating = ratingData;
 
-    this.showToast('评分保存成功', 'success');
-    this.closeRatingModal();
-    this.renderBooks();
+      // 同时更新 rating_details（新格式）
+      const nameToIdMap = {};
+      const allProfile = DEFAULT_RATING_PROFILE[DEFAULT_PROFILE_NAME];
+      Object.values(allProfile).forEach(layer => {
+        layer.forEach(dim => {
+          nameToIdMap[dim.name] = this.getDimensionIdByName(dim.name);
+        });
+      });
+      const rating_details = {};
+      Object.entries(this.currentRatings).forEach(([chineseName, value]) => {
+        const id = nameToIdMap[chineseName];
+        if (id) rating_details[id] = value;
+      });
+      book.rating_details = rating_details;
+      book.rating.totalScore = totalScore;
+
+      const result = await this.storageService.updateBook(this.currentRatingBookId, { rating: ratingData, rating_details: rating_details });
+      console.error('updateBook result:', result);
+
+      this.showToast('评分保存成功', 'success');
+      this.closeRatingModal();
+      this.renderBooks();
+    } catch (error) {
+      this.showToast('评分保存失败：' + error.message, 'error');
+      console.error('Rating save error:', error);
+    }
   }
 
   // =========================================
@@ -5998,7 +6413,7 @@ class BookApp {
     }
 
     this.ratingModal.style.display = 'none';
-    this.overlay.style.display = 'none';
+    this.overlay.classList.remove('active');
     this.currentRatingBookId = null;
     if (this.ratingChart) {
       this.ratingChart.dispose();
@@ -6044,6 +6459,12 @@ class BookApp {
     const option = {
       tooltip: {
         trigger: 'item',
+        appendToBody: true,
+        enterable: false,
+        confine: true,
+        position: function (point) {
+          return [point[0] + 20, point[1] - 10];
+        },
         // 让提示框背景色也适配深色/浅色模式
         backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(30, 32, 40, 0.95)' : 'rgba(255, 255, 255, 0.95)',
         borderColor: 'rgba(218, 112, 214, 0.3)',
@@ -6061,14 +6482,16 @@ class BookApp {
 
           // 遍历三大层面（作者、文本、读者）
           for (const [layer, items] of Object.entries(profile)) {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const layerColor = isDark ? '#FF8C9E' : '#dda0dd';
             html += `<div style="display: flex; flex-direction: column;">`;
-            html += `<div style="font-weight: bold; color: #dda0dd; border-bottom: 1px solid rgba(218, 112, 214, 0.3); margin-bottom: 8px; padding-bottom: 4px; font-size: 13px;">${layer}</div>`;
-            
+            html += `<div style="font-weight: bold; color: ${layerColor}; border-bottom: 1px solid rgba(218, 112, 214, 0.3); margin-bottom: 8px; padding-bottom: 4px; font-size: 13px;">${layer}</div>`;
+
             // 遍历该层面下的具体指标
             items.forEach(m => {
               const realScore = values[valIdx] - 2; // 还原真实分数
-              // 根据分数给上不同的颜色：正分为粉红，负分为灰色
-              let scoreColor = realScore > 0 ? '#F88379' : (realScore < 0 ? '#95a5a6' : '#adb5bd');
+              // 根据分数给上不同的颜色：正分为浅绿色，负分为灰色
+              const scoreColor = realScore > 0 ? '#88D8A0' : (realScore < 0 ? (isDark ? '#7a8a9a' : '#95a5a6') : (isDark ? '#5a6a7a' : '#adb5bd'));
               let scoreText = realScore > 0 ? '+' + realScore : realScore;
               
               html += `<div style="font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 15px;">
@@ -6097,13 +6520,21 @@ class BookApp {
         },
         splitArea: {
           areaStyle: {
-            color: ['rgba(230, 230, 250, 0.1)', 'rgba(230, 230, 250, 0.2)', 'rgba(230, 230, 250, 0.4)'].reverse()
+            color: (() => {
+              const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+              return isDark
+                ? ['rgba(90, 75, 110, 0.4)', 'rgba(90, 75, 110, 0.25)', 'rgba(90, 75, 110, 0.1)'].reverse()
+                : ['rgba(230, 230, 250, 0.1)', 'rgba(230, 230, 250, 0.2)', 'rgba(230, 230, 250, 0.4)'].reverse();
+            })()
           }
         },
-        // ... 后面的保持不变 ...
-        // ... 后面的保持不变 ...
-        axisLine: { lineStyle: { color: 'rgba(248, 131, 121, 0.3)' } }, 
-        splitLine: { lineStyle: { color: 'rgba(248, 131, 121, 0.3)' } }
+        axisLine: { lineStyle: { color: 'rgba(248, 131, 121, 0.3)' } },
+        splitLine: {
+          lineStyle: (() => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return { color: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(248, 131, 121, 0.3)' };
+          })()
+        }
       },
       series: [{
         name: '评分分布',
@@ -6114,12 +6545,15 @@ class BookApp {
             name: '当前书籍评分',
             symbol: 'circle',
             symbolSize: 6,
-            itemStyle: { color: '#F88379' }, // 珊瑚粉数据点
+            itemStyle: { color: '#F88379' },
             areaStyle: {
-              color: new echarts.graphic.RadialGradient(0.5, 0.5, 1, [
-                { offset: 0, color: 'rgba(248, 131, 121, 0.1)' },
-                { offset: 1, color: 'rgba(248, 131, 121, 0.6)' }
-              ])
+              color: (() => {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                return new echarts.graphic.RadialGradient(0.5, 0.5, 1, [
+                  { offset: 0, color: isDark ? 'rgba(248, 131, 121, 0.2)' : 'rgba(248, 131, 121, 0.1)' },
+                  { offset: 1, color: isDark ? 'rgba(248, 131, 121, 0.8)' : 'rgba(248, 131, 121, 0.6)' }
+                ]);
+              })()
             }
           }
         ]
@@ -6325,7 +6759,6 @@ class BookApp {
 
   hideAllModals() {
     this.hideBookForm();
-    this.hideNotesModal();
     this.hideDeleteModal();
     this.hideFilterPanel();
     this.hideContextMenu();
@@ -6343,7 +6776,7 @@ class BookApp {
 
   showContextMenu(e, target) {
     this.contextMenuTarget = target;
-    this.contextMenu.style.display = 'block';
+    this.contextMenu.classList.add('visible');
 
     // 获取书籍信息用于过滤文件夹
     const bookId = target.getAttribute('data-id');
@@ -6397,7 +6830,7 @@ class BookApp {
     // 如果没有可移动的文件夹，显示提示
     if (submenu.children.length === 0) {
       const emptyItem = document.createElement('li');
-      emptyItem.style.color = '#999';
+      emptyItem.style.color = 'var(--text-tertiary)';
       emptyItem.style.cursor = 'default';
       emptyItem.innerHTML = '<i class="fas fa-folder"></i> 无其他文件夹';
       submenu.appendChild(emptyItem);
@@ -6460,11 +6893,16 @@ class BookApp {
   }
 
   hideContextMenu() {
-    this.contextMenu.style.display = 'none';
+    this.contextMenu.classList.remove('visible');
     this.contextMenuTarget = null;
   }
 
   bindContextMenuEvents() {
+    // 鼠标离开整个右键菜单时自动关闭
+    this.contextMenu.addEventListener('mouseleave', () => {
+      this.hideContextMenu();
+    });
+
     const menuItems = this.contextMenu.querySelectorAll('li[data-action]');
 
     menuItems.forEach(item => {
@@ -6475,6 +6913,21 @@ class BookApp {
           e.stopPropagation();
           const submenu = item.querySelector('.submenu');
           if (submenu) {
+            const rect = item.getBoundingClientRect();
+            let leftPos = rect.right;
+            let topPos = rect.top;
+            // 确保子菜单不超出右边界
+            const submenuWidth = 180;
+            if (leftPos + submenuWidth > window.innerWidth - 10) {
+              leftPos = rect.left - submenuWidth;
+            }
+            // 确保子菜单不超出下边界
+            const submenuHeight = submenu.offsetHeight || 200;
+            if (topPos + submenuHeight > window.innerHeight - 10) {
+              topPos = window.innerHeight - submenuHeight - 10;
+            }
+            submenu.style.left = `${leftPos}px`;
+            submenu.style.top = `${topPos}px`;
             submenu.style.display = 'block';
           }
         });
@@ -6518,14 +6971,14 @@ class BookApp {
       case 'edit':
         this.editBook(bookId);
         break;
-      case 'notes':
-        this.showNotesModal(bookId);
+      case 'inspiration':
+        this.switchView('inspiration', bookId);
         break;
       case 'rating':
         this.openRatingModal(bookId);
         break;
       case 'delete':
-        this.showDeleteModal(bookId);
+        this.showDeleteModal(book);
         break;
     }
   }
@@ -6540,13 +6993,11 @@ class BookApp {
 
   // 6. 加载指示器
   showLoading() {
-    this.statusMessageElement.textContent = '加载中...';
-    this.statusMessageElement.classList.add('loading');
+    // 加载指示器已禁用
   }
 
   hideLoading() {
-    this.statusMessageElement.textContent = '就绪';
-    this.statusMessageElement.classList.remove('loading');
+    // 加载指示器已禁用
   }
 
   // 7. 增强的书籍渲染（支持搜索）
@@ -6554,66 +7005,30 @@ class BookApp {
 } // BookApp 类结束
 
 // =========================================
-// 应用初始化与全局事件绑定
+// 应用初始化与全局事件绑定 (已彻底切除滞后的 AI 模块)
 // =========================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // 确保 electronAPI 加载完成后再初始化
-  setTimeout(async () => {
+    // 🚀 核心修复：移除了原本导致启动缓慢的 setTimeout 延迟！
     window.bookApp = new BookApp();
     await window.bookApp.init();
-    
-    // 🌟 将 BookApp 内部的方法暴露为全局函数，以便 index.html 中的 onclick 能直接调用
-    window.closeRatingModal = () => {
-      window.bookApp.closeRatingModal();
-    };
-    
-    window.saveRating = () => {
-      window.bookApp.saveRating();
-    };
 
-    // 导入/导出全局函数
-    window.closeExportModal = () => {
-      window.bookApp.closeExportModal();
-    };
-
-    window.confirmExport = () => {
-      window.bookApp.confirmExport();
-    };
-
-    window.closeImportModal = () => {
-      window.bookApp.closeImportModal();
-    };
-
-    window.confirmImport = () => {
-      window.bookApp.confirmImport();
-    };
-
-    // 统计全局函数
-    window.closeStatsModal = () => {
-      window.bookApp.closeStatsModal();
-    };
-
-    window.refreshStats = () => {
-      window.bookApp.refreshStats();
-    };
-
-    window.exportStatsReport = () => {
-      window.bookApp.exportStatsReport();
-    };
-
-    // 评分对比全局函数
-    window.closeCompareModal = () => {
-      window.bookApp.closeCompareModal();
-    };
-
-    window.startCompare = () => {
-      window.bookApp.startCompare();
-    };
+    // =========================================
+    // 暴露全局函数给 index.html
+    // =========================================
+    window.closeRatingModal = () => { window.bookApp.closeRatingModal(); };
+    window.saveRating = () => { window.bookApp.saveRating(); };
+    window.closeExportModal = () => { window.bookApp.closeExportModal(); };
+    window.confirmExport = () => { window.bookApp.confirmExport(); };
+    window.closeImportModal = () => { window.bookApp.closeImportModal(); };
+    window.confirmImport = () => { window.bookApp.confirmImport(); };
+    window.closeStatsModal = () => { window.bookApp.closeStatsModal(); };
+    window.refreshStats = () => { window.bookApp.refreshStats(); };
+    window.exportStatsReport = () => { window.bookApp.exportStatsReport(); };
+    window.closeCompareModal = () => { window.bookApp.closeCompareModal(); };
+    window.startCompare = () => { window.bookApp.startCompare(); };
 
     window.toggleCompareBook = (bookId, event) => {
-      // 防止点击checkbox时触发两次
       if (event && event.target.tagName === 'INPUT') return;
-
       const checkbox = document.querySelector(`.compare-book-checkbox[value="${bookId}"]`);
       if (checkbox) {
         checkbox.checked = !checkbox.checked;
@@ -6627,1767 +7042,43 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.bookApp.toggleCompareBookSelection();
     };
 
-    // 文件夹全局函数
-    window.closeFolderModal = () => {
-      window.bookApp.closeFolderModal();
+    window.closeFolderModal = () => { window.bookApp.closeFolderModal(); };
+    window.confirmCreateFolder = () => { window.bookApp.confirmCreateFolder(); };
+    window.switchView = (viewName, bookId = null) => { window.bookApp.switchView(viewName, bookId); };
+
+    window.clearInspirationFilter = () => {
+      window.bookApp.resetInspirationFilter();
+      window.bookApp.renderInspirationList();
+      const indicator = document.getElementById('inspirationFilterIndicator');
+      if(indicator) indicator.style.display = 'none';
     };
 
-    window.confirmCreateFolder = () => {
-      window.bookApp.confirmCreateFolder();
+    window.clearLockedBook = () => { window.bookApp.clearLockedBook(); };
+
+    window.openInspirationModal = (inspirationId = null) => {
+      let preselectedBookId = null;
+      if (!inspirationId && window.bookApp.inspirationFilters.lockedBookId) {
+        preselectedBookId = window.bookApp.inspirationFilters.lockedBookId;
+      }
+      window.bookApp.openInspirationModal(inspirationId, preselectedBookId);
     };
 
-    // 日记全局函数
-    window.switchView = (viewName) => {
-      window.bookApp.switchView(viewName);
-    };
-
-    window.openJournalModal = (journalId = null) => {
-      window.bookApp.openJournalModal(journalId);
-    };
-
-    window.closeJournalModal = () => {
-      window.bookApp.closeJournalModal();
-    };
-
-    window.closeJournalStatsModal = () => {
-      window.bookApp.closeJournalStatsModal();
-    };
-
-    window.editJournal = (journalId) => {
-      window.bookApp.openJournalModal(journalId);
-    };
-
-    window.openJournalView = (journalId) => {
-      window.bookApp.openJournalView(journalId);
-    };
-
-    window.deleteJournal = (journalId) => {
-      // 显示自定义确认模态框，不再使用原生confirm
-      window.bookApp.showJournalDeleteModal(journalId);
-    };
-
-    window.jumpToBook = (bookId) => {
-      window.bookApp.jumpToBook(bookId);
-    };
-
-    // =========================================
-    // AI精读模块
-    // =========================================
-
-    // 分块配置 - 优化为更大更少
-    const CHUNK_SIZE = 15000;
-    const CHUNK_OVERLAP = 1000;
-    const CONCURRENCY = 10; // 并发数量
-
-    // 默认评分标准及判断条件
-    const DEFAULT_RATING_CRITERIA = {
-      "作者层面": [
-        { name: "作品主题", plus: "1111", minus: "222222", neutral: "3333333" },
-        { name: "情节架构", plus: "情节结构完整、有起伏、有高潮", minus: "情节松散或缺乏逻辑", neutral: "片段中未涉及情节或无法判断" },
-        { name: "人物设计", plus: "人物形象鲜明、立体、有层次", minus: "人物扁平或单调", neutral: "片段中未涉及人物或无法判断" },
-        { name: "世界观", plus: "世界观完整、独特、有细节", minus: "世界观简陋或前后矛盾", neutral: "片段中未涉及世界观或无法判断" },
-        { name: "叙事时间", plus: "时间线清晰、时间叙事有技巧", minus: "时间线混乱", neutral: "片段中未涉及时间叙事或无法判断" },
-        { name: "象征与意象", plus: "有象征手法或丰富的意象", minus: "缺乏文学技巧", neutral: "片段中未涉及象征意象或无法判断" },
-        { name: "时代背景", plus: "时代背景描绘真实或有意思", minus: "时代感缺失", neutral: "片段中未涉及时代背景或无法判断" }
-      ],
-      "文本层面": [
-        { name: "情节故事性", plus: "故事吸引人、有悬念、有张力", minus: "故事乏味或平淡", neutral: "片段中无明显故事内容或无法判断" },
-        { name: "登场人物塑造", plus: "角色生动、有个性、令人印象深刻", minus: "角色脸谱化", neutral: "片段中无角色出场或无法判断" },
-        { name: "人物关系网络", plus: "人物关系复杂、有纠葛、有深度", minus: "关系简单", neutral: "片段中未涉及人物关系或无法判断" },
-        { name: "背景描写", plus: "背景描写细腻、有画面感", minus: "背景单调", neutral: "片段中无背景描写或无法判断" },
-        { name: "主题表达", plus: "主题深刻、表达巧妙、引人思考", minus: "主题直白或说教", neutral: "片段中未涉及主题表达或无法判断" },
-        { name: "叙述视角", plus: "视角选择独特、叙述有技巧", minus: "视角平淡", neutral: "片段中未体现视角特点或无法判断" },
-        { name: "文笔文风信息量", plus: "文字优美、信息量大、有风格", minus: "文字平淡或水文", neutral: "文字表达平淡或无法判断" },
-        { name: "修辞手法", plus: "修辞丰富、比喻生动、语言有力量", minus: "缺乏修辞", neutral: "片段中无明显修辞或无法判断" },
-        { name: "对话可咀嚼度", plus: "对话精彩、有潜台词、值得回味", minus: "对话平淡或冗长", neutral: "片段中无对话或无法判断" }
-      ]
-      // 读者层面9项不参与AI评分，固定为0
-    };
-
-    // 同步获取当前评分标准（从localStorage加载，失败则用默认）
-    function getRatingCriteria() {
-      try {
-        const saved = localStorage.getItem('aiRatingCriteria');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // 验证数据结构
-          if (parsed && typeof parsed === 'object' && (parsed['作者层面'] || parsed['文本层面'])) {
-            return parsed;
-          }
-        }
-      } catch (e) {
-        console.error('加载评价标准失败:', e);
-      }
-      return DEFAULT_RATING_CRITERIA;
-    }
-
-    // 保存评分标准到localStorage和文件
-    async function saveRatingCriteria(criteria) {
-      const jsonStr = JSON.stringify(criteria);
-
-      // 1. 先保存到localStorage（同步，确保立即可用）
-      try {
-        localStorage.setItem('aiRatingCriteria', jsonStr);
-        console.log('[DEBUG] 保存到localStorage成功');
-      } catch (e) {
-        console.error('[DEBUG] 保存到localStorage失败:', e);
-      }
-
-      // 2. 再保存到文件（异步备份）
-      if (window.electronAPI && typeof window.electronAPI.saveRatingCriteria === 'function') {
-        try {
-          const result = await window.electronAPI.saveRatingCriteria(criteria);
-          if (result && result.success) {
-            console.log('[DEBUG] 保存到文件成功');
-          }
-        } catch (e) {
-          console.error('[DEBUG] 保存到文件失败:', e);
-        }
-      }
-
-      alert('评价标准已保存！');
-    }
-
-    // AI精读状态
-    let aiReadState = {
-      filePath: null,
-      fileContent: null,
-      chunks: [],
-      chunkResults: [],
-      extractedTitle: null,
-      finalRating: null,
-      aborted: false
-    };
-
-    // 文本分块函数
-    function chunkText(text, size, overlap) {
-      const chunks = [];
-      let start = 0;
-      while (start < text.length) {
-        const end = start + size;
-        chunks.push(text.substring(start, end));
-        start = end - overlap;
-        if (start >= text.length) break;
-      }
-      return chunks;
-    }
-
-    // 调用LLM API
-    async function callLLM(apiUrl, apiKey, prompt, content) {
-      // 获取保存的模型设置
-      const settings = loadAISettingsFromStorage();
-      const model = settings?.model || 'MiniMax-M2.5';
-
-      // 检测是否为 MiniMax API
-      const isMiniMax = apiUrl.includes('minimax');
-
-      let requestBody;
-      if (isMiniMax) {
-        // MiniMax API 格式
-        requestBody = {
-          model: model,
-          messages: [
-            { role: 'system', content: prompt },
-            { role: 'user', content: content }
-          ],
-          temperature: 0.3
-        };
-      } else {
-        // OpenAI 兼容格式
-        requestBody = {
-          model: model || 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: prompt },
-            { role: 'user', content: content }
-          ],
-          temperature: 0.3
-        };
-      }
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API请求失败: ${response.status} - ${errorText.substring(0, 200)}`);
-      }
-
-      const data = await response.json();
-
-      // MiniMax 和 OpenAI 格式兼容
-      if (data.choices && data.choices[0]) {
-        return data.choices[0].message.content;
-      } else if (data.base_resp && data.base_resp.status === 0) {
-        // MiniMax 成功响应格式
-        return data.choices[0].message.content;
-      }
-
-      throw new Error(`API响应格式未知: ${JSON.stringify(data).substring(0, 200)}`);
-    }
-
-    // 生成Map阶段提示词
-    function generateMapPrompt() {
-      const criteria = getRatingCriteria(); // 使用用户配置的标准
-      const criteriaList = [];
-      for (const [category, items] of Object.entries(criteria)) {
-        for (const item of items) {
-          criteriaList.push(`- ${item.name}（+1: ${item.plus}；-1: ${item.minus}；0: ${item.neutral}）`);
-        }
-      }
-      const criteriaText = criteriaList.join('\n');
-
-      return `你是一个文学评论家。请仔细阅读以下文本片段，然后对每个评分标准给出+1、-1或0的判断。
-
-评分标准：
-${criteriaText}
-
-判断规则：
-- +1: 该片段符合加分条件
-- -1: 该片段符合减分条件
-- 0: 无法判断或与该标准无关
-
-请以JSON格式输出，格式如下：
-{
-  "title": "如果能确定书名则填写，否则为空字符串",
-  "evaluations": [
-    {"criteria": "作品主题", "score": 1, "reason": "判断理由"},
-    ...
-  ]
-}
-只输出JSON，不要其他内容。`;
-    }
-
-    // 生成Reduce阶段提示词
-    function generateReducePrompt(allResults) {
-      const criteria = getRatingCriteria();
-      const criteriaList = [];
-      const criteriaDescriptions = {};
-      for (const [category, items] of Object.entries(criteria)) {
-        for (const item of items) {
-          criteriaList.push(`- ${item.name}`);
-          criteriaDescriptions[item.name] = item;
-        }
-      }
-      const criteriaText = criteriaList.join('\n');
-
-      return `你是一位资深文艺评论学者与审美价值评估专家。用户需要对各类文娱作品进行系统化、专业化的价值评判。
-
-## 你的背景
-你是一位浸淫文艺批评领域逾二十年的学者，兼具美学理论功底与跨媒介实践经验。你信奉"批评即创造"之理念，以冷静之眼审视文本，以灼热之心守护艺术。你的评判从不迎合流俗，亦不故作惊人之语，唯求在形式与内容、传统与创新、个体与时代的张力中，锚定作品的真实坐标。
-
-## 评分标准（共16项）：
-${criteriaText}
-
-## 你的技能
-- 精通叙事学、符号学、接受美学等批评理论
-- 熟练运用比较文学与跨文化研究方法
-- 具备媒介特异性分析能力（文字/影像/声音/交互）
-- 掌握量化评分与质性阐释的平衡技艺
-- 擅长识别文本的意识形态运作与历史语境
-
-## 你的目标
-1. 建立多维度的评判标准体系，覆盖艺术性与社会性维度
-2. 对输入作品进行逐项精细化分析，提取关键文本证据
-3. 依据明确标准给出-1,0,1的量化评分
-4. 形成综合评语，判定作品的总体价值层级
-5. 指出作品的突出优势与根本缺陷，提出改进方向
-
-## 约束条件
-- 评分须以文本细读为基础，杜绝印象式批评
-- 标准适用须考虑媒介特性，不可机械套用
-- 价值判断须区分"历史成就"与"当代相关性"两个层面
-- 对争议性内容保持伦理敏感，但不做道德审判
-- 所有评语须使用规范学术汉语，避免网络流行语
-
-## 评估结果汇总（共${allResults.length}个片段的评估）：
-${JSON.stringify(allResults, null, 2)}
-
-## 工作流程
-1. 识别作品媒介形态与类型归属，调取相应评判标准库，确认各维度权重分配
-2. 逐维度展开文本细读：统计每个标准的+1、-1、0票数，根据票数多少确定最终得分
-3. 核算加权总分，撰写综合评语：概括作品的核心美学特征，判定其在同类作品中的位置
-4. 输出完整评分报告，附改进建议
-
-## 输出格式（JSON）
-请严格按照以下格式输出，只输出JSON，不要其他内容：
-{
-  "finalRating": {
-    "作者层面": [
-      {"criteria": "作品主题", "score": 1, "reason": "简要说明得分依据"},
-      ...
-    ],
-    "文本层面": [
-      {"criteria": "情节故事性", "score": -1, "reason": "简要说明得分依据"},
-      ...
-    ]
-  },
-  "totalScore": 75.5,
-  "overallComment": "综合评语，概括作品核心美学特征与价值层级",
-  "strengths": ["优势1", "优势2"],
-  "weaknesses": ["缺陷1", "缺陷2"],
-  "improvements": ["改进建议1", "改进建议2"]
-}
-只输出JSON，不要其他内容。`;
-    }
-
-    // 解析JSON响应
-    function parseJSONResponse(text) {
-      try {
-        // 尝试提取JSON部分
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
-        }
-        return JSON.parse(text);
-      } catch (e) {
-        console.error('JSON解析失败:', e, text);
-        return null;
-      }
-    }
-
-    // 更新进度显示
-    function updateAIProgress(current, total, statusText) {
-      const percent = Math.round((current / total) * 100);
-      document.getElementById('progressPercent').textContent = `${percent}%`;
-      document.getElementById('progressBar').style.width = `${percent}%`;
-      document.getElementById('progressText').textContent = statusText;
-      document.getElementById('currentChunk').textContent = `正在处理第 ${current}/${total} 个片段`;
-    }
-
-    // 保存AI设置到localStorage
-    function saveAISettingsToStorage(settings) {
-      localStorage.setItem('aiReadSettings', JSON.stringify(settings));
-    }
-
-    // 从localStorage加载AI设置
-    function loadAISettingsFromStorage() {
-      const settings = localStorage.getItem('aiReadSettings');
-      return settings ? JSON.parse(settings) : null;
-    }
-
-    // 全局函数：打开AI精读模态框
-    window.openAiReadModal = function() {
-      document.getElementById('aiReadModal').style.display = 'flex';
-      document.getElementById('overlay').style.display = 'block';
-      document.getElementById('aiReadStep1').style.display = 'block';
-      document.getElementById('aiReadStep2').style.display = 'none';
-      document.getElementById('selectedFileName').textContent = '未选择文件';
-      document.getElementById('aiReadProgress').style.display = 'none';
-      document.getElementById('aiRatingProgress').style.display = 'none';
-      document.getElementById('aiRatingProgress').innerHTML = '';
-      document.getElementById('startAiReadBtn').disabled = true;
-      document.getElementById('startAiReadBtn').style.display = 'inline-flex';
-      const importBtn = document.getElementById('importAiBookBtn');
-      if (importBtn) {
-        importBtn.style.display = 'none';
-      }
-
-      // 重置底部提示
-      const footerHint = document.querySelector('.air-footer-hint');
-      if (footerHint) {
-        footerHint.innerHTML = '<i class="fas fa-circle-info"></i> <span>AI将分析作品内容并给出多维度评分</span>';
-      }
-
-      // 重置拖拽区域和文件信息显示
-      document.getElementById('dropZone').style.display = 'flex';
-      document.getElementById('fileInfo').style.display = 'none';
-      document.getElementById('previewContent').innerHTML = '<div class="air-preview-empty"><i class="fas fa-file-circle-question"></i><p>选择文件后显示内容预览</p></div>';
-
-      // 重置状态
-      aiReadState = {
-        filePath: null,
-        fileContent: null,
-        chunks: [],
-        chunkResults: [],
-        extractedTitle: null,
-        finalRating: null,
-        aborted: false
-      };
-
-      // 检查是否已配置API
-      const settings = loadAISettingsFromStorage();
-      if (!settings || !settings.apiUrl || !settings.apiKey) {
-        document.getElementById('selectedFileName').textContent = '请先配置AI API设置';
-      }
-    };
-
-    // 全局函数：关闭AI精读模态框
-    window.closeAiReadModal = function() {
-      document.getElementById('aiReadModal').style.display = 'none';
-      document.getElementById('overlay').style.display = 'none';
-
-      // 重置AI精读状态
-      aiReadState = {
-        filePath: null,
-        fileContent: null,
-        chunks: [],
-        chunkResults: [],
-        extractedTitle: null,
-        finalRating: null,
-        aborted: false
-      };
-
-      // 重置UI元素状态
-      document.getElementById('aiReadStep1').style.display = 'block';
-      document.getElementById('aiReadStep2').style.display = 'none';
-      document.getElementById('selectedFileName').textContent = '未选择文件';
-      document.getElementById('aiReadProgress').style.display = 'none';
-      document.getElementById('aiRatingProgress').style.display = 'none';
-      document.getElementById('aiRatingProgress').innerHTML = '';
-      const startBtn = document.getElementById('startAiReadBtn');
-      if (startBtn) {
-        startBtn.disabled = true;
-        startBtn.style.display = 'inline-flex';
-      }
-      const importBtn = document.getElementById('importAiBookBtn');
-      if (importBtn) {
-        importBtn.style.display = 'none';
-      }
-      document.getElementById('dropZone').style.display = 'flex';
-      document.getElementById('fileInfo').style.display = 'none';
-      document.getElementById('previewContent').innerHTML = '<div class="air-preview-empty"><i class="fas fa-file-circle-question"></i><p>选择文件后显示内容预览</p></div>';
-
-      // 重置底部提示
-      const footerHint = document.querySelector('.air-footer-hint');
-      if (footerHint) {
-        footerHint.innerHTML = '<i class="fas fa-circle-info"></i> <span>AI将分析作品内容并给出多维度评分</span>';
-      }
-
-      // 重置 fileInput（清除已选择的文件）
-      const fileInput = document.getElementById('fileInput');
-      if (fileInput) {
-        fileInput.value = '';
-      }
-      // 重置选择文件按钮
-      const selectFileBtn = document.getElementById('selectFileBtn');
-      if (selectFileBtn) {
-        selectFileBtn.style.display = 'block';
-      }
-      // 重置文件信息显示
-      const fileEncoding = document.getElementById('fileEncoding');
-      if (fileEncoding) fileEncoding.textContent = '';
-      const fileSize = document.getElementById('fileSize');
-      if (fileSize) fileSize.textContent = '';
-      const fileChars = document.getElementById('fileChars');
-      if (fileChars) fileChars.textContent = '';
-    };
-
-    // 全局函数：打开AI设置模态框
-    window.openAiSettingsModal = function() {
-      document.getElementById('aiSettingsModal').style.display = 'flex';
-      document.getElementById('overlay').style.display = 'block';
-
-      // 加载已保存的设置
-      const settings = loadAISettingsFromStorage();
-      if (settings) {
-        const aiApiUrl = document.getElementById('aiApiUrl');
-        const aiApiKey = document.getElementById('aiApiKey');
-        const aiModel = document.getElementById('aiModel');
-        if (aiApiUrl) aiApiUrl.value = settings.apiUrl || '';
-        if (aiApiKey) aiApiKey.value = settings.apiKey || '';
-        if (aiModel) aiModel.value = settings.model || 'MiniMax-M2.5';
-
-        // 更新连接状态
-        const statusBadge = document.querySelector('.pref-status-badge');
-        const statusText = document.getElementById('apiStatusText');
-        if (settings.apiKey && settings.apiUrl) {
-          if (statusBadge) statusBadge.classList.add('connected');
-          if (statusText) statusText.textContent = '已配置';
-        }
-      }
-      const testResult = document.getElementById('testApiResult');
-      if (testResult) testResult.textContent = '';
-
-      // 加载并渲染评价标准
-      loadAndRenderCriteria();
-
-      // 更新统计信息
-      updatePreferencesStats();
-
-      // 恢复Accordion状态
-      window.restoreAccordionState();
-    };
-
-    // 更新偏好设置统计信息
-    function updatePreferencesStats() {
-      const criteria = getRatingCriteria();
-      const authorCount = (criteria['作者层面'] || []).length;
-      const textCount = (criteria['文本层面'] || []).length;
-      const totalCount = authorCount + textCount;
-
-      // 更新左侧统计卡片
-      const authorCriteriaCountEl = document.getElementById('authorCriteriaCount');
-      const textCriteriaCountEl = document.getElementById('textCriteriaCount');
-      const totalCriteriaCountEl = document.getElementById('totalCriteriaCount');
-      const avgWeightEl = document.getElementById('avgWeight');
-
-      if (authorCriteriaCountEl) authorCriteriaCountEl.textContent = authorCount;
-      if (textCriteriaCountEl) textCriteriaCountEl.textContent = textCount;
-      if (totalCriteriaCountEl) totalCriteriaCountEl.textContent = totalCount;
-      if (avgWeightEl) avgWeightEl.textContent = totalCount > 0 ? Math.round(100 / totalCount) + '%' : '0%';
-
-      // 更新右侧面板头部统计
-      const authorCriteriaCount2El = document.getElementById('authorCriteriaCount2');
-      const textCriteriaCount2El = document.getElementById('textCriteriaCount2');
-      const authorWeightEl = document.getElementById('authorWeight');
-      const textWeightEl = document.getElementById('textWeight');
-
-      if (authorCriteriaCount2El) authorCriteriaCount2El.textContent = authorCount + ' 项';
-      if (textCriteriaCount2El) textCriteriaCount2El.textContent = textCount + ' 项';
-      if (authorWeightEl) authorWeightEl.textContent = totalCount > 0 ? Math.round((authorCount / totalCount) * 100) + '%' : '0%';
-      if (textWeightEl) textWeightEl.textContent = totalCount > 0 ? Math.round((textCount / totalCount) * 100) + '%' : '0%';
-    }
-
-    // 加载并渲染评价标准
-    function loadAndRenderCriteria() {
-      editingCriteria = JSON.parse(JSON.stringify(getRatingCriteria()));
-      renderCriteriaList();
-
-      // 新版本不需要展开面板，因为完全展开
-      // console.log('评价标准已加载并渲染');
-    }
-
-    // 全局函数：关闭AI设置模态框
-    window.closeAiSettingsModal = function() {
-      document.getElementById('aiSettingsModal').style.display = 'none';
-      document.getElementById('overlay').style.display = 'none';
-    };
-
-    // Accordion状态记忆
-    window.togglePreferenceAccordion = function(panelId) {
-      const panel = document.getElementById(panelId + '-panel');
-      const icon = document.getElementById(panelId + '-icon');
-
-      if (panel.classList.contains('open')) {
-        panel.classList.remove('open');
-        icon.style.transform = 'rotate(0deg)';
-        // 保存关闭状态
-        localStorage.setItem('preference_accordion_' + panelId, 'closed');
-      } else {
-        panel.classList.add('open');
-        icon.style.transform = 'rotate(180deg)';
-        // 保存打开状态
-        localStorage.setItem('preference_accordion_' + panelId, 'open');
-      }
-    };
-
-    // 恢复Accordion状态
-    window.restoreAccordionState = function() {
-      const panels = ['apiConfig', 'criteriaConfig'];
-      panels.forEach(panelId => {
-        const state = localStorage.getItem('preference_accordion_' + panelId);
-        const panel = document.getElementById(panelId + '-panel');
-        const icon = document.getElementById(panelId + '-icon');
-
-        if (state === 'open' && panel) {
-          panel.classList.add('open');
-          if (icon) icon.style.transform = 'rotate(180deg)';
-        }
-      });
-    };
-
-    // 全局函数：保存AI设置
-    window.saveAiSettings = function() {
-      const apiUrlEl = document.getElementById('aiApiUrl');
-      const apiKeyEl = document.getElementById('aiApiKey');
-      const modelEl = document.getElementById('aiModel');
-      const resultEl = document.getElementById('testApiResult');
-
-      if (!apiUrlEl || !apiKeyEl) {
-        if (resultEl) resultEl.innerHTML = '<span style="color: red;">请填写完整的API信息</span>';
-        return;
-      }
-
-      const apiUrl = apiUrlEl.value.trim();
-      const apiKey = apiKeyEl.value.trim();
-      const model = modelEl ? modelEl.value.trim() : '';
-
-      if (!apiUrl || !apiKey) {
-        if (resultEl) resultEl.innerHTML = '<span style="color: red;">请填写完整的API信息</span>';
-        return;
-      }
-
-      saveAISettingsToStorage({ apiUrl, apiKey, model });
-      if (resultEl) resultEl.innerHTML = '<span style="color: green;">设置已保存</span>';
-      setTimeout(() => {
-        window.closeAiSettingsModal();
-      }, 1000);
-    };
-
-    // 全局函数：测试API连接
-    window.testAiApi = async function() {
-      const apiUrlEl = document.getElementById('aiApiUrl');
-      const apiKeyEl = document.getElementById('aiApiKey');
-      const resultEl = document.getElementById('testApiResult');
-
-      if (!apiUrlEl || !apiKeyEl || !resultEl) return;
-
-      const apiUrl = apiUrlEl.value.trim();
-      const apiKey = apiKeyEl.value.trim();
-
-      if (!apiUrl || !apiKey) {
-        resultEl.className = 'pref-result error';
-        resultEl.innerHTML = '请填写完整的API信息';
-        return;
-      }
-
-      const modelEl = document.getElementById('aiModel');
-      const model = modelEl ? modelEl.value.trim() : 'MiniMax-M2.5';
-
-      resultEl.className = 'pref-result';
-      resultEl.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> 测试中...';
-
-      try {
-        // 检测是否为 MiniMax API
-        const isMiniMax = apiUrl.includes('minimax');
-
-        let requestBody;
-        if (isMiniMax) {
-          requestBody = {
-            model: model,
-            messages: [{ role: 'user', content: 'Hi' }],
-            max_tokens: 5
-          };
-        } else {
-          requestBody = {
-            model: model || 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: 'Hello' }],
-            max_tokens: 5
-          };
-        }
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (response.ok) {
-          resultEl.className = 'pref-result success';
-          resultEl.innerHTML = '<i class="fas fa-check-circle"></i> 连接成功';
-
-          // 更新状态徽章
-          const statusBadge = document.querySelector('.pref-status-badge');
-          const statusText = document.getElementById('apiStatusText');
-          if (statusBadge) statusBadge.classList.add('connected');
-          if (statusText) statusText.textContent = '已连接';
-        } else {
-          const errorText = await response.text();
-          resultEl.className = 'pref-result error';
-          resultEl.innerHTML = `<i class="fas fa-xmark-circle"></i> 连接失败: ${response.status}`;
-        }
-      } catch (e) {
-        resultEl.className = 'pref-result error';
-        resultEl.innerHTML = `<i class="fas fa-xmark-circle"></i> 连接失败: ${e.message}`;
-      }
-    };
-
-    // 全局函数：开始AI精读
-    window.startAiReading = async function() {
-      // 如果没有选择文件，触发文件选择
-      if (!aiReadState.fileContent) {
-        const settings = loadAISettingsFromStorage();
-        if (!settings || !settings.apiUrl || !settings.apiKey) {
-          alert('请先配置AI API设置');
-          window.openAiSettingsModal();
-          return;
-        }
-
-        // 触发文件选择
-        const result = await window.electronAPI.openFileDialog({
-          title: '选择txt/md文件',
-          filters: [
-            { name: '文本文件', extensions: ['txt', 'md'] },
-            { name: '所有文件', extensions: ['*'] }
-          ]
-        });
-
-        if (result.success && result.filePaths.length > 0) {
-          const filePath = result.filePaths[0];
-          const fileName = filePath.split(/[/\\]/).pop();
-          await processSelectedFile(filePath, fileName);
-        } else {
-          return; // 用户取消选择
-        }
-      }
-
-      const settings = loadAISettingsFromStorage();
-      if (!settings || !settings.apiUrl || !settings.apiKey) {
-        alert('请先配置AI API设置');
-        window.openAiSettingsModal();
-        return;
-      }
-
-      // 隐藏导入预览区域，直接显示进度监控
-      const aiReadStep1 = document.getElementById('aiReadStep1');
-      if (aiReadStep1) {
-        aiReadStep1.style.display = 'none';
-      }
-
-      // 隐藏导入区域（旧版兼容）
-      const importContainer = document.querySelector('.ai-import-container');
-      if (importContainer) {
-        importContainer.style.display = 'none';
-      }
-
-      // 显示进度区域
-      document.getElementById('aiReadProgress').style.display = 'block';
-      document.getElementById('startAiReadBtn').disabled = true;
-
-      // 分块
-      aiReadState.chunks = chunkText(aiReadState.fileContent, CHUNK_SIZE, CHUNK_OVERLAP);
-      const totalChunks = aiReadState.chunks.length;
-      aiReadState.chunkResults = [];
-
-      // 初始化投票计数
-      const criteria = getRatingCriteria();
-      const voteCounts = {};
-      for (const [category, items] of Object.entries(criteria)) {
-        for (const item of items) {
-          voteCounts[item.name] = { plus: 0, zero: 0, minus: 0 };
-        }
-      }
-
-      const mapPrompt = generateMapPrompt();
-
-      // 显示投票表格容器
-      document.getElementById('aiRatingProgress').style.display = 'block';
-      showVotingTable(criteria, voteCounts);
-
-      // Map阶段：并发处理
-      let completed = 0;
-
-      // 分批并发处理
-      for (let batchStart = 0; batchStart < totalChunks; batchStart += CONCURRENCY) {
-        // 检查是否中止
-        if (aiReadState.aborted) {
-          break;
-        }
-
-        const batchEnd = Math.min(batchStart + CONCURRENCY, totalChunks);
-        const batchChunks = [];
-
-        for (let i = batchStart; i < batchEnd; i++) {
-          batchChunks.push(
-            callLLM(settings.apiUrl, settings.apiKey, mapPrompt, aiReadState.chunks[i])
-              .then(result => ({ index: i, result, error: null }))
-              .catch(e => ({ index: i, result: null, error: e }))
-          );
-        }
-
-        const results = await Promise.all(batchChunks);
-
-        for (const r of results) {
-          completed++;
-          updateAIProgress(completed, totalChunks, '正在AI阅读...');
-
-          if (r.error) {
-            console.error(`处理第${r.index+1}块失败:`, r.error);
-            continue;
-          }
-
-          const parsed = parseJSONResponse(r.result);
-          if (parsed) {
-            // 提取书名
-            if (!aiReadState.extractedTitle && parsed.title && parsed.title.trim()) {
-              aiReadState.extractedTitle = parsed.title.trim();
-            }
-
-            // 记录评估结果并更新投票
-            const evaluations = parsed.evaluations || [];
-            for (const ev of evaluations) {
-              if (voteCounts[ev.criteria]) {
-                if (ev.score === 1) voteCounts[ev.criteria].plus++;
-                else if (ev.score === -1) voteCounts[ev.criteria].minus++;
-                else voteCounts[ev.criteria].zero++;
-              }
-            }
-
-            aiReadState.chunkResults.push({
-              chunkIndex: r.index,
-              evaluations: evaluations
-            });
-
-            // 实时更新投票表格
-            updateVotingTable(criteria, voteCounts, completed, totalChunks);
-          }
-        }
-      }
-
-      // Reduce阶段：汇总评分
-      updateAIProgress(totalChunks, totalChunks, '正在汇总评分...');
-
-      try {
-        const reducePrompt = generateReducePrompt(aiReadState.chunkResults);
-        const finalResult = await callLLM(settings.apiUrl, settings.apiKey, reducePrompt, '请根据上述评估结果汇总评分');
-        const parsed = parseJSONResponse(finalResult);
-
-        if (parsed && parsed.finalRating) {
-          aiReadState.finalRating = parsed.finalRating;
-        }
-      } catch (e) {
-        console.error('汇总评分失败:', e);
-      }
-
-      // 显示结果
-      displayAIResult();
-    };
-
-    // 显示投票表格 - Apple 明亮紫色主题 Dashboard
-    function showVotingTable(criteria, voteCounts) {
-      const container = document.getElementById('aiRatingProgress');
-      const estimatedTokens = aiReadState.chunks.length * 8000;
-      const authorCount = criteria['作者层面']?.length || 0;
-      const textCount = criteria['文本层面']?.length || 0;
-      // 计算自适应行距
-      const maxCount = Math.max(authorCount, textCount);
-      const authorGap = maxCount > authorCount ? (maxCount - authorCount) * 16 : 0;
-      const textGap = maxCount > textCount ? (maxCount - textCount) * 16 : 0;
-
-      let html = `
-        <div class="dashboard-container apple-dashboard">
-          <!-- 顶部状态栏 -->
-          <div class="dashboard-header apple-dashboard-header">
-            <div class="dashboard-title">
-              <div class="title-icon">
-                <i class="fas fa-chart-line"></i>
-              </div>
-              <div class="title-text">
-                <span class="title-main">自主评分进度监控</span>
-                <span class="title-sub">实时处理中...</span>
-              </div>
-            </div>
-            <div class="dashboard-progress apple-progress-display">
-              <span id="dashboardPercent">0%</span>
-            </div>
-          </div>
-
-          <!-- 指标卡片网格 -->
-          <div class="dashboard-metrics apple-metrics">
-            <div class="metric-card apple-metric-card">
-              <div class="metric-icon apple-metric-icon">
-                <i class="fas fa-layer-group"></i>
-              </div>
-              <div class="metric-content">
-                <div class="metric-value"><span id="dashboardChunk">0</span> / ${aiReadState.chunks.length}</div>
-                <div class="metric-label">当前片段</div>
-              </div>
-            </div>
-            <div class="metric-card apple-metric-card">
-              <div class="metric-icon apple-metric-icon">
-                <i class="fas fa-coins"></i>
-              </div>
-              <div class="metric-content">
-                <div class="metric-value"><span id="dashboardToken">0</span>K / ~${Math.round(estimatedTokens/1000)}K</div>
-                <div class="metric-label">Token消耗</div>
-              </div>
-            </div>
-            <div class="metric-card apple-metric-card">
-              <div class="metric-icon apple-metric-icon">
-                <i class="fas fa-check-circle"></i>
-              </div>
-              <div class="metric-content">
-                <div class="metric-value"><span id="dashboardCompleted">0</span> 项</div>
-                <div class="metric-label">已完成</div>
-              </div>
-            </div>
-            <div class="metric-card apple-metric-card">
-              <div class="metric-icon apple-metric-icon">
-                <i class="fas fa-clock"></i>
-              </div>
-              <div class="metric-content">
-                <div class="metric-value" id="dashboardRemaining">--</div>
-                <div class="metric-label">预计剩余</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 进度条 -->
-          <div class="dashboard-progress-bar apple-progress-bar">
-            <div class="progress-info">
-              <span class="progress-text">处理进度</span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill" id="dashboardProgressFill"></div>
-            </div>
-          </div>
-
-          <!-- 评分列表 - 双列自适应 -->
-          <div class="dashboard-scores apple-scores">
-            <div class="score-column apple-score-column" style="margin-bottom: ${authorGap}px;">
-              <div class="column-header">
-                <div class="column-icon">
-                  <i class="fas fa-pen-nib"></i>
-                </div>
-                <span class="column-title">作者层面</span>
-                <span class="score-count">(${authorCount} 项)</span>
-              </div>
-              <div class="score-list" id="authorScoresList">
-      `;
-
-      const authorItems = criteria['作者层面'] || [];
-      for (const item of authorItems) {
-        const vc = voteCounts[item.name];
-        const total = vc.plus + vc.minus + vc.zero;
-        const progress = Math.min((total / aiReadState.chunks.length) * 100, 100);
-        html += `
-          <div class="score-item apple-score-item" data-criteria="${item.name}">
-            <div class="score-main">
-              <span class="score-name">${item.name}</span>
-              <div class="score-badges">
-                <span class="badge apple-badge plus">+${vc.plus}</span>
-                <span class="badge apple-badge zero">○ ${vc.zero}</span>
-                <span class="badge apple-badge minus">-${vc.minus}</span>
-              </div>
-            </div>
-            <div class="score-bar apple-score-bar">
-              <div class="score-progress" style="width: ${progress}%"></div>
-            </div>
-          </div>
-        `;
-      }
-
-      // 添加空白项以填充列高
-      for (let i = 0; i < maxCount - authorCount; i++) {
-        html += `<div class="score-item-spacer"></div>`;
-      }
-
-      html += `
-              </div>
-            </div>
-            <div class="score-column apple-score-column" style="margin-bottom: ${textGap}px;">
-              <div class="column-header">
-                <div class="column-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <span class="column-title">文本层面</span>
-                <span class="score-count">(${textCount} 项)</span>
-              </div>
-              <div class="score-list" id="textScoresList">
-      `;
-
-      const textItems = criteria['文本层面'] || [];
-      for (const item of textItems) {
-        const vc = voteCounts[item.name];
-        const total = vc.plus + vc.minus + vc.zero;
-        const progress = Math.min((total / aiReadState.chunks.length) * 100, 100);
-        html += `
-          <div class="score-item apple-score-item" data-criteria="${item.name}">
-            <div class="score-main">
-              <span class="score-name">${item.name}</span>
-              <div class="score-badges">
-                <span class="badge apple-badge plus">+${vc.plus}</span>
-                <span class="badge apple-badge zero">○ ${vc.zero}</span>
-                <span class="badge apple-badge minus">-${vc.minus}</span>
-              </div>
-            </div>
-            <div class="score-bar apple-score-bar">
-              <div class="score-progress" style="width: ${progress}%"></div>
-            </div>
-          </div>
-        `;
-      }
-
-      // 添加空白项以填充列高
-      for (let i = 0; i < maxCount - textCount; i++) {
-        html += `<div class="score-item-spacer"></div>`;
-      }
-
-      html += `
-              </div>
-            </div>
-          </div>
-
-          <!-- 操作按钮 -->
-          <div class="dashboard-actions apple-dashboard-actions">
-            <button class="btn-danger apple-abort-btn" id="abortReadingBtn" onclick="abortAIReading()">
-              <i class="fas fa-stop"></i> 中止任务
-            </button>
-          </div>
-        </div>
-      `;
-
-      container.innerHTML = html;
-    }
-
-    // 更新投票表格
-    function updateVotingTable(criteria, voteCounts, currentIndex, totalChunks) {
-      const percent = Math.round((currentIndex / totalChunks) * 100);
-
-      const dashboardPercent = document.getElementById('dashboardPercent');
-      if (dashboardPercent) dashboardPercent.textContent = percent + '%';
-
-      const progressFill = document.getElementById('dashboardProgressFill');
-      if (progressFill) progressFill.style.width = percent + '%';
-
-      const dashboardChunk = document.getElementById('dashboardChunk');
-      if (dashboardChunk) dashboardChunk.textContent = currentIndex;
-
-      const tokensUsed = currentIndex * 8;
-      const dashboardToken = document.getElementById('dashboardToken');
-      if (dashboardToken) dashboardToken.textContent = tokensUsed;
-
-      const completedCount = Object.values(voteCounts).reduce((sum, vc) => sum + vc.plus + vc.minus + vc.zero, 0);
-      const dashboardCompleted = document.getElementById('dashboardCompleted');
-      if (dashboardCompleted) dashboardCompleted.textContent = completedCount;
-
-      const remainingSeconds = (totalChunks - currentIndex) * 3;
-      const dashboardRemaining = document.getElementById('dashboardRemaining');
-      if (dashboardRemaining && remainingSeconds > 0) {
-        const mins = Math.floor(remainingSeconds / 60);
-        const secs = remainingSeconds % 60;
-        dashboardRemaining.textContent = `${mins}m ${secs}s`;
-      }
-
-      // 更新评分列表
-      for (const [category, items] of Object.entries(criteria)) {
-        for (const item of items) {
-          const vc = voteCounts[item.name];
-          const listId = category === '作者层面' ? 'authorScoresList' : 'textScoresList';
-          const list = document.getElementById(listId);
-          if (list) {
-            const itemEl = list.querySelector(`[data-criteria="${item.name}"]`);
-            if (itemEl) {
-              itemEl.querySelector('.badge.plus').textContent = '+' + vc.plus;
-              itemEl.querySelector('.badge.zero').textContent = vc.zero;
-              itemEl.querySelector('.badge.minus').textContent = '-' + vc.minus;
-            }
-          }
-        }
-      }
-
-      // 更新日志
-      const now = new Date();
-      const timeStr = now.toTimeString().substring(0, 5);
-      const logEl = document.getElementById('dashboardLog');
-      if (logEl) {
-        logEl.innerHTML = `
-          <span class="log-time">[${timeStr}]</span>
-          <span class="log-content">正在处理 Chunk #${currentIndex}...</span>
-        `;
-      }
-    }
-
-    // 中止AI阅读
-    window.abortAIReading = function() {
-      if (confirm('确定要中止当前任务吗？')) {
-        aiReadState.aborted = true;
-        const logEl = document.getElementById('dashboardLog');
-        if (logEl) {
-          logEl.innerHTML = `
-            <span class="log-time">[${new Date().toTimeString().substring(0, 5)}]</span>
-            <span class="log-content" style="color: #ef4444;">任务已中止</span>
-          `;
-        }
-        const abortBtn = document.getElementById('abortReadingBtn');
-        if (abortBtn) abortBtn.disabled = true;
-      }
-    };
-
-    // 显示AI评分结果
-    function displayAIResult() {
-      document.getElementById('aiReadStep1').style.display = 'none';
-      document.getElementById('aiReadStep2').style.display = 'block';
-
-      // 隐藏进度监控区域
-      document.getElementById('aiReadProgress').style.display = 'none';
-      document.getElementById('aiRatingProgress').style.display = 'none';
-
-      // 隐藏"开始分析"按钮，显示"导入知识库"按钮
-      const startBtn = document.getElementById('startAiReadBtn');
-      if (startBtn) {
-        startBtn.style.display = 'none';
-      }
-      const importBtn = document.getElementById('importAiBookBtn');
-      if (importBtn) {
-        importBtn.style.display = 'inline-flex';
-      }
-
-      // 更新底部提示
-      const footerHint = document.querySelector('.air-footer-hint');
-      if (footerHint) {
-        footerHint.innerHTML = '<i class="fas fa-check-circle"></i> <span>AI分析完成！可将评分结果导入到知识库</span>';
-      }
-
-      // 显示书名
-      document.getElementById('extractedTitle').textContent = aiReadState.extractedTitle || '未能提取书名';
-
-      // 显示评分结果
-      const ratingResult = document.getElementById('aiRatingFinal');
-      let html = '';
-
-      if (aiReadState.finalRating) {
-        for (const [category, items] of Object.entries(aiReadState.finalRating)) {
-          html += `<div class="rating-category">
-            <h5>${category}</h5>
-            <div class="rating-items" style="display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; width: 100% !important;">`;
-
-          for (const item of items) {
-            const scoreValue = item.score;
-            html += `<div class="rating-item">
-              <span class="rating-name">${item.criteria}</span>
-              <div class="rating-scores">
-                <span class="rating-score ${scoreValue === 1 ? 'score-plus' : 'score-inactive'}">+1</span>
-                <span class="rating-score ${scoreValue === 0 ? 'score-zero' : 'score-inactive'}">0</span>
-                <span class="rating-score ${scoreValue === -1 ? 'score-minus' : 'score-inactive'}">-1</span>
-              </div>
-            </div>`;
-          }
-
-          html += '</div></div>';
-        }
-      } else {
-        html = '<p>评分汇总失败</p>';
-      }
-
-      ratingResult.innerHTML = html;
-    }
-
-    // 全局函数：导入AI阅读的书籍
-    window.importAiBook = async function() {
-      if (!aiReadState.finalRating) {
-        alert('没有可导入的评分数据');
-        return;
-      }
-
-      // 构建评分数据
-      const rating = {
-        authorScore: 0,
-        textScore: 0,
-        readerScore: 0,
-        totalScore: 0,
-        enableRating: true,
-        profileName: "AI评分"
-      };
-
-      // 填充作者层面评分
-      rating.authorScoreDetails = {};
-      if (aiReadState.finalRating["作者层面"]) {
-        for (const item of aiReadState.finalRating["作者层面"]) {
-          rating.authorScoreDetails[item.criteria] = item.score;
-          rating.authorScore += item.score;
-        }
-      }
-
-      // 填充文本层面评分
-      rating.textScoreDetails = {};
-      if (aiReadState.finalRating["文本层面"]) {
-        for (const item of aiReadState.finalRating["文本层面"]) {
-          rating.textScoreDetails[item.criteria] = item.score;
-          rating.textScore += item.score;
-        }
-      }
-
-      // 读者层面全部为0
-      rating.readerScoreDetails = {};
-      for (const item of DEFAULT_RATING_PROFILE["标准配置"]["读者层面"]) {
-        rating.readerScoreDetails[item.name] = 0;
-      }
-
-      // 计算总分（使用权重，加上50分基础分）
-      const profile = DEFAULT_RATING_PROFILE["标准配置"];
-
-      for (const item of profile["作者层面"]) {
-        const score = rating.authorScoreDetails[item.name] || 0;
-        rating.totalScore += score * item.w;
-      }
-      for (const item of profile["文本层面"]) {
-        const score = rating.textScoreDetails[item.name] || 0;
-        rating.totalScore += score * item.w;
-      }
-      for (const item of profile["读者层面"]) {
-        const score = rating.readerScoreDetails[item.name] || 0;
-        rating.totalScore += score * item.w;
-      }
-
-      // 加上50分基础分
-      rating.totalScore += 50;
-
-      // 创建统一的ratings对象（供评分模态框使用）
-      const ratings = {};
-      // 合并所有评分到ratings对象
-      if (rating.authorScoreDetails) {
-        Object.assign(ratings, rating.authorScoreDetails);
-      }
-      if (rating.textScoreDetails) {
-        Object.assign(ratings, rating.textScoreDetails);
-      }
-      if (rating.readerScoreDetails) {
-        Object.assign(ratings, rating.readerScoreDetails);
-      }
-      rating.ratings = ratings;
-
-      // 创建书籍对象
-      const currentYear = new Date().getFullYear();
-      const newBook = {
-        id: 'book_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        title: aiReadState.extractedTitle || 'AI精读书籍',
-        author: 'AI精读',
-        status: '未开始',
-        startDate: null,
-        endDate: null,
-        tags: ['AI精读', '长篇', currentYear.toString()],
-        rating: rating,
-        enableRating: true,
-        notes: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      // 调用BookApp的添加书籍方法
-      try {
-        if (!window.bookApp) {
-          throw new Error('window.bookApp 未初始化');
-        }
-
-        // BookApp 通过 storageService.addBook 添加书籍
-        await window.bookApp.storageService.addBook(newBook);
-        // 刷新显示
-        await window.bookApp.storageService.loadBooks();
-        window.bookApp.renderBooks();
-
-        alert('书籍已成功导入到知识库！');
-        window.closeAiReadModal();
-      } catch (e) {
-        console.error('导入书籍失败:', e);
-        alert('导入失败: ' + e.message);
-      }
-    };
-
-    // 绑定AI精读相关事件
-    setTimeout(() => {
-      // AI精读按钮（主视图）
-      const openAiReadBtn = document.getElementById('openAiReadBtn');
-      if (openAiReadBtn) {
-        openAiReadBtn.addEventListener('click', window.openAiReadModal);
-      }
-
-      // AI精读按钮2（主视图）
-      const startAiReadBtn2 = document.getElementById('startAiReadBtn2');
-      if (startAiReadBtn2) {
-        startAiReadBtn2.addEventListener('click', window.openAiReadModal);
-      }
-
-      // AI设置按钮
-      const aiSettingsBtn = document.getElementById('aiSettingsBtn');
-      if (aiSettingsBtn) {
-        aiSettingsBtn.addEventListener('click', window.openAiSettingsModal);
-      }
-
-      // AI设置按钮2（主视图）
-      const aiSettingsBtn2 = document.getElementById('aiSettingsBtn2');
-      if (aiSettingsBtn2) {
-        aiSettingsBtn2.addEventListener('click', window.openAiSettingsModal);
-      }
-
-      // 选择文件按钮
-      const selectFileBtn = document.getElementById('selectFileBtn');
-      if (selectFileBtn) {
-        selectFileBtn.addEventListener('click', async () => {
-          await handleFileSelection();
-        });
-      }
-
-      // 拖拽区域
-      const dropZone = document.getElementById('dropZone');
-      if (dropZone) {
-        dropZone.addEventListener('click', async () => {
-          const fileInput = document.getElementById('fileInput');
-          if (fileInput) {
-            fileInput.click();
-          }
-        });
-
-        dropZone.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-          dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', async (e) => {
-          e.preventDefault();
-          dropZone.classList.remove('dragover');
-
-          const files = e.dataTransfer.files;
-          if (files.length > 0) {
-            const file = files[0];
-            if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-              await processSelectedFile(file.path, file.name);
-            } else {
-              alert('请选择 txt 或 md 文件');
-            }
-          }
-        });
-      }
-
-      // fileInput事件监听
-      const fileInput = document.getElementById('fileInput');
-      if (fileInput) {
-        fileInput.addEventListener('change', async (e) => {
-          const file = e.target.files[0];
-          if (file) {
-            if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-              // 使用FileReader读取文件内容
-              const reader = new FileReader();
-              reader.onload = async (event) => {
-                const content = event.target.result;
-                // 更新UI
-                document.getElementById('dropZone').style.display = 'none';
-                document.getElementById('fileInfo').style.display = 'flex';
-                document.getElementById('selectFileBtn').style.display = 'block';
-
-                document.getElementById('selectedFileName').textContent = file.name;
-
-                // 检测编码
-                const encoding = detectEncoding(content);
-                document.getElementById('fileEncoding').textContent = encoding;
-
-                // 文件大小
-                const size = content.length;
-                document.getElementById('fileSize').textContent = formatFileSize(size);
-                document.getElementById('fileChars').textContent = size.toLocaleString() + ' 字';
-
-                // 预览内容
-                const previewContent = content.substring(0, 500);
-                document.getElementById('previewContent').innerHTML = '<p style="white-space: pre-wrap; font-size: 14px; line-height: 1.7; color: var(--text-color);">' + escapeHtml(previewContent) + '</p>';
-
-                // 更新预览计数
-                const previewCount = document.getElementById('previewCount');
-                if (previewCount) {
-                    previewCount.textContent = '已加载 ' + size.toLocaleString() + ' 字';
-                }
-
-                // 保存内容到状态
-                aiReadState.filePath = file.name;
-                aiReadState.fileContent = content;
-
-                // 启用开始按钮
-                document.getElementById('startAiReadBtn').disabled = false;
-              };
-              reader.readAsText(file);
-            } else {
-              alert('请选择 txt 或 md 文件');
-            }
-          }
-        });
-      }
-
-      // 处理文件选择
-      async function handleFileSelection() {
-        const settings = loadAISettingsFromStorage();
-        if (!settings || !settings.apiUrl || !settings.apiKey) {
-          alert('请先配置AI API设置');
-          window.openAiSettingsModal();
-          return;
-        }
-
-        const result = await window.electronAPI.openFileDialog({
-          title: '选择txt/md文件',
-          filters: [
-            { name: '文本文件', extensions: ['txt', 'md'] },
-            { name: '所有文件', extensions: ['*'] }
-          ]
-        });
-
-        if (result.success && result.filePaths.length > 0) {
-          const filePath = result.filePaths[0];
-          const fileName = filePath.split(/[/\\]/).pop();
-          await processSelectedFile(filePath, fileName);
-        }
-      }
-
-      // 处理选中的文件
-      async function processSelectedFile(filePath, fileName) {
-        aiReadState.filePath = filePath;
-
-        // 读取文件内容
-        const fileResult = await window.electronAPI.readFile(filePath);
-        if (!fileResult.success) {
-          alert('读取文件失败: ' + fileResult.error);
-          return;
-        }
-
-        aiReadState.fileContent = fileResult.content;
-
-        // 更新UI - 隐藏拖拽区域，显示文件信息
-        document.getElementById('dropZone').style.display = 'none';
-        document.getElementById('fileInfo').style.display = 'flex';
-        document.getElementById('selectFileBtn').style.display = 'block';
-
-        document.getElementById('selectedFileName').textContent = fileName;
-
-        // 检测编码（简单判断）
-        const encoding = detectEncoding(fileResult.content);
-        document.getElementById('fileEncoding').textContent = encoding;
-
-        // 文件大小
-        const size = fileResult.content.length;
-        document.getElementById('fileSize').textContent = formatFileSize(size);
-
-        // 字符数
-        document.getElementById('fileChars').textContent = size.toLocaleString() + ' 字';
-
-        // 预览内容
-        // 预览内容
-        const previewContent = fileResult.content.substring(0, 500);
-        document.getElementById('previewContent').innerHTML = '<p style="white-space: pre-wrap; font-size: 14px; line-height: 1.7; color: var(--text-color);">' + escapeHtml(previewContent) + '</p>';
-
-        // 更新预览计数
-        const previewCount = document.getElementById('previewCount');
-        if (previewCount) {
-            previewCount.textContent = '已加载 ' + size.toLocaleString() + ' 字';
-        }
-
-        // 启用开始按钮
-        document.getElementById('startAiReadBtn').disabled = false;
-      }
-
-      // 简单编码检测
-      function detectEncoding(content) {
-        // 检查是否包含中文字符
-        const chineseRegex = /[\u4e00-\u9fa5]/;
-        const hasChinese = chineseRegex.test(content);
-
-        // 检查常见的乱码模式
-        const hasGarbled = /[\uFFFD]/.test(content);
-
-        if (hasGarbled) {
-          return 'GBK';
-        }
-
-        // 简单判断：如果有中文且UTF-8解码后正常，应该是UTF-8
-        return 'UTF-8';
-      }
-
-      // 格式化文件大小
-      function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-      }
-
-      // HTML转义
-      function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-
-      // 测试API按钮
-      const testAiApiBtn = document.getElementById('testAiApiBtn');
-      if (testAiApiBtn) {
-        testAiApiBtn.addEventListener('click', window.testAiApi);
-      }
-
-      // 评价标准配置按钮
-      const openCriteriaBtn = document.getElementById('openCriteriaBtn');
-      if (openCriteriaBtn) {
-        openCriteriaBtn.addEventListener('click', window.openCriteriaModal);
-      }
-
-      // 添加标准按钮
-      const addCriteriaBtn = document.getElementById('addCriteriaBtn');
-      if (addCriteriaBtn) {
-        addCriteriaBtn.addEventListener('click', addCriteriaItem);
-      }
-
-      // AI优化按钮
-      const aiOptimizeBtn = document.getElementById('aiOptimizeBtn');
-      if (aiOptimizeBtn) {
-        aiOptimizeBtn.addEventListener('click', window.aiOptimizeCriteria);
-      }
-
-      // 恢复默认按钮
-      const resetCriteriaBtn = document.getElementById('resetCriteriaBtn');
-      if (resetCriteriaBtn) {
-        resetCriteriaBtn.addEventListener('click', resetCriteriaToDefault);
-      }
-
-      // 保存按钮
-      const saveCriteriaBtn = document.querySelector('#criteriaModal .btn-primary');
-      if (saveCriteriaBtn) {
-        saveCriteriaBtn.addEventListener('click', window.saveCriteria);
-        console.log('[DEBUG] 保存按钮事件绑定成功');
-      }
-    }, 500);
-
-    // =========================================
-    // 评价标准配置函数
-    // =========================================
-
-    // 当前编辑的标准（临时）
-    let editingCriteria = null;
-
-    window.openCriteriaModal = function() {
-      // 加载当前标准
-      const loaded = getRatingCriteria();
-      console.log('[DEBUG] openCriteriaModal: 加载到的标准 =', JSON.stringify(loaded).substring(0, 200));
-      editingCriteria = JSON.parse(JSON.stringify(loaded)); // 深拷贝
-      console.log('[DEBUG] openCriteriaModal: editingCriteria设置完成');
-      renderCriteriaList();
-
-      document.getElementById('criteriaModal').style.display = 'flex';
-      document.getElementById('overlay').style.display = 'block';
-    };
-
-    window.closeCriteriaModal = function() {
-      document.getElementById('criteriaModal').style.display = 'none';
-      document.getElementById('aiOptimizeModal').style.display = 'none';
-      editingCriteria = null;
-    };
-
-    function renderCriteriaList() {
-      console.log('[DEBUG] renderCriteriaList: editingCriteria =', editingCriteria);
-      // 渲染作者层面标准
-      const authorContainer = document.getElementById('authorCriteriaList');
-      if (authorContainer) {
-        const authorItems = editingCriteria['作者层面'] || [];
-        authorContainer.innerHTML = authorItems.map((item, index) => `
-          <div class="criteria-item" data-category="作者层面" data-index="${index}">
-            <div class="criteria-item-name">${item.name}</div>
-            <div class="criteria-item-conditions">
-              <div class="condition-group">
-                <span class="condition-label">+1</span>
-                <input type="text" class="condition-input" value="${item.plus || ''}" data-field="plus" placeholder="符合此条件得+1分">
-              </div>
-              <div class="condition-group">
-                <span class="condition-label">0</span>
-                <input type="text" class="condition-input" value="${item.neutral || ''}" data-field="neutral" placeholder="无法判断得0分">
-              </div>
-              <div class="condition-group">
-                <span class="condition-label">-1</span>
-                <input type="text" class="condition-input" value="${item.minus || ''}" data-field="minus" placeholder="符合此条件得-1分">
-              </div>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      // 渲染文本层面标准
-      const textContainer = document.getElementById('textCriteriaList');
-      if (textContainer) {
-        const textItems = editingCriteria['文本层面'] || [];
-        textContainer.innerHTML = textItems.map((item, index) => `
-          <div class="criteria-item" data-category="文本层面" data-index="${index}">
-            <div class="criteria-item-name">${item.name}</div>
-            <div class="criteria-item-conditions">
-              <div class="condition-group">
-                <span class="condition-label">+1</span>
-                <input type="text" class="condition-input" value="${item.plus || ''}" data-field="plus" placeholder="符合此条件得+1分">
-              </div>
-              <div class="condition-group">
-                <span class="condition-label">0</span>
-                <input type="text" class="condition-input" value="${item.neutral || ''}" data-field="neutral" placeholder="无法判断得0分">
-              </div>
-              <div class="condition-group">
-                <span class="condition-label">-1</span>
-                <input type="text" class="condition-input" value="${item.minus || ''}" data-field="minus" placeholder="符合此条件得-1分">
-              </div>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      // 绑定输入框事件
-      document.querySelectorAll('.condition-input').forEach(input => {
-        input.addEventListener('input', function() {
-          const item = this.closest('.criteria-item');
-          const category = item.dataset.category;
-          const index = parseInt(item.dataset.index);
-          const field = this.dataset.field;
-          editingCriteria[category][index][field] = this.value;
-        });
-      });
-
-      // 更新统计信息
-      updatePreferencesStats();
-    };
-
-    window.changeCriteriaCategory = function(select, oldCategory, index) {
-      const newCategory = select.value;
-
-      if (oldCategory === newCategory) return;
-
-      // 移动到新分类
-      const criteria = editingCriteria[oldCategory].splice(index, 1)[0];
-      criteria.category = newCategory;
-      editingCriteria[newCategory].push(criteria);
-
-      // 重新渲染
-      renderCriteriaList();
-    };
-
-    window.removeCriteriaItem = function(category, index) {
-      if (editingCriteria[category].length <= 1) {
-        alert('至少保留一个评价标准');
-        return;
-      }
-      editingCriteria[category].splice(index, 1);
-      renderCriteriaList();
-    };
-
-    function addCriteriaItem() {
-      // 默认添加到作者层面
-      editingCriteria['作者层面'].push({
-        name: '新标准',
-        plus: '符合此条件得+1分',
-        minus: '符合此条件得-1分',
-        neutral: '无法判断或无关时得0分'
-      });
-      renderCriteriaList();
-    }
-
-    window.saveCriteria = async function() {
-      console.log('[DEBUG] saveCriteria: 开始保存, editingCriteria =', editingCriteria);
-
-      // 验证
-      if (editingCriteria['作者层面'].length === 0 && editingCriteria['文本层面'].length === 0) {
-        alert('请至少添加一个评价标准');
-        return;
-      }
-
-      // 验证每个标准都有完整的判别条件
-      for (const category of ['作者层面', '文本层面']) {
-        for (const item of editingCriteria[category]) {
-          if (!item.plus || !item.minus || !item.neutral) {
-            alert(`标准"${item.name}"的判别条件不完整，请填写所有条件`);
-            return;
-          }
-        }
-      }
-
-      console.log('[DEBUG] saveCriteria: 验证通过，准备保存');
-      await saveRatingCriteria(JSON.parse(JSON.stringify(editingCriteria)));
-      console.log('[DEBUG] saveCriteria: 保存完成');
-      window.closeCriteriaModal();
-    };
-
-    // 展开/收起评分标准面板
-    window.toggleCriteriaPanel = function(header) {
-      const panel = header.closest('.criteria-panel');
-      const itemsContainer = panel.querySelector('.criteria-items');
-      const arrow = panel.querySelector('.criteria-panel-arrow');
-
-      itemsContainer.classList.toggle('collapsed');
-      arrow.classList.toggle('rotated');
-    };
-
-    async function resetCriteriaToDefault() {
-      if (confirm('确定要恢复默认评价标准吗？')) {
-        await saveRatingCriteria(DEFAULT_RATING_CRITERIA);
-        editingCriteria = JSON.parse(JSON.stringify(DEFAULT_RATING_CRITERIA));
-        renderCriteriaList();
-        alert('已恢复默认评价标准');
-      }
-    }
-
-    // AI优化评价标准
-    let aiOptimizedResult = null;
-
-    window.aiOptimizeCriteria = async function() {
-      const settings = loadAISettingsFromStorage();
-      if (!settings || !settings.apiUrl || !settings.apiKey) {
-        alert('请先配置AI API设置');
-        window.closeCriteriaModal();
-        window.openAiSettingsModal();
-        return;
-      }
-
-      document.getElementById('aiOptimizeModal').style.display = 'flex';
-      document.getElementById('aiOptimizeLoading').style.display = 'block';
-      document.getElementById('aiOptimizeResult').style.display = 'none';
-      document.getElementById('applyOptimizeBtn').style.display = 'none';
-
-      const currentCriteria = getRatingCriteria();
-
-      const prompt = `你是一个文学评分专家。请分析以下评价标准，提出改进建议：
-
-当前标准：
-${JSON.stringify(currentCriteria, null, 2)}
-
-请分析：
-1. 哪些标准描述不够清晰？
-2. 哪些标准可能重复或可以合并？
-3. 哪些标准对判断书籍质量最有价值？
-4. 建议添加哪些标准？
-
-请以JSON格式输出优化建议：
-{
-  "suggestion": "改进建议的总结",
-  "optimized": [
-    {"name": "标准名", "category": "作者层面/文本层面", "plus": "加分条件", "minus": "减分条件"}
-  ]
-}`;
-
-      try {
-        const result = await callLLM(settings.apiUrl, settings.apiKey, prompt, '请优化评价标准');
-        const parsed = parseJSONResponse(result);
-
-        if (parsed) {
-          aiOptimizedResult = parsed.optimized || [];
-          document.getElementById('aiSuggestionText').textContent = parsed.suggestion || 'AI已生成优化建议';
-
-          // 显示优化后的标准预览
-          const previewHtml = aiOptimizedResult.map(c => `
-            <div class="optimized-item">
-              <span class="opt-category">${c.category}</span>
-              <span class="opt-name">${c.name}</span>
-            </div>
-          `).join('');
-          document.getElementById('aiOptimizedCriteria').innerHTML = previewHtml;
-
-          document.getElementById('aiOptimizeLoading').style.display = 'none';
-          document.getElementById('aiOptimizeResult').style.display = 'block';
-          document.getElementById('applyOptimizeBtn').style.display = 'inline-block';
-        }
-      } catch (e) {
-        alert('AI优化失败: ' + e.message);
-        window.closeAiOptimizeModal();
-      }
-    };
-
-    window.closeAiOptimizeModal = function() {
-      document.getElementById('aiOptimizeModal').style.display = 'none';
-    };
-
-    window.applyAiOptimize = function() {
-      if (!aiOptimizedResult || aiOptimizedResult.length === 0) return;
-
-      // 转换格式
-      const newCriteria = { "作者层面": [], "文本层面": [] };
-      for (const c of aiOptimizedResult) {
-        const category = c.category === '作者层面' ? '作者层面' : '文本层面';
-        newCriteria[category].push({
-          name: c.name,
-          plus: c.plus,
-          minus: c.minus
-        });
-      }
-
-      editingCriteria = newCriteria;
-      renderCriteriaList();
-      window.closeAiOptimizeModal();
-      alert('已应用AI优化建议，请点击"保存"按钮保存');
-    };
-
-    window.removeJournalImage = (index) => {
-      window.bookApp.removeJournalImage(index);
-    };
+    window.closeInspirationModal = () => { window.bookApp.closeInspirationModal(); };
+    window.openInspirationView = (inspirationId) => { window.bookApp.openInspirationView(inspirationId); };
+    window.closeInspirationViewModal = () => { window.bookApp.closeInspirationViewModal(); };
+    window.editInspiration = (inspirationId) => { window.bookApp.openInspirationModal(inspirationId); };
+    window.deleteInspiration = (inspirationId) => { window.bookApp.deleteInspiration(inspirationId); };
+    window.confirmDeleteInspiration = () => { window.bookApp.confirmDeleteInspiration(); };
+    window.cancelDeleteInspiration = () => { window.bookApp.cancelDeleteInspiration(); };
+    window.toggleInspirationTag = (tag) => { window.bookApp.toggleInspirationTag(tag); };
+    window.removeInspirationTag = (tag) => { window.bookApp.removeInspirationTag(tag); };
+    window.toggleFilterPanel = () => { window.bookApp.toggleInspirationFilterPanel(); };
+    window.resetInspirationFilter = () => { window.bookApp.resetInspirationFilter(); };
+    window.applyInspirationFilter = () => { window.bookApp.applyInspirationFilter(); };
+    window.jumpToBook = (bookId) => { window.bookApp.jumpToBook(bookId); };
+    window.removeJournalImage = (index) => { window.bookApp.removeJournalImage(index); };
 
     window.viewJournalImage = (imgPath) => {
-      // 如果是 dataUrl 格式，在新窗口中打开显示
       if (imgPath && imgPath.startsWith('data:image')) {
         const newWindow = window.open('', '_blank');
         if (newWindow) {
@@ -8396,10 +7087,39 @@ ${JSON.stringify(currentCriteria, null, 2)}
         }
         return;
       }
-      // 用系统默认应用打开图片（仅适用于文件路径）
       if (window.electronAPI && window.electronAPI.openExternal) {
         window.electronAPI.openExternal(imgPath);
       }
     };
-  }, 100);
+});
+
+// =========================================
+// 🛡️ 全局 UI 兜底与异常拦截系统 (置于文件最底部)
+// =========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('overlay');
+
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            // 只有当 overlay 可见时才执行关闭逻辑
+            if (overlay.classList.contains('active')) {
+                overlay.classList.remove('active');
+                const popupElements = document.querySelectorAll('.modal, .context-menu, .filter-popover');
+                popupElements.forEach(el => {
+                    if (el) el.style.display = 'none';
+                });
+                console.warn('🛡️ 触发全局兜底：已强制清场所有弹窗和遮罩层');
+            }
+        }, { capture: true });
+    }
+
+    window.addEventListener('error', (e) => {
+        console.error('🚨 捕捉到 JS 运行错误:', e.message, '位置:', e.filename, e.lineno);
+        if (overlay && overlay.classList.contains('active')) overlay.classList.remove('active');
+    });
+
+    window.addEventListener('unhandledRejection', (e) => {
+        console.error('🚨 捕捉到 Promise 异步数据错误:', e.reason);
+        if (overlay && overlay.classList.contains('active')) overlay.classList.remove('active');
+    });
 });

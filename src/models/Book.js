@@ -119,7 +119,8 @@ class Book {
     const start = new Date(this.startDate);
     const end = this.endDate ? new Date(this.endDate) : new Date();
     const diffTime = Math.abs(end - start);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // 同一天计为1天，之后每多一天加1天
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
 
   // 获取格式化日期

@@ -19,11 +19,8 @@
                     <button id="viewKnowledge" class="view-switcher-btn active" onclick="switchView('knowledge')">
                         <i class="fas fa-book"></i> 知识库
                     </button>
-                    <button id="viewJournal" class="view-switcher-btn" onclick="switchView('journal')">
-                        <i class="fas fa-pen"></i> 每日记录
-                    </button>
-                    <button id="viewAiRead" class="view-switcher-btn" onclick="switchView('airead')">
-                        <i class="fas fa-book-open"></i> 自主评分
+                    <button id="viewInspiration" class="view-switcher-btn" onclick="switchView('inspiration')">
+                        <i class="fas fa-lightbulb"></i> 灵感记录
                     </button>
                 </div>
                 <button id="themeToggleBtn" class="btn-secondary theme-toggle-global" title="切换主题">
@@ -159,29 +156,57 @@
             </div>
         </div>
 
-            <!-- 每日记录工具栏（默认隐藏） -->
-            <div class="toolbar journal-toolbar" style="display: none;">
+            <!-- 灵感记录工具栏（默认隐藏） -->
+            <div class="toolbar inspiration-toolbar" style="display: none;">
                 <div class="toolbar-left">
-                    <div class="search-box">
+                    <div class="search-box inspiration-search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="journalSearch" placeholder="搜索日记...">
+                        <input type="text" id="inspirationSearch" placeholder="搜索灵感...">
                     </div>
-                    <!-- 日期筛选 -->
-                    <div class="date-filter">
-                        <input type="date" id="journalStartDate" class="date-input" title="开始日期">
-                        <span>至</span>
-                        <input type="date" id="journalEndDate" class="date-input" title="结束日期">
-                        <button id="journalDateFilterBtn" class="btn-small" title="筛选">
-                            <i class="fas fa-check"></i>
+                    <div class="filter-popover-wrapper">
+                        <button id="filterBtn" class="btn-ghost" onclick="toggleFilterPanel()">
+                            <i class="fas fa-sliders-h"></i> 筛选
                         </button>
-                        <button id="journalClearDateFilterBtn" class="btn-small btn-outline" title="清除筛选">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <!-- 筛选气泡卡片 -->
+                        <div id="inspirationFilterPanel" class="filter-popover">
+                            <div class="filter-section">
+                                <label class="filter-label">关联作品</label>
+                                <div class="book-select-wrapper">
+                                    <select id="filterBookId">
+                                        <option value="">全部作品</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down select-arrow"></i>
+                                </div>
+                            </div>
+                            <div class="filter-section">
+                                <label class="filter-label">包含标签</label>
+                                <div id="filterTagsContainer" class="filter-tags-wrap">
+                                    <!-- 标签选项通过 JavaScript 动态填充，与新增灵感同步 -->
+                                </div>
+                            </div>
+                            <div class="filter-section">
+                                <label class="filter-label">记录时间</label>
+                                <div class="time-pills">
+                                    <button type="button" class="time-pill active" data-time="all">全部</button>
+                                    <button type="button" class="time-pill" data-time="week">最近一周</button>
+                                    <button type="button" class="time-pill" data-time="month">最近一个月</button>
+                                </div>
+                                <div class="filter-date-range" style="display: none;">
+                                    <input type="date" id="filterDateFrom" class="filter-date-input">
+                                    <span class="date-sep">至</span>
+                                    <input type="date" id="filterDateTo" class="filter-date-input">
+                                </div>
+                            </div>
+                            <div class="filter-footer">
+                                <button type="button" class="btn-reset" onclick="resetInspirationFilter()">重置</button>
+                                <button type="button" class="btn-apply" onclick="applyInspirationFilter()">应用</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="data-controls">
-                    <button id="journalStatsBtn" class="btn-secondary" title="日记统计">
-                        <i class="fas fa-chart-bar"></i> 统计
+                    <button id="addInspirationBtn" class="btn-primary" onclick="openInspirationModal()">
+                        <i class="fas fa-plus"></i> 记录灵感
                     </button>
                 </div>
             </div>
@@ -210,25 +235,6 @@
                 </button>
             </aside>
 
-            <!-- 每日记录侧边栏 -->
-            <aside id="journalSidebar" class="sidebar journal-sidebar" style="display: none;">
-                <div class="sidebar-section">
-                    <h4><i class="fas fa-calendar-alt"></i> 年月归档</h4>
-                    <ul class="sidebar-menu" id="journalArchiveList">
-                        <li class="sidebar-item active"><span>全部</span></li>
-                    </ul>
-                </div>
-                <div class="sidebar-section">
-                    <h4><i class="fas fa-heart"></i> 心情筛选</h4>
-                    <div class="mood-filter" id="journalMoodFilter">
-                        <span class="mood-tag" data-mood="完美">🌟 完美</span>
-                        <span class="mood-tag" data-mood="充实">😊 充实</span>
-                        <span class="mood-tag" data-mood="平淡">😐 平淡</span>
-                        <span class="mood-tag" data-mood="疲惫">😮‍💨 疲惫</span>
-                        <span class="mood-tag" data-mood="糟糕">🌧️ 糟糕</span>
-                    </div>
-                </div>
-            </aside>
             <!-- 主要内容区域 -->
             <main class="main-content">
             <!-- 添加/编辑书籍表单（默认隐藏） -->
@@ -285,6 +291,12 @@
                                 <label class="checkbox-label" style="margin-bottom: 0;">
                                     <input type="checkbox" id="enableRating">
                                     <span>启用评分功能</span>
+                                </label>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: flex-end;">
+                                <label class="checkbox-label" style="margin-bottom: 0;">
+                                    <input type="checkbox" id="enableInspiration">
+                                    <span>启用灵感功能</span>
                                 </label>
                             </div>
                         </div>
@@ -370,97 +382,30 @@
                 </div>
             </section>
 
-            <!-- 每日记录区域 -->
-            <section id="journalContainer" class="journal-section" style="display: none;">
+            <!-- 灵感记录区域 -->
+            <section id="inspirationContainer" class="inspiration-section" style="display: none;">
                 <div class="section-header">
-                    <h2><i class="fas fa-pen"></i> 每日记录</h2>
-                    <button id="addJournalBtn2" class="btn-primary" onclick="openJournalModal()">
-                        <i class="fas fa-plus"></i> 写日记
+                    <h2><i class="fas fa-lightbulb"></i> 灵感记录</h2>
+                    <span id="inspirationCount" class="section-count"></span>
+                </div>
+
+                <div id="inspirationFilterIndicator" class="filter-indicator" style="display: none;">
+                    <span id="inspirationFilterText"></span>
+                    <button id="clearInspirationFilterBtn" class="btn-secondary btn-small" onclick="clearInspirationFilter()">
+                        <i class="fas fa-times"></i> 清除筛选
                     </button>
                 </div>
-                <div id="journalList" class="journal-grid">
-                    <div class="empty-state" id="journalEmptyState">
-                        <i class="fas fa-book-open"></i>
-                        <h3>暂无日记记录</h3>
-                        <p>点击"写日记"按钮开始记录你的每日点滴</p>
+                <div id="inspirationList" class="inspiration-grid">
+                    <div class="empty-state" id="inspirationEmptyState">
+                        <i class="fas fa-lightbulb"></i>
+                        <h3>暂无灵感记录</h3>
+                        <p>点击右上角"记录灵感"开始捕捉你的思想火花</p>
                     </div>
                 </div>
             </section>
 
-            <!-- AI精读区域 -->
-            <section id="aiReadContainer" class="ai-read-section" style="display: none;">
-                <div class="section-header">
-                    <h2 class="gradient-text">自主评分</h2>
-                </div>
-                <div class="ai-read-intro">
-                    <div class="intro-card glass-card hover-scale">
-                        <!-- 发光书本图标 -->
-                        <div class="book-icon-wrapper breathe">
-                            <div class="book-glow"></div>
-                            <i class="fas fa-book-open book-icon"></i>
-                        </div>
-
-                        <div class="intro-content">
-                            <h3 class="gradient-text">自主评分</h3>
-                            <p class="intro-subtitle">深度解析作品多维洞察 · AI智能评分</p>
-                            <p class="intro-description">导入txt/md文件，AI将分块深度解析，从作者层面和文本维度进行全方位智能评分</p>
-
-                            <div class="intro-steps">
-                                <div class="step-item">
-                                    <div class="step-number">1</div>
-                                    <div class="step-content">
-                                        <h4>配置API</h4>
-                                        <p>设置AI服务连接</p>
-                                    </div>
-                                </div>
-                                <div class="step-item">
-                                    <div class="step-number">2</div>
-                                    <div class="step-content">
-                                        <h4>选择文件</h4>
-                                        <p>导入txt/md书籍</p>
-                                    </div>
-                                </div>
-                                <div class="step-item">
-                                    <div class="step-number">3</div>
-                                    <div class="step-content">
-                                        <h4>AI评分</h4>
-                                        <p>深度解析分析</p>
-                                    </div>
-                                </div>
-                                <div class="step-item">
-                                    <div class="step-number">4</div>
-                                    <div class="step-content">
-                                        <h4>导入知识库</h4>
-                                        <p>保存阅读成果</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="intro-actions">
-                                <button id="aiSettingsBtn2" class="btn-modern btn-secondary-modern" onclick="window.openAiSettingsModal()">
-                                    <i class="fas fa-cog glow-icon"></i> API设置
-                                </button>
-                                <button id="startAiReadBtn2" class="btn-modern btn-primary-modern breathe" onclick="window.openAiReadModal()">
-                                    <i class="fas fa-sparkles"></i> 开始精读
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
     </div>
-
-    <!-- 底部状态栏 -->
-    <footer class="app-footer">
-            <div class="status-info">
-                <span id="statusMessage">就绪</span>
-            </div>
-            <div class="footer-actions">
-                <span id="appVersion">版本 1.0.0</span>
-            </div>
-    </footer>
-</div>
 
     <!-- 确认删除对话框 -->
     <div id="deleteModal" class="modal" style="display: none;">
@@ -487,88 +432,6 @@
             <div class="modal-actions">
                 <button onclick="confirmCreateFolder()" class="btn-primary folder-confirm-btn">确定</button>
                 <button onclick="closeFolderModal()" class="btn-secondary folder-cancel-btn">取消</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 笔记管理模态框 -->
-    <div id="notesModal" class="modal" style="display: none;">
-        <div class="modal-content notes-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-sticky-note"></i> 书籍笔记管理</h3>
-                <button id="closeNotesModalBtn" class="close-btn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <!-- 当前书籍信息 -->
-            <div class="current-book-info">
-                <h4 id="currentBookTitle"></h4>
-                <span id="currentBookAuthor"></span>
-            </div>
-
-            <!-- 笔记展示区 -->
-            <div class="notes-list-section">
-                <div class="section-header">
-                    <h4><i class="fas fa-history"></i> 历史笔记</h4>
-                    <input type="text" id="noteSearchInput" placeholder="搜索笔记内容...">
-                    <span id="notesCount">0 条笔记</span>
-                </div>
-                <div id="notesListContainer" class="notes-list-container">
-                    <!-- 笔记列表将通过JavaScript动态生成 -->
-                    <div class="empty-state" id="notesEmptyState">
-                        <i class="fas fa-sticky-note"></i>
-                        <p>暂无笔记记录</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 操作区 -->
-            <div class="notes-actions">
-                <button id="importNotesBtn" class="btn-secondary">
-                    <i class="fas fa-file-import"></i> 导入文件(图片/视频/文本)
-                </button>
-            </div>
-
-            <!-- 笔记输入区 -->
-            <div class="notes-input-section">
-                <h4><i class="fas fa-edit"></i> 添加新笔记</h4>
-                <textarea id="newNoteContent" placeholder="在此输入笔记内容..." rows="6"></textarea>
-                <div class="input-actions">
-                    <button id="saveNoteBtn" class="btn-primary">
-                        <i class="fas fa-save"></i> 保存笔记
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 评分模态框 -->
-    <div id="ratingModal" class="modal" style="display: none;">
-        <div class="modal-content rating-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-star"></i> 书籍评分 - <span id="ratingBookTitle"></span></h3>
-                <button class="close-btn" onclick="closeRatingModal()">×</button>
-            </div>
-            <div class="rating-workspace">
-                <div class="rating-left">
-                    <div class="rating-metrics" id="ratingMetrics">
-                        <!-- 25个指标将通过JS动态渲染 -->
-                    </div>
-                </div>
-                <div class="rating-right">
-                    <div class="rating-chart-panel">
-                        <div class="rating-total-card">
-                            <span class="rating-label">加权总分</span>
-                            <span class="rating-score" id="ratingTotalScore">50.0</span>
-                        </div>
-                        <div id="ratingChart" class="rating-chart"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="rating-actions">
-                <button class="btn-secondary" onclick="closeRatingModal()">取消</button>
-                <button class="btn-primary" onclick="saveRating()"><i class="fas fa-save"></i> 保存评分</button>
             </div>
         </div>
     </div>
@@ -801,581 +664,216 @@
         </div>
     </div>
 
-    <!-- 日记编辑模态框 -->
-    <div id="journalModal" class="modal" style="display: none;">
-        <div class="modal-content journal-modal">
+    <!-- 灵感记录模态框 -->
+    <div id="inspirationModal" class="modal" style="display: none;">
+        <div class="modal-content inspiration-modal">
             <div class="modal-header">
-                <h3 id="journalModalTitle"><i class="fas fa-pen"></i> 写日记</h3>
-                <button class="close-btn" onclick="closeJournalModal()">×</button>
+                <h3 id="inspirationModalTitle"><i class="fas fa-lightbulb"></i> 记录灵感</h3>
+                <button class="close-btn" onclick="closeInspirationModal()">×</button>
             </div>
-            <form id="journalForm">
-                <input type="hidden" id="journalId">
-                <!-- 滚动内容区 -->
-                <div class="modal-body-scroll">
-                    <!-- 顶部元信息并排 -->
-                    <div class="journal-meta-grid">
-                        <div class="form-group">
-                            <label for="journalDate">日期</label>
-                            <input type="date" id="journalDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label>今日心情</label>
-                            <div class="mood-selector">
-                                <button type="button" class="mood-btn" data-mood="完美">🌟 完美</button>
-                                <button type="button" class="mood-btn" data-mood="充实">😊 充实</button>
-                                <button type="button" class="mood-btn" data-mood="平淡">😐 平淡</button>
-                                <button type="button" class="mood-btn" data-mood="疲惫">😮‍💨 疲惫</button>
-                                <button type="button" class="mood-btn" data-mood="糟糕">🌧️ 糟糕</button>
-                            </div>
-                            <input type="hidden" id="journalMood" required>
-                        </div>
+            <form id="inspirationForm" class="inspiration-form">
+                <input type="hidden" id="inspirationId" name="id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inspirationTitle">概念标题</label>
+                        <input type="text" id="inspirationTitle" name="title" required placeholder="输入概念名称">
                     </div>
                     <div class="form-group">
-                        <label for="journalContent">今日记录</label>
-                        <textarea id="journalContent" rows="10" placeholder="记录今天的点点滴滴..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>关联作品</label>
-                        <div class="related-books-input-wrapper">
-                            <input type="text" id="relatedBookSearch" placeholder="搜索作品..." autocomplete="off">
-                            <div id="relatedBookSuggestions" class="suggestions-dropdown"></div>
+                        <label for="inspirationBookId">关联作品</label>
+                        <div class="book-select-wrapper">
+                            <select id="inspirationBookId" name="bookId" required>
+                                <option value="">选择作品</option>
+                            </select>
+                            <i class="fas fa-chevron-down select-arrow"></i>
                         </div>
-                        <div id="selectedRelatedBooks" class="selected-tags-container"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>添加图片</label>
-                        <button type="button" id="journalAddImageBtn" class="action-btn" onclick="window.bookApp.handleJournalImageUpload()">
-                            <i class="fas fa-image"></i> 插入图片
-                        </button>
-                        <div id="journalImagesPreview" class="image-preview-grid"></div>
                     </div>
                 </div>
-                <!-- 底部固定按钮区 -->
-                <div class="modal-actions">
-                    <button type="button" class="btn-secondary" onclick="closeJournalModal()">取消</button>
-                    <button type="submit" class="btn-primary">保存</button>
+                <div class="form-group">
+                    <label>标签</label>
+                    <div id="selectedInspirationTags" class="selected-tags-area compact"></div>
+                    <div id="inspirationTagSuggestions" class="preset-tags-container compact"></div>
+                    <input type="hidden" id="inspirationTags" name="tags">
+                </div>
+                <div class="form-group core-translation-group">
+                    <div class="core-translation-label-row">
+                        <label for="inspirationCoreTranslation">核心转译</label>
+                        <button type="button" class="btn-bold" id="inspirationBoldBtn" title="加粗"><i class="fas fa-bold"></i></button>
+                    </div>
+                    <div class="core-translation-wrapper">
+                        <div id="inspirationCoreTranslation" class="core-translation-editor" contenteditable="true" data-placeholder="写下你的核心转译，支持多段落布局"></div>
+                    </div>
                 </div>
             </form>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeInspirationModal()">取消</button>
+                <button type="submit" form="inspirationForm" class="btn-primary">保存</button>
+            </div>
         </div>
     </div>
 
-    <!-- 日记统计模态框 -->
-    <div id="journalStatsModal" class="modal" style="display: none;">
-        <div class="modal-content journal-stats-modal">
+    <!-- 灵感查看模态框 -->
+    <div id="inspirationViewModal" class="modal" style="display: none;">
+        <div class="modal-content inspiration-view-content">
             <div class="modal-header">
-                <h3><i class="fas fa-chart-pie"></i> 日记统计</h3>
-                <button class="close-stats-btn" onclick="closeJournalStatsModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+                <h3 id="viewInspirationTitle"></h3>
+                <button class="close-btn" onclick="closeInspirationViewModal()">×</button>
             </div>
-            <!-- 双屏翻页容器 -->
-            <div class="stats-viewport" id="statsViewport">
-                <div class="stats-track" id="statsTrack">
-                    <!-- 第一页：数据卡片 + 饼图 -->
-                    <div class="stats-page stats-page-1">
-                        <div class="stats-cards-container">
-                            <div class="stat-card">
-                                <div class="stat-value" id="journalTotalDays">0</div>
-                                <div class="stat-label">累计记录天数</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="journalTotalChars">0</div>
-                                <div class="stat-label">总记录字数</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value mood-value" id="journalTopMood">-</div>
-                                <div class="stat-label">最常心情</div>
-                            </div>
-                        </div>
-                        <div id="journalMoodChart" style="width: 100%; height: 280px;"></div>
-                    </div>
-                    <!-- 第二页：日历热力图 -->
-                    <div class="stats-page stats-page-2">
-                        <div class="heatmap-section">
-                            <h4><i class="fas fa-calendar-alt"></i> 日记日历</h4>
-                            <div id="journalHeatmap" style="width: 100%; height: 380px;"></div>
-                        </div>
-                    </div>
+            <div class="inspiration-view-body">
+                <div id="viewInspirationTags" class="inspiration-tags"></div>
+                <div class="inspiration-section">
+                    <h4>核心转译</h4>
+                    <div id="viewInspirationCoreTranslation" class="inspiration-text"></div>
                 </div>
             </div>
-            <!-- 分页指示器 -->
-            <div class="stats-pagination" id="statsPagination">
-                <span class="pagination-dot active" data-page="0"></span>
-                <span class="pagination-dot" data-page="1"></span>
+            <div class="modal-actions">
+                <button class="btn-danger" id="deleteInspirationBtn" onclick="closeInspirationViewModal(); window.deleteInspiration(window.currentViewInspirationId)">
+                    <i class="fas fa-trash"></i> 删除
+                </button>
+                <button class="btn-primary" id="editInspirationBtn" onclick="closeInspirationViewModal(); window.openInspirationModal(window.currentViewInspirationId)">
+                    <i class="fas fa-edit"></i> 编辑
+                </button>
+                <button class="btn-secondary" onclick="closeInspirationViewModal()">关闭</button>
             </div>
         </div>
     </div>
 
-    <!-- 日记删除确认模态框 -->
-    <div id="journalDeleteModal" class="modal" style="display: none;">
+    <!-- 灵感删除确认模态框 -->
+    <div id="inspirationDeleteModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3><i class="fas fa-exclamation-triangle"></i> 删除确认</h3>
-            <p>确定要删除这篇日记吗？此操作无法撤销。</p>
+            <p>确定要删除这条灵感记录吗？此操作无法撤销。</p>
             <div class="modal-actions">
-                <button id="cancelJournalDeleteBtn" class="btn-secondary">取消</button>
-                <button id="confirmJournalDeleteBtn" class="btn-danger">确认删除</button>
+                <button id="cancelInspirationDeleteBtn" class="btn-secondary">取消</button>
+                <button id="confirmInspirationDeleteBtn" class="btn-danger">确认删除</button>
             </div>
         </div>
     </div>
 
-    <!-- 日记阅读模态框（只读模式） -->
-    <div id="journalViewModal" class="modal" style="display: none;">
-        <div class="modal-content journal-view-content">
-            <div class="journal-view-header">
-                <h3 id="viewJournalDate"></h3>
-                <div id="viewJournalMood" class="mood-badge"></div>
-            </div>
-            <div id="viewJournalText" class="journal-view-body"></div>
-            <div class="modal-actions">
-                <button id="closeJournalViewBtn">关闭</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 评分对比模态框 -->
+<!-- 评分对比模态框 -->
     <div id="compareRatingModal" class="modal" style="display: none;">
-        <div class="modal-content compare-modal">
-            <div class="compare-header">
-                <div class="compare-header-top">
-                    <h3><i class="fas fa-balance-scale"></i> 评分对比</h3>
-                    <button class="close-btn" onclick="closeCompareModal()">×</button>
-                </div>
-                <div class="compare-book-selector">
-                    <label>选择要对比的书籍（至少2本）：</label>
-                    <div id="compareBookList" class="compare-book-list"></div>
-                    <button class="btn-primary" id="startCompareBtn" onclick="startCompare()">
-                        <i class="fas fa-search"></i> 开始对比
-                    </button>
-                </div>
-            </div>
-            <div class="compare-body">
-                <div class="compare-results" id="compareResults"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI精读模态框 - Apple iOS 风格全新设计 -->
-    <div id="aiReadModal" class="modal" style="display: none;">
-        <div class="modal-content ai-read-modal">
-            <!-- 顶部标题栏 -->
-            <div class="air-header">
-                <div class="air-header-left">
-                    <div class="air-header-icon">
-                        <i class="fas fa-wand-magic-sparkles"></i>
-                    </div>
-                    <div class="air-header-text">
-                        <h2>AI 精读评分</h2>
-                        <p>深度分析与智能评分</p>
-                    </div>
-                </div>
-                <button class="air-close" onclick="closeAiReadModal()">
-                    <i class="fas fa-xmark"></i>
-                </button>
-            </div>
-
-            <!-- 主要内容区 -->
-            <div class="air-body">
-                <!-- 步骤1：文件导入 -->
-                <div id="aiReadStep1" class="air-step">
-                    <div class="air-split">
-                        <!-- 左侧：文件导入 -->
-                        <div class="air-panel air-upload-panel">
-                            <div class="air-panel-header">
-                                <div class="air-panel-icon">
-                                    <i class="fas fa-file-import"></i>
-                                </div>
-                                <div class="air-panel-title">
-                                    <h3>导入作品</h3>
-                                    <p>上传文本文件进行AI分析</p>
-                                </div>
-                            </div>
-
-                            <!-- 拖拽区域 -->
-                            <div class="air-dropzone" id="dropZone">
-                                <div class="air-dropzone-content">
-                                    <div class="air-dropzone-icon">
-                                        <i class="fas fa-cloud-arrow-up"></i>
-                                    </div>
-                                    <h4>拖拽文件到此处</h4>
-                                    <p>或点击选择文件</p>
-                                    <span class="air-dropzone-hint">支持 TXT、MD 格式</span>
-                                </div>
-                                <input type="file" id="fileInput" accept=".txt,.md" style="display: none;">
-                            </div>
-
-                            <!-- 文件信息卡片 -->
-                            <div class="air-file-card" id="fileInfo" style="display: none;">
-                                <div class="air-file-icon">
-                                    <i class="fas fa-file-lines"></i>
-                                </div>
-                                <div class="air-file-details">
-                                    <h4 id="selectedFileName">文件名</h4>
-                                    <div class="air-file-meta">
-                                        <span><i class="fas fa-code"></i> <span id="fileEncoding">UTF-8</span></span>
-                                        <span><i class="fas fa-weight-hanging"></i> <span id="fileSize">-</span></span>
-                                        <span><i class="fas fa-text"></i> <span id="fileChars">-</span> 字</span>
-                                    </div>
-                                </div>
-                                <button class="air-file-change" id="selectFileBtn">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 右侧：内容预览 -->
-                        <div class="air-panel air-preview-panel">
-                            <div class="air-panel-header">
-                                <div class="air-panel-icon">
-                                    <i class="fas fa-eye"></i>
-                                </div>
-                                <div class="air-panel-title">
-                                    <h3>内容预览</h3>
-                                    <p id="previewCount">等待导入文件...</p>
-                                </div>
-                            </div>
-                            <div class="air-preview" id="previewContent">
-                                <div class="air-preview-empty">
-                                    <i class="fas fa-file-circle-question"></i>
-                                    <p>选择文件后显示内容预览</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 进度显示 -->
-                <div id="aiReadProgress" class="air-progress" style="display: none;">
-                    <div class="air-progress-card">
-                        <div class="air-progress-header">
-                            <div class="air-progress-icon">
-                                <i class="fas fa-circle-notch fa-spin"></i>
-                            </div>
-                            <div class="air-progress-text">
-                                <h4 id="progressText">正在分析中...</h4>
-                                <p id="currentChunk">准备处理</p>
-                            </div>
-                            <span id="progressPercent" class="air-progress-percent">0%</span>
-                        </div>
-                        <div class="air-progress-track">
-                            <div id="progressBar" class="air-progress-fill"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 投票结果显示 -->
-                <div id="aiRatingProgress" class="air-rating-result" style="display: none;"></div>
-
-                <!-- 步骤2：显示结果 -->
-                <div id="aiReadStep2" class="ai-read-step" style="display: none;">
-                    <div class="ai-read-result apple-result">
-                        <div class="result-card">
-                            <div class="result-icon">
-                                <i class="fas fa-book"></i>
-                            </div>
-                            <div class="result-content">
-                                <h4>提取的书名</h4>
-                                <p id="extractedTitle" class="extracted-title">-</p>
-                            </div>
-                        </div>
-                        <div class="result-card">
-                            <div class="result-icon">
-                                <i class="fas fa-star"></i>
-                            </div>
-                            <div class="result-content">
-                                <h4>AI评分结果</h4>
-                                <div id="aiRatingFinal" class="ai-rating-result"></div>
-                            </div>
-                        </div>
-                        <div class="result-card">
-                            <div class="result-icon">
-                                <i class="fas fa-tags"></i>
-                            </div>
-                            <div class="result-content">
-                                <h4>标签</h4>
-                                <div id="aiTags" class="ai-tags"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 底部操作栏 -->
-            <div class="air-footer">
-                <div class="air-footer-hint">
-                    <i class="fas fa-circle-info"></i>
-                    <span>AI将分析作品内容并给出多维度评分</span>
-                </div>
-                <div class="air-footer-actions">
-                    <button id="importAiBookBtn" class="air-btn air-btn-primary" style="display: none;" onclick="importAiBook()">
-                        <i class="fas fa-download"></i> 导入知识库
-                    </button>
-                    <button id="startAiReadBtn" class="air-btn air-btn-primary" disabled onclick="startAiReading()">
-                        <i class="fas fa-play"></i> 开始分析
-                    </button>
-                    <button class="air-btn air-btn-secondary" onclick="closeAiReadModal()">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 偏好设置模态框 - 全新设计 -->
-    <div id="aiSettingsModal" class="modal" style="display: none;">
-        <div class="modal-content preferences-modal">
-            <!-- 顶部标题区 -->
-            <div class="pref-header">
-                <div class="pref-header-left">
-                    <div class="pref-header-icon">
-                        <i class="fas fa-sliders-h"></i>
-                    </div>
-                    <div class="pref-header-text">
-                        <h2>偏好设置</h2>
-                        <p>自定义你的AI精读体验与评分标准</p>
-                    </div>
-                </div>
-                <div class="pref-header-right">
-                    <div class="pref-status-badge">
-                        <span class="status-dot"></span>
-                        <span id="apiStatusText">未连接</span>
-                    </div>
-                </div>
-                <button class="close-btn pref-close" onclick="closeAiSettingsModal()">×</button>
-            </div>
-
-            <!-- 主要内容区 -->
-            <div class="pref-body">
-                <!-- 左侧：API配置 -->
-                <div class="pref-sidebar">
-                    <div class="pref-card pref-api-card">
-                        <div class="pref-card-header">
-                            <div class="pref-card-icon">
-                                <i class="fas fa-key"></i>
-                            </div>
-                            <div class="pref-card-title">
-                                <h3>API 配置</h3>
-                                <p>AI 服务连接设置</p>
-                            </div>
-                        </div>
-                        <div class="pref-card-body">
-                            <div class="pref-form-group">
-                                <label>API Provider</label>
-                                <select id="aiApiProvider" class="pref-select">
-                                    <option>MiniMax</option>
-                                    <option>OpenAI</option>
-                                    <option>Claude</option>
-                                    <option>自定义</option>
-                                </select>
-                            </div>
-                            <div class="pref-form-group">
-                                <label>API URL</label>
-                                <input type="text" id="aiApiUrl" class="pref-input" placeholder="https://api.minimax.chat/v1">
-                            </div>
-                            <div class="pref-form-group">
-                                <label>Model</label>
-                                <select id="aiModel" class="pref-select">
-                                    <option selected>MiniMax-M2.5</option>
-                                    <option>MiniMax-Text-01</option>
-                                    <option>MiniMax-Text-02</option>
-                                    <option>MiniMax-Text-03</option>
-                                </select>
-                            </div>
-                            <div class="pref-form-group">
-                                <label>API Key</label>
-                                <input type="password" id="aiApiKey" class="pref-input" placeholder="输入API Key">
-                            </div>
-                            <div class="pref-form-actions">
-                                <button id="testAiApiBtn" class="pref-btn pref-btn-primary">
-                                    <i class="fas fa-plug"></i> 测试连接
-                                </button>
-                            </div>
-                            <div id="testApiResult" class="pref-result"></div>
-                        </div>
-                    </div>
-
-                    <!-- 快速统计 -->
-                    <div class="pref-card pref-stats-card">
-                        <div class="pref-card-header">
-                            <div class="pref-card-icon">
-                                <i class="fas fa-chart-bar"></i>
-                            </div>
-                            <div class="pref-card-title">
-                                <h3>评分统计</h3>
-                                <p>当前配置概览</p>
-                            </div>
-                        </div>
-                        <div class="pref-card-body">
-                            <div class="pref-stat-grid">
-                                <div class="pref-stat-item">
-                                    <span class="pref-stat-value" id="authorCriteriaCount">0</span>
-                                    <span class="pref-stat-label">作者维度</span>
-                                </div>
-                                <div class="pref-stat-item">
-                                    <span class="pref-stat-value" id="textCriteriaCount">0</span>
-                                    <span class="pref-stat-label">文本维度</span>
-                                </div>
-                                <div class="pref-stat-item">
-                                    <span class="pref-stat-value" id="totalCriteriaCount">0</span>
-                                    <span class="pref-stat-label">总评分项</span>
-                                </div>
-                                <div class="pref-stat-item">
-                                    <span class="pref-stat-value" id="avgWeight">0%</span>
-                                    <span class="pref-stat-label">平均权重</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 右侧：评价标准 -->
-                <div class="pref-main">
-                    <div class="pref-card pref-criteria-card">
-                        <div class="pref-card-header pref-criteria-header">
-                            <div class="pref-card-title">
-                                <h3><i class="fas fa-list-check"></i> 评价标准配置</h3>
-                                <p>自定义评分维度、权重与评分标准</p>
-                            </div>
-                            <div class="pref-criteria-actions">
-                                <button id="aiOptimizeBtn" class="pref-btn pref-btn-secondary">
-                                    <i class="fas fa-magic"></i> AI优化
-                                </button>
-                                <button id="resetCriteriaBtn" class="pref-btn pref-btn-outline">
-                                    <i class="fas fa-rotate-left"></i> 恢复默认
-                                </button>
-                            </div>
-                        </div>
-                        <div class="pref-card-body pref-criteria-body">
-                            <!-- 作者层面 -->
-                            <div class="criteria-panel">
-                                <div class="criteria-panel-header" onclick="toggleCriteriaPanel(this)">
-                                    <div class="criteria-panel-icon">
-                                        <i class="fas fa-user-pen"></i>
-                                    </div>
-                                    <div class="criteria-panel-title">
-                                        <h4>作者层面</h4>
-                                        <span class="criteria-count" id="authorCriteriaCount2">0 项</span>
-                                    </div>
-                                    <div class="criteria-panel-weight">
-                                        权重: <span id="authorWeight">0%</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down criteria-panel-arrow"></i>
-                                </div>
-                                <div id="authorCriteriaList" class="criteria-items collapsed">
-                                    <!-- 动态生成 -->
-                                </div>
-                            </div>
-
-                            <!-- 文本层面 -->
-                            <div class="criteria-panel">
-                                <div class="criteria-panel-header" onclick="toggleCriteriaPanel(this)">
-                                    <div class="criteria-panel-icon">
-                                        <i class="fas fa-file-lines"></i>
-                                    </div>
-                                    <div class="criteria-panel-title">
-                                        <h4>文本层面</h4>
-                                        <span class="criteria-count" id="textCriteriaCount2">0 项</span>
-                                    </div>
-                                    <div class="criteria-panel-weight">
-                                        权重: <span id="textWeight">0%</span>
-                                    </div>
-                                    <i class="fas fa-chevron-down criteria-panel-arrow"></i>
-                                </div>
-                                <div id="textCriteriaList" class="criteria-items collapsed">
-                                    <!-- 动态生成 -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 底部操作区 -->
-            <div class="pref-footer">
-                <div class="pref-footer-info">
-                    <span class="pref-hint"><i class="fas fa-circle-info"></i> 修改后请点击保存以应用新设置</span>
-                </div>
-                <div class="pref-footer-actions">
-                    <button class="pref-btn pref-btn-secondary" onclick="closeAiSettingsModal()">取消</button>
-                    <button class="pref-btn pref-btn-primary" onclick="saveAiSettings()">
-                        <i class="fas fa-check"></i> 保存设置
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 评价标准配置模态框 -->
-    <div id="criteriaModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-content" style="max-width: 1100px; width: 95%; max-height: 90vh;">
             <div class="modal-header">
-                <h3><i class="fas fa-list"></i> 评价标准配置</h3>
-                <button class="close-btn" onclick="closeCriteriaModal()">×</button>
+                <h3><i class="fas fa-balance-scale"></i> 评分对比</h3>
+                <button class="close-btn" onclick="closeCompareModal()">×</button>
             </div>
-            <div class="modal-body">
-                <div class="criteria-actions">
-                    <button id="aiOptimizeBtn" class="btn-secondary">
-                        <i class="fas fa-magic"></i> AI优化建议
-                    </button>
-                    <button id="resetCriteriaBtn" class="btn-secondary">
-                        <i class="fas fa-undo"></i> 恢复默认
+            <div class="modal-body compare-modal-body">
+                <!-- 书籍选择区域 -->
+                <div class="compare-selectors">
+                    <div class="compare-selector-group">
+                        <label>选择书籍 A：</label>
+                        <select id="compareBookA" class="form-select compare-book-select">
+                            <option value="">请选择...</option>
+                        </select>
+                    </div>
+                    <div class="compare-selector-group">
+                        <label>选择书籍 B：</label>
+                        <select id="compareBookB" class="form-select compare-book-select">
+                            <option value="">请选择...</option>
+                        </select>
+                    </div>
+                    <button id="toggleWeightPanel" class="btn-secondary" title="权重调节">
+                        <i class="fas fa-sliders-h"></i> 权重
                     </button>
                 </div>
-                <div id="criteriaList" class="criteria-list">
-                    <!-- 评价标准将通过JS动态生成 -->
+
+                <!-- 权重调节面板（左侧抽屉） -->
+                <div id="weightAdjusterPanel" class="weight-adjuster-panel">
+                    <div class="weight-panel-header">
+                        <h4>动态权重调节</h4>
+                        <button id="resetWeightsBtn" class="btn-secondary btn-small">重置</button>
+                        <button id="closeWeightPanelBtn" class="close-btn">×</button>
+                    </div>
+                    <div id="weightSlidersContainer" class="weight-sliders-container"></div>
                 </div>
-                <div class="criteria-add">
-                    <button id="addCriteriaBtn" class="btn-secondary">
-                        <i class="fas fa-plus"></i> 添加新标准
-                    </button>
+
+                <!-- 图表容器 -->
+                <div id="compareChartsContainer" class="compare-charts-container" style="display: none;">
+                    <!-- 宏观图表：堆叠柱状图 -->
+                    <div class="compare-chart-section">
+                        <h4><i class="fas fa-chart-bar"></i> 层面得分对比</h4>
+                        <div id="compareStackedBarChart" class="compare-stacked-bar-chart"></div>
+                    </div>
+
+                    <!-- 微观图表：热力图 -->
+                    <div class="compare-chart-section">
+                        <h4><i class="fas fa-th"></i> 维度得分对比</h4>
+                        <div id="compareHeatmapChart" class="compare-heatmap-chart"></div>
+                    </div>
+
+                    <!-- 综合素质雷达图 -->
+                    <div class="compare-chart-section">
+                        <h4><i class="fas fa-chart-pie"></i> 综合素质雷达图</h4>
+                        <div id="compareLayerRadarChart" class="compare-radar-chart"></div>
+                    </div>
+
+                    <!-- 核心指标雷达图 -->
+                    <div class="compare-chart-section">
+                        <h4><i class="fas fa-star"></i> 核心指标雷达图</h4>
+                        <div id="compareCoreRadarChart" class="compare-radar-chart"></div>
+                    </div>
+
+                    <!-- 散点图 -->
+                    <div class="compare-chart-section">
+                        <h4><i class="fas fa-chart-scatter"></i> 库内定位散点图</h4>
+                        <div class="compare-scatter-toggle">
+                            <button class="toggle-btn active" data-mode="two">对比两本</button>
+                            <button class="toggle-btn" data-mode="multi">选择多本</button>
+                            <button class="toggle-btn" data-mode="all">全部作品</button>
+                            <span class="toggle-divider"></span>
+                            <button class="toggle-btn" data-mode="vs-all-avg">vs 全库均值</button>
+                            <button class="toggle-btn" data-mode="vs-tag-avg">vs 标签均值</button>
+                        </div>
+                        <div id="scatterTagFilter" class="scatter-tag-filter" style="display:none;">
+                            <select id="scatterTagSelect" class="form-select">
+                                <option value="">选择标签...</option>
+                            </select>
+                        </div>
+                        <div id="compareScatterChart" class="compare-scatter-chart"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn-primary" onclick="saveCriteria()">
-                    <i class="fas fa-save"></i> 保存
-                </button>
-                <button class="btn-secondary" onclick="closeCriteriaModal()">取消</button>
             </div>
         </div>
     </div>
 
-    <!-- AI优化建议模态框 -->
-    <div id="aiOptimizeModal" class="modal" style="display: none;">
+    <!-- 评分模态框 -->
+    <div id="ratingModal" class="modal rating-modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-magic"></i> AI优化建议</h3>
-                <button class="close-btn" onclick="closeAiOptimizeModal()">×</button>
+                <h3><i class="fas fa-star"></i> <span id="ratingBookTitle">书籍评分</span></h3>
+                <button class="close-btn" onclick="closeRatingModal()">×</button>
             </div>
-            <div class="modal-body">
-                <div id="aiOptimizeLoading" style="text-align: center; padding: 20px;">
-                    <i class="fas fa-spinner fa-spin"></i> AI正在分析评价标准...
+            <div class="rating-workspace">
+                <div class="rating-left">
+                    <div id="ratingMetrics"></div>
                 </div>
-                <div id="aiOptimizeResult" style="display: none;">
-                    <div class="ai-optimize-suggestion">
-                        <h4>AI建议：</h4>
-                        <p id="aiSuggestionText"></p>
+                <div class="rating-right">
+                    <div class="rating-sidebar">
+                        <div class="rating-total-card">
+                            <span class="rating-label">综合评分</span>
+                            <div id="ratingTotalScore" class="rating-score">0.0</div>
+                        </div>
+                        <div id="ratingChart" class="rating-chart-panel"></div>
                     </div>
-                    <div id="aiOptimizedCriteria" class="criteria-preview"></div>
+                    <div class="rating-actions">
+                        <button class="btn-secondary" onclick="closeRatingModal()">取消</button>
+                        <button class="btn-primary" onclick="saveRating()">保存评分</button>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeAiOptimizeModal()">关闭</button>
-                <button id="applyOptimizeBtn" class="btn-primary" style="display: none;" onclick="applyAiOptimize()">
-                    <i class="fas fa-check"></i> 应用建议
-                </button>
             </div>
         </div>
     </div>
 
     <!-- 遮罩层 -->
-    <div id="overlay" class="overlay" style="display: none;"></div>
+    <div id="overlay" class="overlay"></div>
 
     <!-- Toast 通知容器 -->
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- 右键菜单 -->
-    <div id="contextMenu" class="context-menu" style="display: none;">
+    <div id="contextMenu" class="context-menu">
         <ul>
             <li data-action="edit"><i class="fas fa-edit"></i> 编辑</li>
-            <li data-action="notes"><i class="fas fa-sticky-note"></i> 笔记</li>
-            <li data-action="rating"><i class="fas fa-star"></i> 评分</li>
+            <li data-action="inspiration"><i class="fas fa-lightbulb"></i> 灵感</li>
             <li class="divider"></li>
             <li class="has-submenu" data-action="move">
                 <i class="fas fa-folder-open"></i> 移动到...
