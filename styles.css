@@ -9368,6 +9368,41 @@ html, body {
     color: var(--text-tertiary);
 }
 
+/* 灵感卡片 - 复习状态栏 */
+.inspiration-review-status {
+    font-size: 11px;
+    padding-top: 6px;
+    color: var(--text-secondary);
+}
+
+.inspiration-review-status.unreviewed {
+    color: var(--text-tertiary);
+}
+
+.inspiration-review-status.good {
+    color: #276749;
+}
+
+.inspiration-review-status.medium {
+    color: #c05621;
+}
+
+.inspiration-review-status.low {
+    color: #c53030;
+}
+
+[data-theme="dark"] .inspiration-review-status.good {
+    color: #68d391;
+}
+
+[data-theme="dark"] .inspiration-review-status.medium {
+    color: #f6ad55;
+}
+
+[data-theme="dark"] .inspiration-review-status.low {
+    color: #fc8181;
+}
+
 /* 灵感记录模态框 */
 /* 灵感记录模态框 - 紧凑无滚动设计 */
 .inspiration-modal {
@@ -10198,6 +10233,479 @@ html, body {
     color: var(--text-tertiary);
     padding-left: 12px;
     border-left: 3px solid var(--color-primary-500);
+}
+
+/* 记忆统计栏 */
+.memory-stats-bar {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    padding: 10px 20px;
+    flex-wrap: wrap;
+}
+
+.memory-stat {
+    font-size: 12px;
+}
+
+.memory-stat.good { color: #276749; }
+.memory-stat.medium { color: #c05621; }
+.memory-stat.low { color: #c53030; }
+.memory-stat.unreviewed { color: var(--text-tertiary); }
+
+[data-theme="dark"] .memory-stat.good { color: #68d391; }
+[data-theme="dark"] .memory-stat.medium { color: #f6ad55; }
+[data-theme="dark"] .memory-stat.low { color: #fc8181; }
+
+/* 每日复习提醒红点 */
+#startReviewBtn {
+    position: relative;
+}
+
+#startReviewBtn.needs-review::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 10px;
+    height: 10px;
+    background: #e53e3e;
+    border-radius: 50%;
+    border: 2px solid var(--bg-primary);
+}
+
+/* =========================================
+   灵感随机复习功能样式
+   ========================================= */
+
+/* 复习面板容器 */
+.review-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 24px 20px;
+    gap: 14px;
+    overflow: hidden;
+}
+
+/* 进度条 */
+.review-progress {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.review-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.review-progress-fill {
+    height: 100%;
+    background: var(--color-primary-500);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    width: 0%;
+}
+
+.review-progress-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: right;
+}
+
+/* 闪卡容器 */
+.review-card-container {
+    flex: 1;
+    width: 100%;
+    max-height: 55vh;
+    perspective: 1000px;
+    min-height: 0;
+}
+
+/* 闪卡 - 3D 翻转 */
+.review-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    cursor: pointer;
+}
+
+.review-card.flipped {
+    transform: rotateY(180deg);
+}
+
+.review-card-front,
+.review-card-back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+    box-sizing: border-box;
+}
+
+.review-card-front {
+    background: var(--card-bg);
+}
+
+.review-card-back {
+    background: var(--card-bg);
+    transform: rotateY(180deg);
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow: hidden;
+}
+
+.review-card-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+.review-card-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.review-card-hint {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.review-card-hint::before {
+    content: '💡';
+}
+
+.review-card-translation {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    word-break: break-word;
+}
+
+.review-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.review-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.review-card-tags .inspiration-tag {
+    font-size: 11px;
+    padding: 3px 10px;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.review-card-book {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.review-card-book i {
+    color: var(--color-primary-500);
+}
+
+/* 操作按钮 */
+.review-actions {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+    justify-content: center;
+}
+
+.review-actions button {
+    flex: 1;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-review-again {
+    background: #fde8e8;
+    color: #c53030;
+}
+
+.btn-review-again:hover {
+    background: #fed7d7;
+    transform: translateY(-1px);
+}
+
+.btn-review-remembered {
+    background: #c6f6d5;
+    color: #276749;
+}
+
+.btn-review-remembered:hover {
+    background: #b2f5c4;
+    transform: translateY(-1px);
+}
+
+.review-exit-btn {
+    align-self: center;
+    margin-bottom: 0;
+    padding: 8px 28px;
+    font-size: 14px;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    letter-spacing: 1px;
+}
+
+.review-exit-btn:hover {
+    color: #e74c3c;
+    background: transparent;
+}
+
+/* 总结页 */
+.review-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px 20px;
+    gap: 20px;
+    text-align: center;
+}
+
+.review-summary-icon {
+    font-size: 36px;
+}
+
+.review-summary h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.review-summary-stats {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+}
+
+.review-stat.remembered {
+    border-color: #c6f6d5;
+    background: #f0fff4;
+}
+
+.review-stat.forgotten {
+    border-color: #fed7d7;
+    background: #fffaf0;
+}
+
+.review-stat-count {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.review-stat-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.review-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 28px;
+    border-radius: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.review-summary-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.review-summary-cards {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.review-summary-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.review-summary-card-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.review-summary-card-title {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.review-summary-card-status {
+    font-size: 11px;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.review-summary-card-status.good { color: #276749; }
+.review-summary-card-status.medium { color: #c05621; }
+.review-summary-card-status.low { color: #c53030; }
+[data-theme="dark"] .review-summary-card-status.good { color: #68d391; }
+[data-theme="dark"] .review-summary-card-status.medium { color: #f6ad55; }
+[data-theme="dark"] .review-summary-card-status.low { color: #fc8181; }
+
+/* 复习面板暗色主题适配 */
+[data-theme="dark"] .btn-review-again {
+    background: rgba(197, 48, 48, 0.2);
+    color: #fc8181;
+}
+
+[data-theme="dark"] .btn-review-again:hover {
+    background: rgba(197, 48, 48, 0.3);
+}
+
+[data-theme="dark"] .btn-review-remembered {
+    background: rgba(39, 103, 73, 0.2);
+    color: #68d391;
+}
+
+[data-theme="dark"] .btn-review-remembered:hover {
+    background: rgba(39, 103, 73, 0.3);
+}
+
+[data-theme="dark"] .review-stat.remembered {
+    background: rgba(39, 103, 73, 0.15);
+    border-color: rgba(39, 103, 73, 0.35);
+}
+
+[data-theme="dark"] .review-stat.forgotten {
+    background: rgba(197, 48, 48, 0.1);
+    border-color: rgba(197, 48, 48, 0.3);
+}
+
+/* 深色主题 - 闪卡 */
+[data-theme="dark"] .review-card-front,
+[data-theme="dark"] .review-card-back {
+    background: #1e1e2e;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .review-card-hint {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .review-card-label {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .review-summary-card {
+    background: #1e1e2e;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .review-exit-btn {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .review-exit-btn:hover {
+    color: #e74c3c;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .review-panel {
+        padding: 16px 12px;
+    }
+
+    .review-card-front,
+    .review-card-back {
+        padding: 20px 16px;
+    }
+
+    .review-card-title {
+        font-size: 18px;
+    }
+
+    .review-actions {
+        flex-direction: column;
+        max-width: 100%;
+    }
+
+    .review-summary-stats {
+        flex-direction: column;
+        gap: 16px;
+    }
 }
 
 /* 响应式调整 */

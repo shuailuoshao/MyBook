@@ -16,6 +16,21 @@ class Note {
     this.tags = tags;
   }
 
+  // 验证笔记数据
+  validate() {
+    const errors = [];
+    if (!this.id || typeof this.id !== 'string') {
+      errors.push('笔记ID无效');
+    }
+    if (!this.content || typeof this.content !== 'string') {
+      errors.push('笔记内容无效');
+    }
+    if (!Array.isArray(this.tags)) {
+      errors.push('标签必须是数组');
+    }
+    return { isValid: errors.length === 0, errors };
+  }
+
   // 更新笔记内容
   update(content) {
     this.content = content;
@@ -51,6 +66,9 @@ class Book {
     notes = [],
     rating = null,
     tags = [],
+    enableRating = false,
+    enableInspiration = false,
+    folderId = 'all',
     currentProgress = 0,
     totalLength = 0,
     progressUnit = '章',
@@ -66,6 +84,9 @@ class Book {
     this.notes = notes;
     this.rating = rating;
     this.tags = tags;
+    this.enableRating = enableRating;
+    this.enableInspiration = enableInspiration;
+    this.folderId = folderId;
     this.currentProgress = currentProgress;
     this.totalLength = totalLength;
     this.progressUnit = progressUnit;
@@ -89,8 +110,41 @@ class Book {
       }
     }
 
-    if (!['未开始', '阅读中', '已读完'].includes(this.status)) {
-      errors.push('状态必须是未开始、阅读中或已读完');
+    // 支持多种状态值（跨题材兼容）
+    const validStatuses = [
+      '未开始', '阅读中', '已读完', '已完成',
+      '观看中', '已看完', '游玩中', '已玩完',
+      'completed', 'reading', 'unstarted'
+    ];
+    if (!validStatuses.includes(this.status)) {
+      errors.push('状态无效');
+    }
+
+    // 验证 notes 是数组
+    if (!Array.isArray(this.notes)) {
+      errors.push('笔记必须是数组');
+    } else {
+      // 验证每个 note
+      for (const note of this.notes) {
+        const n = note instanceof Note ? note : new Note(note);
+        const noteValidation = n.validate();
+        if (!noteValidation.isValid) {
+          errors.push(...noteValidation.errors);
+        }
+      }
+    }
+
+    // 验证 tags 是数组
+    if (!Array.isArray(this.tags)) {
+      errors.push('标签必须是数组');
+    }
+
+    // 验证进度数值
+    if (typeof this.currentProgress !== 'number' || this.currentProgress < 0) {
+      errors.push('当前进度必须是非负数');
+    }
+    if (typeof this.totalLength !== 'number' || this.totalLength < 0) {
+      errors.push('总长度必须是非负数');
     }
 
     return {
@@ -101,7 +155,8 @@ class Book {
 
   // 更新书籍信息
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'currentProgress', 'totalLength', 'progressUnit'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'enableInspiration', 'folderId', 'currentProgress', 'totalLength', 'progressUnit'];
+    // 注意：notes 更新要谨慎，应该通过专门的笔记操作方法
 
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) {
@@ -144,6 +199,9 @@ class Book {
       notes: this.notes,
       rating: this.rating,
       tags: this.tags,
+      enableRating: this.enableRating,
+      enableInspiration: this.enableInspiration,
+      folderId: this.folderId,
       currentProgress: this.currentProgress,
       totalLength: this.totalLength,
       progressUnit: this.progressUnit,

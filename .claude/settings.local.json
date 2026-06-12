@@ -236,7 +236,14 @@
       "Bash(\"d:\\\\\\\\study_and_try\\\\\\\\MyBook\\\\\\\\MyBook\\\\\\\\node_modules\\\\\\\\electron\\\\\\\\dist\\\\\\\\electron.exe\" \"D:\\\\\\\\etest_final\")",
       "Bash(cat \"D:\\\\\\\\etest_final\\\\\\\\log.txt\")",
       "PowerShell(Get-Process -Name \"electron\", \"MyBook\" -ErrorAction SilentlyContinue)",
-      "PowerShell(Stop-Process -Force)"
+      "PowerShell(Stop-Process -Force)",
+      "Bash(dir node_modules)",
+      "Bash(echo.)",
+      "Bash(node test-electron-import.js)",
+      "Bash(copy index.html index.html.bak)",
+      "Bash(copy renderer.js renderer.js.bak)",
+      "Bash(copy src\\\\models\\\\Book.js src\\\\models\\\\Book.js.bak)",
+      "Bash(node --check \"d:\\\\study_and_try\\\\MyBook\\\\MyBook\\\\src\\\\models\\\\Book.js\")"
     ]
   }
 }

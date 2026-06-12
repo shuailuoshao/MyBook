@@ -3,7 +3,9 @@
     "id": "202605070253",
     "bookId": "1772939122256",
     "title": "11111111",
-    "tags": [],
+    "tags": [
+      "社会学"
+    ],
     "coreTranslation": "111111111111111111<b>2222222</b>2221<b>11111</b>1111<b>1111111222</b>22222",
     "contextExamples": {
       "personal": "",
@@ -20,7 +22,22 @@
       "quote": ""
     },
     "createdAt": "2026-05-07T02:53:37.297Z",
-    "updatedAt": "2026-05-07T02:53:37.297Z"
+    "updatedAt": "2026-06-12T09:34:22.667Z",
+    "lastReviewedAt": "2026-06-12T12:08:46.591Z",
+    "reviewResults": [
+      {
+        "date": "2026-06-12T09:40:20.788Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:41:02.055Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T12:08:46.591Z",
+        "remembered": true
+      }
+    ]
   },
   {
     "id": "202605070212",
@@ -46,7 +63,86 @@
       "quote": ""
     },
     "createdAt": "2026-05-07T02:12:44.630Z",
-    "updatedAt": "2026-05-07T02:12:44.630Z"
+    "updatedAt": "2026-05-07T02:12:44.630Z",
+    "lastReviewedAt": "2026-06-12T12:08:51.531Z",
+    "reviewResults": [
+      {
+        "date": "2026-06-11T13:27:42.214Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:32:08.400Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:35:24.406Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:19:01.446Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T02:38:43.781Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:50:36.469Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:53:03.390Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:55:14.975Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:05:10.616Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:11:56.396Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:18:00.813Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:28:35.724Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:29:14.978Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:13.647Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:48.798Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:23:02.102Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T09:40:22.735Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:41:02.570Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T12:08:51.531Z",
+        "remembered": true
+      }
+    ]
   },
   {
     "id": "202604211532",
@@ -71,7 +167,82 @@
       "quote": ""
     },
     "createdAt": "2026-04-21T15:32:01.365Z",
-    "updatedAt": "2026-05-07T03:00:06.606Z"
+    "updatedAt": "2026-05-07T03:00:06.606Z",
+    "lastReviewedAt": "2026-06-12T12:08:49.007Z",
+    "reviewResults": [
+      {
+        "date": "2026-06-11T13:27:45.744Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:31:56.965Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:35:47.650Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:18:57.815Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:38:35.701Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T02:49:18.357Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:52:58.732Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:55:13.349Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:05:10.265Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:12:00.305Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:17:56.735Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:29:13.617Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:11.094Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:46.635Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:23:01.774Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T09:40:21.677Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:41:03.328Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T12:08:49.007Z",
+        "remembered": true
+      }
+    ]
   },
   {
     "id": "202604210809",
@@ -96,7 +267,86 @@
       "quote": ""
     },
     "createdAt": "2026-04-21T08:09:50.107Z",
-    "updatedAt": "2026-04-21T08:10:01.092Z"
+    "updatedAt": "2026-04-21T08:10:01.092Z",
+    "lastReviewedAt": "2026-06-12T12:08:49.868Z",
+    "reviewResults": [
+      {
+        "date": "2026-06-11T13:27:47.254Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:32:01.265Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:35:44.839Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:19:05.382Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:38:39.664Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:50:35.366Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:53:05.268Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:55:13.663Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:05:10.971Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:12:15.240Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:17:59.510Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:28:35.378Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:29:13.270Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:12.043Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:48.082Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:23:02.426Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T09:40:23.587Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:41:04.029Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T12:08:49.868Z",
+        "remembered": true
+      }
+    ]
   },
   {
     "id": "202604200953",
@@ -121,6 +371,85 @@
       "quote": ""
     },
     "createdAt": "2026-04-20T09:53:49.285Z",
-    "updatedAt": "2026-04-20T10:34:05.534Z"
+    "updatedAt": "2026-04-20T10:34:05.534Z",
+    "lastReviewedAt": "2026-06-12T12:08:48.494Z",
+    "reviewResults": [
+      {
+        "date": "2026-06-11T13:27:38.369Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:31:58.610Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-11T13:35:27.592Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:19:03.161Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:38:41.407Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:50:33.836Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:53:00.282Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T02:55:13.005Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:05:11.877Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:12:25.533Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:17:58.680Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:28:35.049Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T03:29:12.634Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:10.180Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:17:48.424Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:23:03.147Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T09:40:22.268Z",
+        "remembered": false
+      },
+      {
+        "date": "2026-06-12T09:41:02.943Z",
+        "remembered": true
+      },
+      {
+        "date": "2026-06-12T12:08:48.494Z",
+        "remembered": true
+      }
+    ]
   }
 ]

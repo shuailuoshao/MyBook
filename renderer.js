@@ -191,6 +191,8 @@ class InspirationEntry {
         };
         this.createdAt = data.createdAt || new Date().toISOString();
         this.updatedAt = data.updatedAt || new Date().toISOString();
+        this.lastReviewedAt = data.lastReviewedAt || null;  // 最近一次复习时间
+        this.reviewResults = data.reviewResults || [];      // 复习结果数组 [{date, remembered}]
     }
 
     generateId() {
@@ -208,7 +210,9 @@ class InspirationEntry {
             connections: this.connections,
             source: this.source,
             createdAt: this.createdAt,
-            updatedAt: this.updatedAt
+            updatedAt: this.updatedAt,
+            lastReviewedAt: this.lastReviewedAt,
+            reviewResults: this.reviewResults
         };
     }
 
@@ -1908,6 +1912,9 @@ class BookApp {
   constructor() {
     // 构造函数为空，初始化在 init() 方法中完成
 
+    // 初始化灵感记录数组
+    this.journals = [];
+
     // 缓存视图切换相关 DOM 元素（性能优化）
     this.domCache = {
       bookSection: null,
@@ -2059,6 +2066,12 @@ class BookApp {
       '物理学', '数学', '生物学', '化学', '地理', '政治', '法律', '伦理', '宗教', '文化', '语言', '教育', '管理', '营销', '投资', '创业'
     ];
 
+    // 复习相关状态
+    this.reviewCards = [];         // 本轮复习的灵感数组
+    this.reviewIndex = 0;          // 当前卡片索引
+    this.reviewRemembered = [];    // 标记为"记住了"的灵感 ID
+    this.reviewForgotten = [];     // 标记为"再想想"的灵感 ID
+
     this.initializeElements();
     this._initDomCache();  // 初始化 DOM 缓存
     // 加载评分标准配置
@@ -2142,7 +2155,7 @@ class BookApp {
     this.applyFilterBtn = document.getElementById('applyFilterBtn');
     this.clearFilterBtn = document.getElementById('clearFilterBtn');
     this.activeFilterCount = document.getElementById('activeFilterCount');
-    this.filterTagsContainer = document.getElementById('filterTagsContainer');
+    this.filterTagsContainer = document.getElementById('kbFilterTagsContainer');
 
     // 导入/导出相关元素
     this.exportBtn = document.getElementById('exportBtn');
@@ -2194,7 +2207,7 @@ class BookApp {
     this.domCache.inspirationEmptyState = document.getElementById('inspirationEmptyState');
     this.domCache.inspirationFilterPanel = document.getElementById('inspirationFilterPanel');
     this.domCache.filterBookId = document.getElementById('filterBookId');
-    this.domCache.filterTagsContainer = document.getElementById('filterTagsContainer');
+    this.domCache.filterTagsContainer = document.getElementById('inspirationFilterTagsContainer');
     this.domCache.filterDateFrom = document.getElementById('filterDateFrom');
     this.domCache.filterDateTo = document.getElementById('filterDateTo');
   }
@@ -2361,6 +2374,15 @@ class BookApp {
     if (cancelInspirationDeleteBtn) {
       cancelInspirationDeleteBtn.addEventListener('click', () => this.cancelDeleteInspiration());
     }
+
+    // 复习功能事件绑定
+    document.getElementById('startReviewBtn')?.addEventListener('click', () => this.startReview());
+    document.getElementById('exitReviewBtn')?.addEventListener('click', () => this.exitReview());
+    document.getElementById('btnReviewAgain')?.addEventListener('click', () => this.answerReview(false));
+    document.getElementById('btnReviewRemembered')?.addEventListener('click', () => this.answerReview(true));
+    document.getElementById('reviewDoneBtn')?.addEventListener('click', () => this.exitReview());
+    document.getElementById('btnReviewAgainRound')?.addEventListener('click', () => this.startReview());
+    document.getElementById('reviewCard')?.addEventListener('click', () => this.flipCard());
 
     this.fileDropArea?.addEventListener('click', () => this.importFile?.click());
     this.fileDropArea?.addEventListener('dragover', (e) => this.handleDragOver(e));
@@ -2547,6 +2569,7 @@ class BookApp {
         inspirationsData = stored ? JSON.parse(stored) : [];
       }
       this.inspirations = inspirationsData.map(j => InspirationEntry.fromJSON(j));
+      this._checkTodayReviewed();
       return this.inspirations;
     } catch (error) {
       console.error('加载灵感失败:', error);
@@ -2591,6 +2614,9 @@ class BookApp {
       if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'flex';
       if (c.inspirationSection) c.inspirationSection.style.display = 'block';
 
+      // 如果之前在复习中，清理复习DOM状态（但不重新渲染列表，下面会统一渲染）
+      this._cleanupReviewState();
+
       // 更新切换按钮状态
       if (c.viewKnowledge) c.viewKnowledge.classList.remove('active');
       if (c.viewInspiration) c.viewInspiration.classList.add('active');
@@ -2612,6 +2638,9 @@ class BookApp {
         this.renderInspirationList();
       });
     } else {
+      // 如果之前在复习中，清理复习DOM状态
+      this._cleanupReviewState();
+
       // 隐藏灵感模块
       if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'none';
       if (c.inspirationSection) c.inspirationSection.style.display = 'none';
@@ -2801,7 +2830,7 @@ class BookApp {
 
   // 填充筛选面板中的标签选项（与新增灵感同步）
   _populateFilterTagOptions() {
-    const container = document.getElementById('filterTagsContainer');
+    const container = document.getElementById('inspirationFilterTagsContainer');
     if (!container) return;
 
     const tags = this.inspirationPresetTags;
@@ -2977,6 +3006,49 @@ class BookApp {
     }
 
     container.innerHTML = sorted.map(inspiration => this._renderInspirationCard(inspiration)).join('');
+    this._renderMemoryStats();
+  }
+
+  // 记忆统计栏
+  _renderMemoryStats() {
+    const bar = document.getElementById('memoryStatsBar');
+    if (!bar || !this.inspirations || !this.inspirations.length) {
+      if (bar) bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'flex';
+    const buckets = { good: 0, medium: 0, low: 0, unreviewed: 0 };
+    for (const insp of this.inspirations) {
+      const score = this._calcMemoryScore(insp);
+      if (score === 0) buckets.unreviewed++;
+      else if (score < 40) buckets.low++;
+      else if (score < 70) buckets.medium++;
+      else buckets.good++;
+    }
+    bar.innerHTML = `
+      <span class="memory-stat good">🟢 ${buckets.good} 牢固</span>
+      <span class="memory-stat medium">🟡 ${buckets.medium} 巩固</span>
+      <span class="memory-stat low">🔴 ${buckets.low} 薄弱</span>
+      <span class="memory-stat unreviewed">⏳ ${buckets.unreviewed} 未复习</span>
+    `;
+  }
+
+  // 检查今天是否已复习，未复习则显示红点
+  _checkTodayReviewed() {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const insp of this.inspirations) {
+      if (insp.lastReviewedAt && insp.lastReviewedAt.startsWith(today)) {
+        return; // 今天已复习
+      }
+    }
+    const btn = document.getElementById('startReviewBtn');
+    if (btn) btn.classList.add('needs-review');
+  }
+
+  // 清除复习提醒红点
+  _clearReviewDot() {
+    const btn = document.getElementById('startReviewBtn');
+    if (btn) btn.classList.remove('needs-review');
   }
 
   // 渲染单条灵感卡片
@@ -3014,6 +3086,11 @@ class BookApp {
         <div class="inspiration-card-footer">
           ${inspiration.source?.reference ? `<div class="inspiration-card-source">${this.escapeHtml(inspiration.source.reference)}</div>` : ''}
         </div>
+        ${(() => {
+          const score = this._calcMemoryScore(inspiration);
+          const label = this._getMemoryLabel(score);
+          return `<div class="inspiration-review-status ${label.cls}">${label.icon} ${label.text}</div>`;
+        })()}
       </div>
     `;
   }
@@ -3192,6 +3269,318 @@ class BookApp {
   closeInspirationModal() {
     document.getElementById('inspirationModal').style.display = 'none';
     document.getElementById('overlay').style.display = 'none';
+  }
+
+  // =========================================
+  // 灵感随机复习功能
+  // =========================================
+
+  // 记忆衰减分数（0-100），基于艾宾浩斯遗忘曲线
+  _calcMemoryScore(inspiration) {
+    if (!inspiration.lastReviewedAt) return 0;
+    const now = Date.now();
+    const HALF_LIFE_REMEMBERED = 21; // 记住了：21天后贡献减半
+    const HALF_LIFE_FORGOTTEN = 7;   // 再想想：7天后贡献减半
+    let score = 0;
+    for (const review of inspiration.reviewResults) {
+      const daysAgo = (now - new Date(review.date).getTime()) / (1000 * 60 * 60 * 24);
+      const halfLife = review.remembered ? HALF_LIFE_REMEMBERED : HALF_LIFE_FORGOTTEN;
+      const decay = Math.pow(2, -daysAgo / halfLife);
+      const weight = review.remembered ? 1.0 : 0.25;
+      score += weight * decay;
+    }
+    return Math.min(Math.round(score * 100), 100);
+  }
+
+  // 记忆分级标签
+  _getMemoryLabel(score) {
+    if (score === 0) return { text: '尚未复习', cls: 'unreviewed', icon: '⏳' };
+    if (score < 40)  return { text: '记忆薄弱', cls: 'low', icon: '🔴' };
+    if (score < 70)  return { text: '需要巩固', cls: 'medium', icon: '🟡' };
+    return { text: '记忆牢固', cls: 'good', icon: '🟢' };
+  }
+
+  // 加权抽取：记忆分越低权重越高
+  _selectReviewCards(count) {
+    const pool = this.inspirations.map(insp => {
+      const score = this._calcMemoryScore(insp);
+      const weight = 101 - score; // 0分→权重101, 100分→权重1
+      return { insp, weight };
+    });
+
+    // 加权无放回抽样
+    const n = Math.min(count, pool.length);
+    const selected = [];
+    for (let i = 0; i < n; i++) {
+      const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+      let r = Math.random() * totalWeight;
+      let pick = 0;
+      for (let j = 0; j < pool.length; j++) {
+        r -= pool[j].weight;
+        if (r <= 0) { pick = j; break; }
+      }
+      selected.push(pool[pick].insp);
+      pool.splice(pick, 1);
+    }
+    return selected;
+  }
+
+  // Fisher-Yates 洗牌算法（保留给未来可能的需求）
+  _shuffleArray(arr) {
+    const shuffled = [...arr];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  // 开始随机复习
+  startReview() {
+    if (!this.inspirations || this.inspirations.length === 0) {
+      this.showToast('暂无灵感记录，请先记录灵感', 'warning');
+      return;
+    }
+
+    // 加权抽取：优先长期未复习的灵感
+    const count = Math.min(5, this.inspirations.length);
+    this.reviewCards = this._selectReviewCards(count);
+    this.reviewIndex = 0;
+    this.reviewRemembered = [];
+    this.reviewForgotten = [];
+
+    // 隐藏灵感列表和工具栏，显示复习面板
+    const inspirationList = this.domCache.inspirationList;
+    const emptyState = this.domCache.inspirationEmptyState;
+    const reviewPanel = document.getElementById('reviewPanel');
+    const reviewSummary = document.getElementById('reviewSummary');
+    const toolbar = document.querySelector('.inspiration-toolbar');
+
+    if (inspirationList) inspirationList.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
+    if (toolbar) toolbar.style.display = 'none';
+    if (reviewSummary) reviewSummary.style.display = 'none';
+    if (reviewPanel) reviewPanel.style.display = 'flex';
+
+    // 锁定主内容区滚动，动态计算面板高度填满视口
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.style.setProperty('overflow-y', 'hidden', 'important');
+      mainContent.style.setProperty('padding-bottom', '0', 'important');
+      const mainRect = mainContent.getBoundingClientRect();
+      if (reviewPanel) reviewPanel.style.height = mainRect.height + 'px';
+    }
+
+    // 更新视图标签为"灵感复习"
+    const viewInspirationBtn = document.getElementById('viewInspiration');
+    if (viewInspirationBtn) {
+      viewInspirationBtn.innerHTML = '<i class="fas fa-lightbulb"></i> 灵感复习';
+    }
+
+    this.renderReviewCard(false); // 首张卡片，不需要过渡处理
+  }
+
+  // 渲染当前闪卡
+  // isTransition: 是否是从上一张卡片过渡而来（需要隐藏背面防止闪现），首张卡片为 false
+  renderReviewCard(isTransition = true) {
+    const card = this.reviewCards[this.reviewIndex];
+    if (!card) return;
+
+    // 更新进度
+    const progressFill = document.getElementById('reviewProgressFill');
+    const progressText = document.getElementById('reviewProgressText');
+    const total = this.reviewCards.length;
+    const current = this.reviewIndex + 1;
+    const percent = (current / total) * 100;
+    if (progressFill) progressFill.style.width = percent + '%';
+    if (progressText) progressText.textContent = `第 ${current}/${total} 张`;
+
+    // 背面元素引用
+    const backTranslation = document.querySelector('#reviewCardBack .review-card-translation');
+    const backTags = document.querySelector('#reviewCardBack .review-card-tags');
+    const backBook = document.querySelector('#reviewCardBack .review-card-book');
+
+    // 更新背面内容的辅助函数
+    const updateBackContent = () => {
+      if (backTranslation) {
+        backTranslation.innerHTML = card.coreTranslation || '暂无内容';
+        backTranslation.style.opacity = '1';
+      }
+      if (backTags) {
+        if (card.tags && card.tags.length > 0) {
+          backTags.innerHTML = card.tags.map(tag => `<span class="inspiration-tag">${this.escapeHtml(tag)}</span>`).join('');
+        } else {
+          backTags.innerHTML = '';
+        }
+        backTags.style.opacity = '1';
+      }
+      if (backBook) {
+        if (card.bookId) {
+          const book = this.storageService.books.find(b => b.id === card.bookId);
+          backBook.innerHTML = book
+            ? `<i class="fas fa-book"></i> 《${this.escapeHtml(book.title)}》`
+            : '';
+        } else {
+          backBook.innerHTML = '';
+        }
+        backBook.style.opacity = '1';
+      }
+    };
+
+    // 渲染正面：标题
+    const frontTitle = document.querySelector('#reviewCardFront .review-card-title');
+    if (frontTitle) frontTitle.textContent = card.title;
+
+    // 重置卡片状态：正面朝上，隐藏操作按钮（保留占位空间）
+    const reviewCard = document.getElementById('reviewCard');
+    const reviewActions = document.getElementById('reviewActions');
+    if (reviewCard) reviewCard.classList.remove('flipped');
+    if (reviewActions) reviewActions.style.visibility = 'hidden';
+
+    if (isTransition) {
+      // 从上一张卡片过渡：先隐藏背面内容防止闪现，等翻转动画完成后更新
+      if (this._reviewBackTimeout) clearTimeout(this._reviewBackTimeout);
+      if (backTranslation) backTranslation.style.opacity = '0';
+      if (backTags) backTags.style.opacity = '0';
+      if (backBook) backBook.style.opacity = '0';
+      this._reviewBackTimeout = setTimeout(updateBackContent, 350);
+    } else {
+      // 首张卡片：直接渲染背面内容
+      updateBackContent();
+    }
+  }
+
+  // 翻转卡片
+  flipCard() {
+    const reviewCard = document.getElementById('reviewCard');
+    const reviewActions = document.getElementById('reviewActions');
+    if (!reviewCard || reviewCard.classList.contains('flipped')) return;
+
+    reviewCard.classList.add('flipped');
+    if (reviewActions) reviewActions.style.visibility = 'visible';
+  }
+
+  // 回答：记住了 / 再想想
+  answerReview(remembered) {
+    const card = this.reviewCards[this.reviewIndex];
+    if (!card) return;
+
+    // 记录结果
+    if (remembered) {
+      this.reviewRemembered.push(card.id);
+    } else {
+      this.reviewForgotten.push(card.id);
+    }
+
+    // 写入灵感对象的复习记录
+    const inspiration = this.inspirations.find(i => i.id === card.id);
+    if (inspiration) {
+      inspiration.lastReviewedAt = new Date().toISOString();
+      inspiration.reviewResults.push({
+        date: new Date().toISOString(),
+        remembered: remembered
+      });
+    }
+
+    // 下一张
+    this.reviewIndex++;
+    if (this.reviewIndex < this.reviewCards.length) {
+      this.renderReviewCard();
+    } else {
+      this.showReviewSummary();
+    }
+  }
+
+  // 显示复习总结
+  async showReviewSummary() {
+    const reviewPanel = document.getElementById('reviewPanel');
+    const reviewSummary = document.getElementById('reviewSummary');
+    if (reviewPanel) reviewPanel.style.display = 'none';
+    if (reviewSummary) reviewSummary.style.display = 'flex';
+
+    const rememberedCount = this.reviewRemembered.length;
+    const forgottenCount = this.reviewForgotten.length;
+    const total = this.reviewCards.length;
+
+    // 渲染统计
+    const statsEl = document.getElementById('reviewSummaryStats');
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="review-stat remembered">
+          <span class="review-stat-count">${rememberedCount}</span>
+          <span class="review-stat-label">记住了</span>
+        </div>
+        <div class="review-stat forgotten">
+          <span class="review-stat-count">${forgottenCount}</span>
+          <span class="review-stat-label">还需巩固</span>
+        </div>
+      `;
+    }
+
+    // 渲染每条结果的卡片列表
+    const cardsEl = document.getElementById('reviewSummaryCards');
+    if (cardsEl) {
+      cardsEl.innerHTML = this.reviewCards.map(card => {
+        const isRemembered = this.reviewRemembered.includes(card.id);
+        // 获取该灵感的最新记忆状态
+        const insp = this.inspirations.find(i => i.id === card.id);
+        const score = insp ? this._calcMemoryScore(insp) : 0;
+        const label = this._getMemoryLabel(score);
+        return `
+          <div class="review-summary-card ${isRemembered ? 'remembered' : 'forgotten'}">
+            <span class="review-summary-card-icon">${isRemembered ? '✅' : '🔄'}</span>
+            <span class="review-summary-card-title">${this.escapeHtml(card.title)}</span>
+            <span class="review-summary-card-status ${label.cls}">${label.icon} ${label.text}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 持久化复习记录
+    await this.saveInspirations();
+    this._clearReviewDot();
+  }
+
+  // 退出复习（完整流程，包含列表重新渲染）
+  exitReview() {
+    this._cleanupReviewState();
+    this._clearReviewDot();
+    this.renderInspirationList();
+  }
+
+  // 清理复习状态（仅清理DOM和内存，不触发渲染）
+  _cleanupReviewState() {
+    this.reviewCards = [];
+    this.reviewIndex = 0;
+    this.reviewRemembered = [];
+    this.reviewForgotten = [];
+
+    const reviewPanel = document.getElementById('reviewPanel');
+    const reviewSummary = document.getElementById('reviewSummary');
+    if (reviewPanel) {
+      reviewPanel.style.display = 'none';
+      reviewPanel.style.height = '';
+    }
+    if (reviewSummary) reviewSummary.style.display = 'none';
+
+    // 恢复主内容区滚动和工具栏
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.style.removeProperty('overflow-y');
+      mainContent.style.removeProperty('padding-bottom');
+    }
+
+    const toolbar = document.querySelector('.inspiration-toolbar');
+    if (toolbar) toolbar.style.display = '';
+
+    // 恢复视图标签为"灵感记录"
+    const viewInspirationBtn = document.getElementById('viewInspiration');
+    if (viewInspirationBtn) {
+      viewInspirationBtn.innerHTML = '<i class="fas fa-lightbulb"></i> 灵感记录';
+    }
+
+    const inspirationList = this.domCache.inspirationList;
+    if (inspirationList) inspirationList.style.display = '';
   }
 
   // 渲染预设灵感标签
@@ -6058,7 +6447,7 @@ class BookApp {
         if (!merge) {
           // 替换模式：直接替换所有数据
           this.storageService.books = newBooks.map(b => Book.fromJSON(b));
-          this.journals = newJournals.map(j => JournalEntry.fromJSON(j));
+          this.journals = newJournals.map(j => InspirationEntry.fromJSON(j));
           this.storageService.folders = newFolders;
         } else {
           // 合并模式：追加数据
@@ -6069,7 +6458,7 @@ class BookApp {
           // 合并日记（基于 ID）
           const existingIds = new Set(this.journals.map(j => j.id));
           const newJournalsToAdd = newJournals.filter(j => !existingIds.has(j.id));
-          this.journals = [...this.journals, ...newJournalsToAdd.map(j => JournalEntry.fromJSON(j))];
+          this.journals = [...this.journals, ...newJournalsToAdd.map(j => InspirationEntry.fromJSON(j))];
         }
 
         await this.storageService.saveBooks();
@@ -6742,6 +7131,40 @@ class BookApp {
       if (this.bookFormSection.style.display !== 'none') {
         this.bookForm.dispatchEvent(new Event('submit'));
         this.showToast('保存书籍', 'success');
+      }
+    }
+
+    // 复习模式键盘操作（优先级高于一般快捷键）
+    const reviewPanel = document.getElementById('reviewPanel');
+    if (reviewPanel && reviewPanel.style.display !== 'none') {
+      const card = document.getElementById('reviewCard');
+      const isFlipped = card && card.classList.contains('flipped');
+
+      if ((e.key === ' ' || e.key === 'Spacebar') && card && !isFlipped) {
+        e.preventDefault();
+        this.flipCard();
+        return;
+      }
+
+      // 翻面后键盘操作
+      if (isFlipped) {
+        if (e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault();
+          this.answerReview(true); // 记住了
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.answerReview(false); // 再想想
+          return;
+        }
+      }
+
+      // 未翻面时 Escape 退出复习
+      if (!isFlipped && e.key === 'Escape') {
+        e.preventDefault();
+        this.exitReview();
+        return;
       }
     }
 
