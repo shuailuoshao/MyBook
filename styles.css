@@ -1685,6 +1685,7 @@ body::before {
     gap: 6px;
     justify-content: flex-end;
     flex-wrap: wrap;
+    margin-left: auto;
 }
 
 .action-btn {

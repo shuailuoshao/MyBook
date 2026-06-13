@@ -43,7 +43,7 @@
     "author": "重返未来1999 3.4版本",
     "startDate": "2026-03-06",
     "endDate": "2026-03-07",
-    "status": "已玩完",
+    "status": "已读完",
     "notes": [],
     "rating": {
       "totalScore": 56.5,
@@ -60,10 +60,9 @@
       "ratedAt": "2026-04-24T06:09:22.434Z"
     },
     "tags": [
-      "游戏剧情",
+      "社科",
       "悬疑",
-      "推理",
-      "心理"
+      "推理"
     ],
     "enableRating": true,
     "enableInspiration": false,
@@ -73,7 +72,7 @@
     "progressUnit": "章",
     "evaluation": "1111111111111",
     "createdAt": "2026-03-08T02:59:22.056Z",
-    "updatedAt": "2026-06-13T03:22:41.310Z"
+    "updatedAt": "2026-06-13T09:11:28.432Z"
   },
   {
     "id": "1772939122256",
@@ -85,8 +84,7 @@
     "notes": [],
     "rating": null,
     "tags": [
-      "纪实",
-      "哲学",
+      "文学",
       "心理",
       "社会"
     ],
@@ -98,7 +96,7 @@
     "progressUnit": "章",
     "evaluation": "",
     "createdAt": "2026-03-08T03:05:22.256Z",
-    "updatedAt": "2026-04-16T03:58:45.733Z"
+    "updatedAt": "2026-06-13T09:15:51.959Z"
   },
   {
     "id": "1772939198038",
@@ -163,19 +161,18 @@
     "notes": [],
     "rating": null,
     "tags": [
-      "纪实",
-      "社会",
-      "哲学"
+      "工具",
+      "社会"
     ],
     "enableRating": false,
     "enableInspiration": false,
-    "folderId": "folder_1772897231838",
+    "folderId": "uncategorized",
     "currentProgress": 12,
     "totalLength": 12,
     "progressUnit": "章",
     "evaluation": "",
     "createdAt": "2026-03-08T03:09:02.908Z",
-    "updatedAt": "2026-03-08T03:09:15.750Z"
+    "updatedAt": "2026-06-13T09:19:25.101Z"
   },
   {
     "id": "1772939471532",
@@ -187,8 +184,8 @@
     "notes": [],
     "rating": null,
     "tags": [
-      "传记",
-      "心理",
+      "学术论文",
+      "商业",
       "社会"
     ],
     "enableRating": false,
@@ -199,7 +196,7 @@
     "progressUnit": "章",
     "evaluation": "",
     "createdAt": "2026-03-08T03:11:11.532Z",
-    "updatedAt": "2026-04-16T04:08:29.285Z"
+    "updatedAt": "2026-06-13T09:15:59.964Z"
   },
   {
     "id": "1772939566649",
@@ -211,18 +208,18 @@
     "notes": [],
     "rating": null,
     "tags": [
-      "纪实",
+      "轻小说",
       "社会"
     ],
     "enableRating": false,
     "enableInspiration": false,
     "folderId": "uncategorized",
-    "currentProgress": 6,
+    "currentProgress": 16,
     "totalLength": 16,
     "progressUnit": "章",
     "evaluation": "1111111111111111111111",
     "createdAt": "2026-03-08T03:12:46.649Z",
-    "updatedAt": "2026-06-13T03:22:54.970Z"
+    "updatedAt": "2026-06-13T09:15:45.938Z"
   },
   {
     "id": "1772956012201",
@@ -230,7 +227,7 @@
     "author": "迪士尼",
     "startDate": "2026-01-26",
     "endDate": "2026-01-26",
-    "status": "已读完",
+    "status": "已看完",
     "notes": [],
     "rating": {
       "totalScore": 54.5,
@@ -246,18 +243,38 @@
       "ratedAt": "2026-04-24T06:09:31.363Z"
     },
     "tags": [
-      "电影",
+      "动漫",
       "悬疑",
       "治愈"
     ],
     "enableRating": true,
     "enableInspiration": false,
-    "folderId": "folder_1772956219839",
+    "folderId": "uncategorized",
     "currentProgress": 1,
     "totalLength": 1,
     "progressUnit": "章",
     "evaluation": "",
     "createdAt": "2026-03-08T07:46:52.200Z",
-    "updatedAt": "2026-04-24T06:09:31.363Z"
+    "updatedAt": "2026-06-13T09:20:58.193Z"
+  },
+  {
+    "id": "1781330832652",
+    "title": "111",
+    "author": "",
+    "startDate": "2026-06-13",
+    "endDate": null,
+    "status": "阅读中",
+    "notes": [],
+    "rating": null,
+    "tags": [],
+    "enableRating": true,
+    "enableInspiration": true,
+    "folderId": "uncategorized",
+    "currentProgress": 0,
+    "totalLength": 0,
+    "progressUnit": "章",
+    "evaluation": "1111",
+    "createdAt": "2026-06-13T06:07:12.652Z",
+    "updatedAt": "2026-06-13T06:16:36.389Z"
   }
 ]

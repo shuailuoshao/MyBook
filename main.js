@@ -117,7 +117,7 @@ function createWindow() {
   initDataPaths();
 
   mainWindow = new BrowserWindow({
-    width: 1300,
+    width: 1400,
     height: 800,
     title: 'MyBook',
     icon: path.join(__dirname, 'build', 'icon.png'),

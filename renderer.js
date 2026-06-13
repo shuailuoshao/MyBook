@@ -1140,7 +1140,7 @@ class FilterService {
     const unknownSet = new Set();
 
     // 题材标签列表
-    const formatTags = ['文学', '小说', '轻小说', '网文', '纪实', '报告文学', '传记', '游戏剧情', 'Galgame', '电视剧', '动漫', '电影', '漫画', '技术文档', '学术论文'];
+    const formatTags = ['文学', '小说', '工具', '纪实', '报告文学', '传记', '游戏剧情', '电视剧', '动漫', '电影', '漫画', '学术论文', '哲学', '历史', '社科'];
     // 类型标签列表
     const genreTags = ['科幻', '悬疑', '推理', '奇幻', '戏剧', '哲学', '心理', '社会', '恋爱', '治愈', '致郁', '赛博朋克', '硬核'];
 
@@ -2114,7 +2114,7 @@ class BookApp {
     this.genreTagsContainer = document.getElementById('genreTags');
     this.currentTags = []; // 当前表单中的标签数组（已选标签）
     // 题材标签列表（单选）
-    this.formatTags = ['文学', '小说', '轻小说', '网文', '纪实', '报告文学', '传记', '游戏剧情', 'Galgame', '电视剧', '动漫', '电影', '漫画', '技术文档', '学术论文'];
+    this.formatTags = ['文学', '小说', '工具', '纪实', '报告文学', '传记', '游戏剧情', '电视剧', '动漫', '电影', '漫画', '学术论文', '哲学', '历史', '社科'];
     // 类型标签列表（多选）
     this.genreTags = ['科幻', '悬疑', '推理', '奇幻', '戏剧', '哲学', '心理', '社会', '恋爱', '治愈', '致郁', '赛博朋克', '硬核'];
 
@@ -3969,79 +3969,67 @@ class BookApp {
 
   // 获取书籍卡片主题颜色
   getCardThemeColor(status, tags) {
-    // 定义极限色差红色系库（8种剧烈视觉反差的色值）
-    const colorPalettes = {
-      '已读完': [
-        { main: '#FF0000', bg: 'rgba(255, 0, 0, 0.12)', name: '大红' },          // 最正的视觉中心
-        { main: '#680000', bg: 'rgba(104, 0, 0, 0.08)', name: '深酒红' },       // 极深，适合严肃题材
-        { main: '#FF69B4', bg: 'rgba(255, 105, 180, 0.15)', name: '热力粉' },   // 高饱和冷调粉
-        { main: '#FF4500', bg: 'rgba(255, 69, 0, 0.1)', name: '橘红' },         // 极暖调，偏向橘色
-        { main: '#C71585', bg: 'rgba(199, 21, 133, 0.12)', name: '梅紫红' },    // 带紫调的深粉
-        { main: '#FF7F50', bg: 'rgba(255, 127, 80, 0.15)', name: '珊瑚色' },    // 明亮的浅暖红
-        { main: '#DC143C', bg: 'rgba(220, 20, 60, 0.1)', name: '绯红' },       // 经典的高质感红
-        { main: '#FFB6C1', bg: 'rgba(255, 182, 193, 0.2)', name: '浅玫瑰' }     // 极浅的粉色，形成明度反差
-      ],
-      '阅读中': [
-        { main: '#FFB300', bg: 'rgba(255, 179, 0, 0.12)', name: '琥珀金' },     // 琥珀金
-        { main: '#FFF176', bg: 'rgba(255, 241, 118, 0.25)', name: '柠檬黄' },  // 柠檬黄
-        { main: '#F57C00', bg: 'rgba(245, 124, 0, 0.1)', name: '深橙金' },      // 深橙金
-        { main: '#FFE082', bg: 'rgba(255, 224, 130, 0.2)', name: '香槟金' },    // 香槟金
-        { main: '#FFD54F', bg: 'rgba(255, 213, 79, 0.15)', name: '暖黄色' }    // 暖黄色
-      ],
-      '未开始': [
-        { main: '#2E7D32', bg: 'rgba(46, 125, 50, 0.1)', name: '森林绿' },      // 森林绿
-        { main: '#A5D6A7', bg: 'rgba(165, 214, 167, 0.2)', name: '薄荷绿' },   // 薄荷绿
-        { main: '#00C853', bg: 'rgba(0, 200, 83, 0.1)', name: '翡翠绿' },       // 翡翠绿
-        { main: '#C8E6C9', bg: 'rgba(200, 230, 201, 0.2)', name: '浅草绿' },   // 浅草绿
-        { main: '#8BC34A', bg: 'rgba(139, 195, 74, 0.12)', name: '青柠色' }    // 青柠色
-      ]
+    // 【题材专属配色表】15个题材色差拉满+白色背景文字清晰
+    const tagColorMap = {
+      '文学': '#D32F2F',      // 正红（降饱和不刺眼）
+      '小说': '#FF7F00',      // 橙色（保留，对比度足够）
+      '工具': '#F0B429',      // 暖黄（降低亮度，文字清晰）
+      '纪实': '#57AB57',      // 草绿（降低亮度，不刺眼）
+      '报告文学': '#2385bb',  // 蓝绿（降低饱和度，不晃眼）
+      '传记': '#0000FF',      // 蓝色（保留，对比度高）
+      '游戏剧情': '#8B00FF',  // 紫色（保留，深色系清晰）
+      '电视剧': '#C2185B',    // 深玫红（替换亮洋红，文字清晰）
+      '动漫': '#FF1493',      // 深粉色（保留，足够深）
+      '电影': '#8B4513',      // 深棕色（保留，对比度高）
+      '漫画': '#D2691E',      // 暖棕色（替换浅卡其，文字更清晰）
+      '学术论文': '#34495E',  // 深灰（替换纯黑，更柔和不突兀）
+      '哲学': '#006400',      // 墨绿色（保留，清晰）
+      '历史': '#000080',      // 藏青色（保留，清晰）
+      '社科': '#800000',      // 绛红色（保留，清晰）
     };
 
-    // 默认色板（未开始）
-    const defaultPalette = colorPalettes['未开始'];
+    // 默认配色（无标签或未匹配到题材时使用）
+    const defaultColor = '#7F8C8D'; // 中性灰
 
-    // 获取对应状态的色系
-    const palette = colorPalettes[status] || defaultPalette;
-
-    // 如果没有标签，使用默认第一个颜色
-    if (!tags || !Array.isArray(tags) || tags.length === 0) {
-      const theme = palette[0];
-      return {
-        main: theme.main,
-        bg: theme.bg,
-        shadow: this.hexToRgba(theme.main, 0.3),
-        border: this.darkenColor(theme.main, 0.3)
-      };
+    // 第一步：获取题材对应的专属主色
+    let mainColor = defaultColor;
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      const firstTag = tags[0];
+      mainColor = tagColorMap[firstTag] || defaultColor;
     }
 
-    // 提取第一个标签
-    const firstTag = tags[0];
-    // 使用hash函数计算稳定索引（根据色板长度分散）
-    const hash = this.hashString(firstTag);
-    const colorIndex = hash % palette.length; // 使用当前色板的长度
+    // 第二步：根据阅读状态调整颜色深浅，保持主色不变
+    let adjustedColor = mainColor;
+    if (status === '已读完') {
+      adjustedColor = mainColor; // 已读完用原饱和度
+    } else if (status === '阅读中') {
+      adjustedColor = this.lightenColor(mainColor, 0.1); // 阅读中亮10%
+    } else if (status === '未开始') {
+      adjustedColor = this.desaturateColor(mainColor, 0.2); // 未开始降低饱和度20%
+    }
 
-    const theme = palette[colorIndex];
+    // 第三步：动态计算配套颜色（和原有逻辑保持兼容）
+    const isLightColor = this.isLightColor(adjustedColor);
 
-    // 动态计算配套颜色
-    const mainColor = theme.main;
-    const isLightColor = this.isLightColor(mainColor);
-
-    // 计算左侧装饰条颜色（带立体感）
-    let borderColor = mainColor;
+    // 左侧装饰条颜色
+    let borderColor = adjustedColor;
     if (isLightColor) {
-      borderColor = this.darkenColor(mainColor, 0.3); // 浅色调暗30%
+      borderColor = this.darkenColor(adjustedColor, 0.3); // 浅色调暗30%
     }
 
-    // 计算右上角标签背景色（极淡版本）
-    const bgColor = this.hexToRgba(mainColor, 0.12);
+    // 卡片背景色（极淡版）
+    const bgColor = this.hexToRgba(adjustedColor, 0.12);
 
-    // 计算进度条颜色（高饱和度）
+    // 阴影颜色
+    const shadowColor = this.hexToRgba(adjustedColor, 0.3);
+
+    // 进度条颜色（保持高饱和主色）
     const progressColor = mainColor;
 
     return {
-      main: mainColor,
+      main: adjustedColor,
       bg: bgColor,
-      shadow: this.hexToRgba(mainColor, 0.3),
+      shadow: shadowColor,
       border: borderColor,
       progress: progressColor
     };
@@ -4085,6 +4073,36 @@ class BookApp {
     r = Math.round(r * (1 - amount));
     g = Math.round(g * (1 - amount));
     b = Math.round(b * (1 - amount));
+
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // 颜色提亮方法
+  lightenColor(hex, amount) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    r = Math.min(255, Math.round(r * (1 + amount)));
+    g = Math.min(255, Math.round(g * (1 + amount)));
+    b = Math.min(255, Math.round(b * (1 + amount)));
+
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // 颜色去饱和方法（降低饱和度）
+  desaturateColor(hex, amount) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    // 计算灰度值（ITU-R BT.709标准）
+    const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+    // 和灰度值按比例混合
+    r = Math.round(r * (1 - amount) + gray * amount);
+    g = Math.round(g * (1 - amount) + gray * amount);
+    b = Math.round(b * (1 - amount) + gray * amount);
 
     return `rgb(${r}, ${g}, ${b})`;
   }
