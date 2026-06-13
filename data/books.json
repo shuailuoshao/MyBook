@@ -33,6 +33,7 @@
     "currentProgress": 22,
     "totalLength": 22,
     "progressUnit": "章",
+    "evaluation": "",
     "createdAt": "2026-03-08T02:56:15.453Z",
     "updatedAt": "2026-04-24T06:11:15.463Z"
   },
@@ -70,8 +71,9 @@
     "currentProgress": 21,
     "totalLength": 21,
     "progressUnit": "章",
+    "evaluation": "1111111111111",
     "createdAt": "2026-03-08T02:59:22.056Z",
-    "updatedAt": "2026-04-24T06:11:04.031Z"
+    "updatedAt": "2026-06-13T03:22:41.310Z"
   },
   {
     "id": "1772939122256",
@@ -94,6 +96,7 @@
     "currentProgress": 7,
     "totalLength": 7,
     "progressUnit": "章",
+    "evaluation": "",
     "createdAt": "2026-03-08T03:05:22.256Z",
     "updatedAt": "2026-04-16T03:58:45.733Z"
   },
@@ -146,6 +149,7 @@
     "currentProgress": 6,
     "totalLength": 6,
     "progressUnit": "章",
+    "evaluation": "",
     "createdAt": "2026-03-08T03:06:38.038Z",
     "updatedAt": "2026-03-08T03:09:17.492Z"
   },
@@ -169,6 +173,7 @@
     "currentProgress": 12,
     "totalLength": 12,
     "progressUnit": "章",
+    "evaluation": "",
     "createdAt": "2026-03-08T03:09:02.908Z",
     "updatedAt": "2026-03-08T03:09:15.750Z"
   },
@@ -192,6 +197,7 @@
     "currentProgress": 4,
     "totalLength": 4,
     "progressUnit": "章",
+    "evaluation": "",
     "createdAt": "2026-03-08T03:11:11.532Z",
     "updatedAt": "2026-04-16T04:08:29.285Z"
   },
@@ -214,8 +220,9 @@
     "currentProgress": 6,
     "totalLength": 16,
     "progressUnit": "章",
+    "evaluation": "1111111111111111111111",
     "createdAt": "2026-03-08T03:12:46.649Z",
-    "updatedAt": "2026-03-17T13:03:18.098Z"
+    "updatedAt": "2026-06-13T03:22:54.970Z"
   },
   {
     "id": "1772956012201",
@@ -249,6 +256,7 @@
     "currentProgress": 1,
     "totalLength": 1,
     "progressUnit": "章",
+    "evaluation": "",
     "createdAt": "2026-03-08T07:46:52.200Z",
     "updatedAt": "2026-04-24T06:09:31.363Z"
   }

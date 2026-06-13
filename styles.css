@@ -1326,7 +1326,7 @@ body::before {
 .book-list-container {
     display: grid;
     /* 自适应流式网格 */
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
     gap: 20px;
     margin-top: 20px;
     scroll-margin-top: 100px;
@@ -10096,6 +10096,46 @@ html, body {
 
 #addInspirationBtn:hover {
     background: var(--color-primary-700) !important;
+}
+
+/* 评价摘要样式 */
+.evaluation-summary {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-all;
+}
+
+/* 总评按钮样式 */
+.action-btn.evaluation {
+  color: var(--primary-color);
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+  position: relative;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.action-btn.evaluation:hover {
+  background-color: rgba(var(--primary-color-rgb), 0.15);
+  z-index: 11;
+}
+
+/* 评价弹窗样式 */
+#evaluationModal {
+  z-index: 10001 !important;
+}
+
+.evaluation-modal {
+  width: 600px;
+  max-width: 90vw;
 }
 
 /* 锁定书籍指示器 */

@@ -618,6 +618,7 @@ class Book {
     currentProgress = 0,
     totalLength = 0,
     progressUnit = '章',
+    evaluation = '',
     createdAt = new Date().toISOString(),
     updatedAt = new Date().toISOString()
   } = {}) {
@@ -636,6 +637,7 @@ class Book {
     this.currentProgress = currentProgress;
     this.totalLength = totalLength;
     this.progressUnit = progressUnit;
+    this.evaluation = evaluation;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -666,7 +668,7 @@ class Book {
   }
 
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'enableInspiration', 'folderId', 'currentProgress', 'totalLength', 'progressUnit'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'enableInspiration', 'folderId', 'currentProgress', 'totalLength', 'progressUnit', 'evaluation'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) this[field] = updates[field];
     });
@@ -706,6 +708,7 @@ class Book {
       currentProgress: this.currentProgress,
       totalLength: this.totalLength,
       progressUnit: this.progressUnit,
+      evaluation: this.evaluation,
       createdAt: this.createdAt, updatedAt: this.updatedAt
     };
   }
@@ -4148,6 +4151,11 @@ class BookApp {
         </div>
       </div>
       ${this.renderProgressBar(book)}
+      ${book.evaluation ? `
+        <div class="evaluation-summary">
+          ${this.escapeHtml(book.evaluation.replace(/\n/g, ' ')).substring(0, 100)}${book.evaluation.length > 100 ? '…' : ''}
+        </div>
+      ` : ''}
       <div class="book-footer">
         ${honorBadge}
         <div class="book-actions">
@@ -4156,6 +4164,9 @@ class BookApp {
           </button>
           <button class="action-btn delete" data-action="delete" data-id="${book.id}">
             <i class="fas fa-trash"></i> 删除
+          </button>
+          <button class="action-btn evaluation" data-action="evaluation" data-id="${book.id}">
+            <i class="fas fa-pen-fancy"></i> 总评
           </button>
           ${showInspirationBtn ? `<button class="action-btn inspiration-link" data-action="inspiration" data-id="${book.id}">
             <i class="fas fa-lightbulb"></i> 灵感
@@ -4190,6 +4201,16 @@ class BookApp {
       ratingBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.openRatingModal(book.id);
+      });
+    }
+
+    // 总评按钮事件
+    const evaluationBtn = card.querySelector('[data-action="evaluation"]');
+    if (evaluationBtn) {
+      evaluationBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.openEvaluationModal(book.id);
       });
     }
 
@@ -6810,6 +6831,65 @@ class BookApp {
     }
   }
 
+  openEvaluationModal(bookId) {
+    const book = this.storageService.getBookById(bookId);
+    if (!book) return;
+
+    // 填充表单
+    document.getElementById('evaluationBookId').value = bookId;
+    document.getElementById('evaluationContent').value = book.evaluation || '';
+
+    // 显示弹窗
+    const modal = document.getElementById('evaluationModal');
+    modal.style.display = 'flex';
+    // 确保overlay显示且z-index高于工具栏(10000)
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'block';
+    overlay.style.zIndex = '10000';
+    overlay.classList.add('active');
+
+    // 自动聚焦文本框
+    setTimeout(() => {
+      document.getElementById('evaluationContent').focus();
+    }, 100);
+  }
+
+  async saveEvaluation() {
+    const bookId = document.getElementById('evaluationBookId').value;
+    const content = document.getElementById('evaluationContent').value.trim();
+    const book = this.storageService.getBookById(bookId);
+
+    if (!book) return;
+
+    // 更新数据
+    book.evaluation = content;
+    book.updatedAt = new Date().toISOString();
+
+    try {
+      // 保存数据
+      await this.storageService.saveBooks();
+      // 刷新卡片视图
+      this.renderBooks();
+      // 关闭弹窗
+      this.closeEvaluationModal();
+      // 提示成功
+      this.showToast('总评保存成功', 'success');
+    } catch (error) {
+      console.error('保存总评失败:', error);
+      this.showToast('保存失败，请重试', 'error');
+    }
+  }
+
+  closeEvaluationModal() {
+    document.getElementById('evaluationModal').style.display = 'none';
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'none';
+    overlay.style.zIndex = ''; // 恢复默认z-index
+    overlay.classList.remove('active');
+    // 清空表单
+    document.getElementById('evaluationForm').reset();
+  }
+
   initRatingChart() {
     const chartDom = document.getElementById('ratingChart');
     if (!chartDom) return;
@@ -7440,6 +7520,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =========================================
     window.closeRatingModal = () => { window.bookApp.closeRatingModal(); };
     window.saveRating = () => { window.bookApp.saveRating(); };
+    window.closeEvaluationModal = () => { window.bookApp.closeEvaluationModal(); };
+    window.saveEvaluation = () => { window.bookApp.saveEvaluation(); };
     window.closeExportModal = () => { window.bookApp.closeExportModal(); };
     window.confirmExport = () => { window.bookApp.confirmExport(); };
     window.closeImportModal = () => { window.bookApp.closeImportModal(); };
