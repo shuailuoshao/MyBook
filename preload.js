@@ -14,6 +14,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 评分标准
   loadRatingCriteria: () => ipcRenderer.invoke('load-rating-criteria'),
 
+  // V3.0: 评分体系版本历史
+  loadRatingCriteriaHistory: () => ipcRenderer.invoke('load-rating-criteria-history'),
+  saveRatingCriteriaHistory: (history) => ipcRenderer.invoke('save-rating-criteria-history', history),
+
+  // V3.0: 对比项目
+  loadComparisons: () => ipcRenderer.invoke('load-comparisons'),
+  saveComparisons: (comparisons) => ipcRenderer.invoke('save-comparisons', comparisons),
+
+  // V3.0: 数据 schema 元信息
+  loadMeta: () => ipcRenderer.invoke('load-meta'),
+
   // 工具函数
   showMessage: (title, message) => ipcRenderer.send('show-message', { title, message }),
 

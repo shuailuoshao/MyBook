@@ -11205,3 +11205,964 @@ html, body {
 [data-theme="dark"] p {
     color: var(--text-primary) !important;
 }
+
+/* ========================================= */
+/* V3.0 评分体系版本角标（决策 6-E）          */
+/* ========================================= */
+.rating-version-badge {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    border-radius: 4px;
+    background: #F1F5FD;
+    color: #475569;
+    border: 1px solid #E4ECFC;
+    vertical-align: middle;
+    cursor: default;
+    user-select: none;
+}
+.rating-version-badge.stale {
+    background: #FEF3C7;
+    color: #92400E;
+    border-color: #FDE68A;
+}
+[data-theme="dark"] .rating-version-badge {
+    background: #1E293B;
+    color: #94A3B8;
+    border-color: #334155;
+}
+[data-theme="dark"] .rating-version-badge.stale {
+    background: #422006;
+    color: #FCD34D;
+    border-color: #713F12;
+}
+
+/* ============================================================ */
+/* V3.0 对比分析 —— Data-Dense Dashboard 设计系统               */
+/* 设计令牌（design-system/mybook-comparison/MASTER.md）         */
+/* ============================================================ */
+:root {
+    --cmp-primary: #2563EB;
+    --cmp-primary-on: #FFFFFF;
+    --cmp-secondary: #3B82F6;
+    --cmp-accent: #059669;
+    --cmp-bg: #F8FAFC;
+    --cmp-fg: #0F172A;
+    --cmp-muted: #F1F5FD;
+    --cmp-border: #E4ECFC;
+    --cmp-danger: #DC2626;
+    --cmp-ring: #2563EB;
+    --cmp-fg-muted: #475569;
+    --cmp-surface: #FFFFFF;
+    --cmp-font-mono: 'Fira Code', 'Consolas', monospace;
+    --cmp-font-sans: 'Fira Sans', 'Source Han Sans CN', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --cmp-radius-card: 6px;
+    --cmp-radius-chip: 4px;
+    --cmp-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --cmp-motion-fast: 150ms ease-out;
+    --cmp-motion-base: 200ms ease-out;
+    --cmp-z-base: 10;
+    --cmp-z-drawer: 30;
+    --cmp-z-dialog: 50;
+}
+[data-theme="dark"] {
+    --cmp-primary: #3B82F6;
+    --cmp-primary-on: #FFFFFF;
+    --cmp-secondary: #60A5FA;
+    --cmp-accent: #10B981;
+    --cmp-bg: #0F172A;
+    --cmp-fg: #F1F5F9;
+    --cmp-muted: #1E293B;
+    --cmp-border: #334155;
+    --cmp-danger: #F87171;
+    --cmp-ring: #60A5FA;
+    --cmp-fg-muted: #94A3B8;
+    --cmp-surface: #1E293B;
+}
+
+/* 对比分析视图容器 */
+.comparison-section {
+    padding: 24px 32px;
+    font-family: var(--cmp-font-sans);
+    color: var(--cmp-fg);
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* 列表页头部 */
+.comparison-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 16px;
+}
+.comparison-list-title {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+.comparison-list-title h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+}
+.comparison-list-title .section-count {
+    font-family: var(--cmp-font-mono);
+    font-size: 14px;
+    color: var(--cmp-fg-muted);
+}
+
+/* 通用按钮 */
+.cmp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    font-family: var(--cmp-font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--cmp-radius-chip);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background var(--cmp-motion-fast), border-color var(--cmp-motion-fast), transform var(--cmp-motion-fast);
+}
+.cmp-btn:active { transform: scale(0.98); }
+.cmp-btn:focus-visible { outline: 2px solid var(--cmp-ring); outline-offset: 2px; }
+.cmp-btn-primary {
+    background: var(--cmp-primary);
+    color: var(--cmp-primary-on);
+}
+.cmp-btn-primary:hover { background: var(--cmp-secondary); }
+.cmp-btn-ghost {
+    background: transparent;
+    color: var(--cmp-fg-muted);
+    border-color: var(--cmp-border);
+}
+.cmp-btn-ghost:hover { background: var(--cmp-muted); color: var(--cmp-fg); }
+
+/* 项目卡片网格 */
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+/* 项目卡片（意图 2：评估项目状态） */
+.cmp-card {
+    background: var(--cmp-surface);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-card);
+    box-shadow: var(--cmp-shadow-sm);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color var(--cmp-motion-fast), box-shadow var(--cmp-motion-fast), transform var(--cmp-motion-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+}
+/* 卡片删除按钮（hover 卡片才显现，点击弹确认对话框） */
+.cmp-card-del {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+    color: var(--cmp-fg-muted);
+    background: var(--cmp-bg);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, background .15s, color .15s, border-color .15s;
+    z-index: 2;
+}
+.cmp-card:hover .cmp-card-del,
+.cmp-card:focus-within .cmp-card-del { opacity: 1; }
+.cmp-card-del:hover {
+    border-color: #DC2626;
+    color: #fff;
+    background: #DC2626;
+}
+/* 通用确认对话框 */
+.cmp-confirm-modal {
+    max-width: 420px;
+    width: 90%;
+}
+.cmp-confirm-body {
+    padding: 8px 4px 4px;
+}
+.cmp-confirm-body p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--cmp-fg);
+}
+.cmp-confirm-modal .modal-header h3 i { color: #F59E0B; }
+.cmp-btn-danger {
+    background: #DC2626;
+    border: 1px solid #DC2626;
+    color: #fff;
+}
+.cmp-btn-danger:hover { background: #B91C1C; border-color: #B91C1C; }
+.cmp-card:hover {
+    border-color: var(--cmp-primary);
+    box-shadow: 0 4px 12px rgba(37,99,235,0.10);
+    transform: translateY(-2px);
+}
+.cmp-card:focus-visible { outline: 2px solid var(--cmp-ring); outline-offset: 2px; }
+.cmp-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+.cmp-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 0;
+    color: var(--cmp-fg);
+}
+.cmp-card-criteria {
+    flex-shrink: 0;
+    font-family: var(--cmp-font-mono);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: var(--cmp-radius-chip);
+    background: var(--cmp-muted);
+    color: var(--cmp-fg-muted);
+    border: 1px solid var(--cmp-border);
+}
+.cmp-card-desc {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--cmp-fg-muted);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cmp-card-books {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--cmp-fg);
+}
+.cmp-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--cmp-font-mono);
+    font-size: 12px;
+    color: var(--cmp-fg-muted);
+}
+.cmp-card-stale {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #92400E;
+    background: #FEF3C7;
+    border: 1px solid #FDE68A;
+    border-radius: var(--cmp-radius-chip);
+    padding: 2px 8px;
+    margin-top: 4px;
+    align-self: flex-start;
+}
+[data-theme="dark"] .cmp-card-stale {
+    color: #FCD34D; background: #422006; border-color: #713F12;
+}
+
+/* 空状态 */
+.cmp-empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    color: var(--cmp-fg-muted);
+}
+.cmp-empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+.cmp-empty-state h3 { font-size: 18px; font-weight: 600; margin: 0 0 8px; color: var(--cmp-fg); }
+.cmp-empty-state p { font-size: 14px; line-height: 1.6; max-width: 420px; margin: 0 auto 20px; }
+
+/* 工作区占位（阶段 4 替换） */
+.cmp-workspace-topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.cmp-workspace-title {
+    font-size: 20px;
+    font-weight: 600;
+}
+.cmp-workspace-placeholder {
+    padding: 48px;
+    text-align: center;
+    color: var(--cmp-fg-muted);
+    border: 1px dashed var(--cmp-border);
+    border-radius: var(--cmp-radius-card);
+}
+
+/* 新建对比项目 modal */
+.cmp-new-modal {
+    max-width: 520px;
+    width: 90%;
+    font-family: var(--cmp-font-sans);
+}
+.cmp-new-body {
+    padding: 8px 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cmp-field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cmp-fg-muted);
+    margin-top: 8px;
+}
+.cmp-text-input {
+    height: 40px;
+    padding: 0 12px;
+    font-family: var(--cmp-font-sans);
+    font-size: 14px;
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    background: var(--cmp-surface);
+    color: var(--cmp-fg);
+}
+.cmp-text-input:focus {
+    outline: 2px solid var(--cmp-ring);
+    outline-offset: 0;
+    border-color: var(--cmp-primary);
+}
+.cmp-book-picker {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    background: var(--cmp-bg);
+}
+.cmp-book-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--cmp-border);
+    transition: background var(--cmp-motion-fast);
+}
+.cmp-book-option:last-child { border-bottom: none; }
+.cmp-book-option:hover { background: var(--cmp-muted); }
+.cmp-book-option.selected { background: rgba(37,99,235,0.08); }
+.cmp-book-option input { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.cmp-book-option-title { flex: 1; font-size: 14px; color: var(--cmp-fg); }
+.cmp-book-option-score {
+    font-family: var(--cmp-font-mono);
+    font-size: 13px;
+    color: var(--cmp-accent);
+    font-weight: 600;
+}
+.cmp-new-hint {
+    font-size: 12px;
+    color: var(--cmp-fg-muted);
+    font-family: var(--cmp-font-mono);
+}
+
+/* ============================================================ */
+/* V3.0 对比分析工作区（4a：双列布局 + 版本时间线 + 评价）       */
+/* ============================================================ */
+.cmp-workspace-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.cmp-workspace-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--cmp-fg);
+}
+.cmp-workspace-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+/* meta 第二行 */
+.cmp-workspace-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.cmp-desc-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    font-family: var(--cmp-font-sans);
+    font-size: 13px;
+    border: 1px solid transparent;
+    border-radius: var(--cmp-radius-chip);
+    background: var(--cmp-muted);
+    color: var(--cmp-fg);
+    transition: border-color var(--cmp-motion-fast), background var(--cmp-motion-fast);
+}
+.cmp-desc-input:hover { border-color: var(--cmp-border); }
+.cmp-desc-input:focus {
+    outline: none;
+    background: var(--cmp-surface);
+    border-color: var(--cmp-primary);
+}
+.cmp-workspace-books {
+    font-size: 13px;
+    color: var(--cmp-fg);
+    line-height: 1.5;
+}
+
+/* 版本时间线 chip-rail */
+.cmp-version-rail {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    background: var(--cmp-muted);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-card);
+    min-height: 44px;
+}
+.cmp-rail-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cmp-fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+.cmp-version-chips {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+}
+
+/* 版本 chip */
+.cmp-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 26px;
+    padding: 0 8px;
+    font-family: var(--cmp-font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--cmp-surface);
+    color: var(--cmp-fg);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    cursor: pointer;
+    position: relative;
+    transition: background var(--cmp-motion-fast), border-color var(--cmp-motion-fast), transform var(--cmp-motion-fast);
+}
+.cmp-chip:hover { border-color: var(--cmp-primary); }
+.cmp-chip:active { transform: scale(0.97); }
+.cmp-chip:focus-visible { outline: 2px solid var(--cmp-ring); outline-offset: 2px; }
+.cmp-chip.current {
+    background: var(--cmp-primary);
+    color: var(--cmp-primary-on);
+    border-color: var(--cmp-primary);
+}
+.cmp-chip-connector {
+    width: 12px;
+    height: 1px;
+    background: var(--cmp-border);
+    flex-shrink: 0;
+}
+
+/* 双列内容区（图 60% / 评价 40%） */
+.cmp-workspace-columns {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 16px;
+    align-items: start;
+}
+@media (max-width: 1280px) {
+    .cmp-workspace-columns { grid-template-columns: 1fr; }
+}
+.cmp-charts-col {
+    min-width: 0;
+}
+.cmp-charts-container {
+    background: var(--cmp-surface);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-card);
+    padding: 16px;
+    min-height: 400px;
+}
+.cmp-charts-placeholder,
+.cmp-workspace-placeholder {
+    padding: 48px;
+    text-align: center;
+    color: var(--cmp-fg-muted);
+    border: 1px dashed var(--cmp-border);
+    border-radius: var(--cmp-radius-card);
+}
+
+/* 评价区 */
+.cmp-annotation-col {
+    position: sticky;
+    top: 16px;
+    background: var(--cmp-surface);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-card);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 400px;
+}
+.cmp-annotation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.cmp-annotation-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cmp-fg);
+}
+.cmp-anno-ver {
+    font-family: var(--cmp-font-mono);
+    font-size: 12px;
+    color: var(--cmp-fg-muted);
+    font-weight: 400;
+}
+.cmp-anno-save-state {
+    font-size: 12px;
+    color: var(--cmp-accent);
+    font-family: var(--cmp-font-mono);
+}
+/* 评价编辑器：WYSIWYG（contenteditable，所见即所得，5a） */
+.cmp-annotation-editor {
+    flex: 1;
+    min-height: 320px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 12px 14px;
+    font-family: var(--cmp-font-sans);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--cmp-fg);
+    background: var(--cmp-bg);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+}
+.cmp-annotation-editor:focus {
+    outline: none;
+    border-color: var(--cmp-primary);
+}
+/* 空内容占位符 */
+.cmp-annotation-editor.is-empty::before {
+    content: attr(data-placeholder);
+    color: var(--cmp-fg-muted);
+    pointer-events: none;
+}
+/* 标记符：默认隐藏（所见即所得），仅光标所在行显示以便编辑（Typora 行为） */
+.markdown-body .md-mark {
+    display: none;
+    color: var(--cmp-fg-muted);
+    opacity: 0.5;
+    font-weight: 400;
+}
+.markdown-body .md-line.md-active .md-mark {
+    display: inline;
+}
+/* 每行=一个块，保留空行高度 */
+.markdown-body .md-line {
+    min-height: 1.7em;
+}
+.markdown-body .md-h { font-weight: 600; line-height: 1.3; }
+.markdown-body .md-h1 { font-size: 1.5em; }
+.markdown-body .md-h2 { font-size: 1.3em; }
+.markdown-body .md-h3 { font-size: 1.15em; }
+.markdown-body .md-h4, .markdown-body .md-h5, .markdown-body .md-h6 { font-size: 1.05em; }
+.markdown-body .md-quote {
+    border-left: 3px solid var(--cmp-primary);
+    padding-left: 10px;
+    color: var(--cmp-fg-muted);
+}
+/* 列表：隐藏标记符时用 CSS 补回项目符号 */
+.markdown-body .md-li { padding-left: 1.4em; position: relative; }
+.markdown-body .md-ul::before {
+    content: "•";
+    position: absolute;
+    left: 0.4em;
+    color: var(--cmp-primary);
+}
+.markdown-body .md-ol::before {
+    content: attr(data-num);
+    position: absolute;
+    left: 0;
+    color: var(--cmp-fg-muted);
+    font-family: var(--cmp-font-mono);
+    font-size: 0.9em;
+}
+/* 当前行显示原始标记符时，隐藏 CSS 补的符号，避免重复 */
+.markdown-body .md-line.md-active.md-li::before { content: none; }
+.markdown-body .md-code,
+.markdown-body .md-fence {
+    font-family: var(--cmp-font-mono);
+    font-size: 0.9em;
+    background: var(--cmp-bg-subtle, rgba(127,127,127,.10));
+}
+/* 分隔线：非当前行时画一条线，当前行时显示 --- 文本 */
+.markdown-body .md-hr { color: transparent; }
+.markdown-body .md-hr::after {
+    content: "";
+    display: block;
+    border-top: 1px solid var(--cmp-border);
+    margin: 0.5em 0;
+}
+.markdown-body .md-hr.md-active { color: var(--cmp-fg-muted); }
+.markdown-body .md-hr.md-active::after { content: none; }
+.markdown-body code {
+    font-family: var(--cmp-font-mono);
+    font-size: 0.9em;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--cmp-bg-subtle, rgba(127,127,127,.12));
+}
+.markdown-body strong { font-weight: 600; }
+.markdown-body em { font-style: italic; }
+.markdown-body del { text-decoration: line-through; }
+.markdown-body .md-link { color: var(--cmp-primary); text-decoration: underline; }
+
+/* 5d：引用缺失/降级警告横条 */
+.cmp-warn-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-radius: var(--cmp-radius-chip);
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: var(--cmp-fg);
+    font-size: 13px;
+}
+.cmp-warn-banner > i {
+    color: #F59E0B;
+    font-size: 15px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+.cmp-warn-banner .cmp-warn-body strong {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+.cmp-warn-banner ul {
+    margin: 0;
+    padding-left: 16px;
+}
+.cmp-warn-banner li { margin: 1px 0; }
+
+/* 工作区图表区（4b） */
+.cmp-chart-block {
+    margin-bottom: 20px;
+}
+.cmp-chart-block:last-child { margin-bottom: 0; }
+.cmp-chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cmp-fg);
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cmp-chart-title i { color: var(--cmp-primary); font-size: 12px; }
+/* 下钻雷达：层面切换 tab（5e） */
+.cmp-radar-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 12px;
+}
+.cmp-radar-tab {
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--cmp-fg-muted);
+    background: var(--cmp-bg);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.cmp-radar-tab:hover { border-color: var(--cmp-primary); color: var(--cmp-primary); }
+.cmp-radar-tab.active {
+    background: var(--cmp-primary);
+    border-color: var(--cmp-primary);
+    color: #fff;
+}
+.cmp-radar-tab:focus-visible { outline: 2px solid var(--cmp-primary); outline-offset: 2px; }
+.cmp-chart-canvas {
+    width: 100%;
+    height: 280px;
+}
+.cmp-chart-canvas-tall { height: 360px; }
+
+/* 综合得分卡片行 */
+.cmp-chart-totals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.cmp-total-card {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px;
+    background: var(--cmp-muted);
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    text-align: center;
+}
+.cmp-total-card-title {
+    font-size: 12px;
+    color: var(--cmp-fg-muted);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cmp-total-card-score {
+    font-family: var(--cmp-font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cmp-accent);
+}
+.cmp-total-card.rank-1 { border-color: var(--cmp-accent); }
+.cmp-total-card.rank-1 .cmp-total-card-score { color: var(--cmp-accent); }
+
+/* 评分体系版本抽屉（4c） */
+.cmp-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+}
+.cmp-drawer-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15,23,42,0.45);
+}
+.cmp-drawer-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 480px;
+    max-width: 92vw;
+    height: 100%;
+    background: var(--cmp-surface);
+    border-left: 1px solid var(--cmp-border);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    animation: cmpDrawerIn var(--cmp-motion-base);
+}
+@keyframes cmpDrawerIn {
+    from { transform: translateX(24px); opacity: 0.4; }
+    to { transform: translateX(0); opacity: 1; }
+}
+.cmp-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--cmp-border);
+}
+.cmp-drawer-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--cmp-fg);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.cmp-drawer-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--cmp-fg-muted);
+    cursor: pointer;
+}
+.cmp-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+.cmp-drawer-section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cmp-fg-muted);
+    margin-bottom: 8px;
+}
+.cmp-btn-block { width: 100%; justify-content: center; margin: 12px 0; }
+
+/* 版本列表行 */
+.cmp-criteria-version-list { display: flex; flex-direction: column; gap: 6px; }
+.cmp-criteria-version-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--cmp-border);
+    border-radius: var(--cmp-radius-chip);
+    cursor: pointer;
+    transition: background var(--cmp-motion-fast), border-color var(--cmp-motion-fast);
+}
+.cmp-criteria-version-row:hover { background: var(--cmp-muted); }
+.cmp-criteria-version-row.current { border-color: var(--cmp-primary); background: rgba(37,99,235,0.06); }
+.cmp-cvr-radio { color: var(--cmp-primary); font-size: 16px; width: 18px; flex-shrink: 0; }
+.cmp-cvr-main { flex: 1; min-width: 0; }
+.cmp-cvr-name { font-size: 14px; color: var(--cmp-fg); font-weight: 500; }
+.cmp-cvr-meta { font-family: var(--cmp-font-mono); font-size: 11px; color: var(--cmp-fg-muted); }
+.cmp-cvr-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.cmp-cvr-btn {
+    background: none; border: 1px solid var(--cmp-border); border-radius: var(--cmp-radius-chip);
+    color: var(--cmp-fg-muted); cursor: pointer; font-size: 11px; padding: 3px 8px;
+}
+.cmp-cvr-btn:hover { border-color: var(--cmp-primary); color: var(--cmp-primary); }
+.cmp-cvr-btn-danger:hover { border-color: #DC2626; color: #DC2626; }
+.cmp-cvr-btn-danger.confirming { background: #DC2626; border-color: #DC2626; color: #fff; }
+
+/* diff 区 */
+.cmp-criteria-diff { margin-top: 16px; }
+.cmp-diff-title { font-size: 13px; font-weight: 600; color: var(--cmp-fg); margin-bottom: 8px; }
+.cmp-diff-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; font-size: 13px; border-bottom: 1px solid var(--cmp-border);
+}
+.cmp-diff-row.changed { background: rgba(5,150,105,0.06); }
+.cmp-diff-dim { color: var(--cmp-fg); }
+.cmp-diff-val { font-family: var(--cmp-font-mono); font-size: 12px; }
+.cmp-diff-val.up { color: var(--cmp-accent); }
+.cmp-diff-val.down { color: var(--cmp-danger); }
+.cmp-diff-val.same { color: var(--cmp-fg-muted); }
+
+/* Fork 权重实验 dialog（4c-2/3） */
+.cmp-fork-modal {
+    max-width: 880px;
+    width: 94%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--cmp-font-sans);
+}
+.cmp-fork-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 8px 0 16px;
+    max-height: 64vh;
+    min-height: 0;
+    overflow: hidden;
+}
+.cmp-fork-left { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0; padding-right: 8px; }
+.cmp-fork-right {
+    display: flex; flex-direction: column; gap: 8px;
+    border-left: 1px solid var(--cmp-border); padding-left: 20px;
+    overflow-y: auto; min-height: 0;
+}
+.cmp-fork-note {
+    min-height: 56px; padding: 10px 12px; font-family: var(--cmp-font-sans); font-size: 13px;
+    border: 1px solid var(--cmp-border); border-radius: var(--cmp-radius-chip);
+    background: var(--cmp-surface); color: var(--cmp-fg); resize: vertical;
+}
+.cmp-fork-note:focus { outline: none; border-color: var(--cmp-primary); }
+.cmp-fork-sliders { display: flex; flex-direction: column; gap: 4px; }
+.cmp-fork-slider-row {
+    display: grid; grid-template-columns: 1fr 130px 44px; align-items: center; gap: 8px;
+    padding: 4px 0;
+}
+.cmp-fork-slider-row.changed .cmp-fork-slider-name { color: var(--cmp-primary); font-weight: 600; }
+.cmp-fork-slider-name { font-size: 13px; color: var(--cmp-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-fork-slider-row input[type=range] { width: 100%; accent-color: var(--cmp-primary); cursor: pointer; }
+.cmp-fork-slider-val { font-family: var(--cmp-font-mono); font-size: 13px; color: var(--cmp-fg); text-align: right; }
+
+.cmp-fork-preview-title {
+    font-size: 13px; font-weight: 600; color: var(--cmp-fg);
+    display: flex; align-items: center; gap: 6px;
+}
+.cmp-fork-preview-title i { color: var(--cmp-accent); }
+.cmp-fork-preview { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.cmp-preview-row {
+    display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--cmp-muted); border-radius: var(--cmp-radius-chip);
+}
+.cmp-preview-name { font-size: 13px; color: var(--cmp-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-preview-score { font-family: var(--cmp-font-mono); font-size: 14px; color: var(--cmp-fg); }
+.cmp-preview-delta { font-family: var(--cmp-font-mono); font-size: 12px; min-width: 56px; text-align: right; }
+.cmp-preview-delta.up { color: var(--cmp-accent); }
+.cmp-preview-delta.down { color: var(--cmp-danger); }
+.cmp-preview-delta.same { color: var(--cmp-fg-muted); }
+.cmp-preview-rank-up { color: var(--cmp-accent); font-size: 11px; margin-left: 4px; }
+
+/* 实验分支 chip + 标签（4c-3） */
+.cmp-rail-branch-label {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin: 0 8px 0 16px; font-size: 12px; color: var(--cmp-fg-muted);
+    border-left: 1px solid var(--cmp-border); padding-left: 12px;
+}
+.cmp-chip-exp {
+    margin-left: 6px;
+    border-style: dashed;
+    border-color: #7C3AED;
+    color: #7C3AED;
+}
+.cmp-chip-exp.current {
+    background: #7C3AED;
+    color: #fff;
+    border-style: solid;
+    border-color: #7C3AED;
+}
+[data-theme="dark"] .cmp-chip-exp { color: #A78BFA; border-color: #A78BFA; }
+[data-theme="dark"] .cmp-chip-exp.current { background: #7C3AED; color: #fff; }
+
+/* Fork 权重总和约束条 */
+.cmp-fork-sumbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--cmp-border);
+    font-family: var(--cmp-font-sans);
+}
+.cmp-fork-sum-label { font-size: 13px; color: var(--cmp-fg-muted); }
+.cmp-fork-sum-value {
+    font-family: var(--cmp-font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cmp-accent);
+}
+.cmp-fork-sum-value.over { color: var(--cmp-danger); }
+.cmp-fork-sum-value.under { color: #F59E0B; }
+.cmp-fork-sum-hint { font-size: 12px; color: var(--cmp-danger); }

@@ -1,8 +1,199 @@
 // =========================================
+// 极简 Markdown 渲染器（无外部依赖，先转义再解析，防 XSS）
+// 支持：标题 # ~ ######、粗体 **、斜体 *、行内代码 `、删除线 ~~、
+//      链接 [t](url)、无序列表 - / *、有序列表 1.、引用 >、代码块 ```、分隔线 ---、段落
+// =========================================
+function renderMarkdown(src) {
+  if (!src) return '';
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+    .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      (_, t, u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+
+  const lines = src.replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  let i = 0, listType = null, para = [];
+  const flushPara = () => { if (para.length) { out.push(`<p>${para.map(inline).join('<br>')}</p>`); para = []; } };
+  const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    // 代码块
+    if (/^```/.test(line)) {
+      flushPara(); closeList();
+      const buf = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) { buf.push(esc(lines[i])); i++; }
+      i++; out.push(`<pre><code>${buf.join('\n')}</code></pre>`); continue;
+    }
+    // 分隔线
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) { flushPara(); closeList(); out.push('<hr>'); i++; continue; }
+    // 标题
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { flushPara(); closeList(); out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); i++; continue; }
+    // 引用
+    const q = line.match(/^>\s?(.*)$/);
+    if (q) { flushPara(); closeList(); out.push(`<blockquote>${inline(q[1])}</blockquote>`); i++; continue; }
+    // 有序列表
+    const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (ol) { flushPara(); if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; } out.push(`<li>${inline(ol[1])}</li>`); i++; continue; }
+    // 无序列表
+    const ul = line.match(/^\s*[-*]\s+(.*)$/);
+    if (ul) { flushPara(); if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; } out.push(`<li>${inline(ul[1])}</li>`); i++; continue; }
+    // 空行 → 段落分隔
+    if (/^\s*$/.test(line)) { flushPara(); closeList(); i++; continue; }
+    // 普通段落行
+    closeList(); para.push(line); i++;
+  }
+  flushPara(); closeList();
+  return out.join('\n');
+}
+
+// =========================================
+// WYSIWYG Markdown（contenteditable，所见即所得，5a）
+// 模型：编辑器纯文本 === markdown 源码；渲染时逐行包块、标记符弱化保留。
+// 光标用"纯文本字符偏移"序列化，重渲染后恢复，规避光标跳动 + 兼容 IME。
+// =========================================
+const MD_ESC = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// 行内：把标记符包成 .md-mark（弱化），内容套语义标签
+function mdInlineLive(text) {
+  let s = MD_ESC(text);
+  s = s.replace(/(`)([^`]+)(`)/g, '<span class="md-mark">$1</span><code>$2</code><span class="md-mark">$3</span>');
+  s = s.replace(/(\*\*)([^*]+)(\*\*)/g, '<span class="md-mark">$1</span><strong>$2</strong><span class="md-mark">$3</span>');
+  s = s.replace(/(~~)([^~]+)(~~)/g, '<span class="md-mark">$1</span><del>$2</del><span class="md-mark">$3</span>');
+  s = s.replace(/(^|[^*\w])(\*)([^*\s][^*]*?)(\*)/g, '$1<span class="md-mark">$2</span><em>$3</em><span class="md-mark">$4</span>');
+  s = s.replace(/(\[)([^\]]+)(\]\()(https?:\/\/[^\s)]+)(\))/g,
+    '<span class="md-mark">$1</span><a class="md-link">$2</a><span class="md-mark">$3$4$5</span>');
+  return s;
+}
+
+// 整体：逐行渲染为块（保持行=块的一一对应，便于光标映射）
+function renderMarkdownLive(text) {
+  const lines = (text || '').replace(/\r\n/g, '\n').split('\n');
+  let inFence = false;
+  return lines.map(line => {
+    if (/^```/.test(line)) {
+      inFence = !inFence;
+      return `<div class="md-line md-fence"><span class="md-mark">${MD_ESC(line)}</span></div>`;
+    }
+    if (inFence) return `<div class="md-line md-code">${MD_ESC(line) || '<br>'}</div>`;
+    if (line === '') return `<div class="md-line"><br></div>`;
+    const h = line.match(/^(#{1,6})(\s+)(.*)$/);
+    if (h) return `<div class="md-line md-h md-h${h[1].length}"><span class="md-mark">${h[1]}${h[2]}</span>${mdInlineLive(h[3])}</div>`;
+    const q = line.match(/^(>\s?)(.*)$/);
+    if (q) return `<div class="md-line md-quote"><span class="md-mark">${MD_ESC(q[1])}</span>${mdInlineLive(q[2])}</div>`;
+    const ol = line.match(/^(\s*)(\d+)(\.\s+)(.*)$/);
+    if (ol) return `<div class="md-line md-li md-ol" data-num="${ol[2]}."><span class="md-mark">${ol[1]}${MD_ESC(ol[2] + ol[3])}</span>${mdInlineLive(ol[4])}</div>`;
+    const ul = line.match(/^(\s*)([-*]\s+)(.*)$/);
+    if (ul) return `<div class="md-line md-li md-ul"><span class="md-mark">${ul[1]}${MD_ESC(ul[2])}</span>${mdInlineLive(ul[3])}</div>`;
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) return `<div class="md-line md-hr"><span class="md-mark">${MD_ESC(line)}</span></div>`;
+    return `<div class="md-line">${mdInlineLive(line)}</div>`;
+  }).join('');
+}
+
+// 取/设 contenteditable 的纯文本（块之间用 \n）
+function ceGetText(el) {
+  let out = [];
+  el.querySelectorAll('.md-line').forEach(line => out.push(line.textContent));
+  if (out.length === 0) return el.textContent || '';
+  return out.join('\n');
+}
+
+// 光标 → 纯文本字符偏移
+function ceGetCaret(el) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  const pre = range.cloneRange();
+  pre.selectNodeContents(el);
+  pre.setEnd(range.endContainer, range.endOffset);
+  // 用 md-line 计数补回换行：统计 pre 范围内跨越的行数
+  const frag = pre.cloneContents();
+  const tmp = document.createElement('div');
+  tmp.appendChild(frag);
+  const lines = tmp.querySelectorAll('.md-line');
+  if (lines.length === 0) return tmp.textContent.length;
+  let text = [];
+  lines.forEach(l => text.push(l.textContent));
+  return text.join('\n').length;
+}
+
+// 纯文本字符偏移 → 光标（重渲染后恢复）
+function ceSetCaret(el, offset) {
+  if (offset == null) return;
+  let remaining = offset;
+  const lines = el.querySelectorAll('.md-line');
+  for (let li = 0; li < lines.length; li++) {
+    const lineLen = lines[li].textContent.length;
+    if (remaining <= lineLen) {
+      // 落在本行：在行内找文本节点
+      placeCaretInNode(lines[li], remaining);
+      return;
+    }
+    remaining -= lineLen + 1; // +1 为换行
+    if (remaining < 0) { placeCaretInNode(lines[li], lineLen); return; }
+  }
+  // 落在末尾
+  const last = lines[lines.length - 1];
+  if (last) placeCaretInNode(last, last.textContent.length);
+}
+
+function placeCaretInNode(lineEl, pos) {
+  const walker = document.createTreeWalker(lineEl, NodeFilter.SHOW_TEXT, null);
+  let node, acc = 0;
+  while ((node = walker.nextNode())) {
+    const len = node.textContent.length;
+    if (acc + len >= pos) {
+      const range = document.createRange();
+      range.setStart(node, Math.max(0, pos - acc));
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+    acc += len;
+  }
+  // 无文本节点（空行/<br>）：定位到行首
+  const range = document.createRange();
+  range.selectNodeContents(lineEl);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// =========================================
 // 评分标准配置 - 从外部JSON文件动态加载
 // =========================================
 let RATING_CRITERIA = null;
 let volatileCriteria = null; // 临时权重（对比时使用）
+
+// V3.0：评分体系版本历史（一等公民）
+// 结构：{ currentVersionId, versions: [{id, name, note, parentId, createdAt, criteria}] }
+let RATING_CRITERIA_HISTORY = null;
+
+// 取当前评分体系版本 id（写入新评分时记录到 ratingHistory）
+function getCurrentCriteriaVersionId() {
+  return RATING_CRITERIA_HISTORY ? RATING_CRITERIA_HISTORY.currentVersionId : 'rc_initial_v1';
+}
+
+// 按 versionId 取该版本的 criteria（用于按版本重算）；找不到返回 null（弱兜底）
+function getCriteriaByVersionId(versionId) {
+  if (!RATING_CRITERIA_HISTORY || !Array.isArray(RATING_CRITERIA_HISTORY.versions)) return null;
+  const v = RATING_CRITERIA_HISTORY.versions.find(x => x.id === versionId);
+  return v ? v.criteria : null;
+}
+
+// 取版本对象（含 name 等元信息）
+function getCriteriaVersionMeta(versionId) {
+  if (!RATING_CRITERIA_HISTORY || !Array.isArray(RATING_CRITERIA_HISTORY.versions)) return null;
+  return RATING_CRITERIA_HISTORY.versions.find(x => x.id === versionId) || null;
+}
 
 // 深拷贝函数
 function deepCloneCriteria(criteria) {
@@ -60,10 +251,27 @@ const DEFAULT_RATING_PROFILE = {
 const DEFAULT_PROFILE_NAME = "标准配置";
 
 async function loadRatingCriteriaConfig() {
+  // V3.0：优先从版本历史加载当前版本的 criteria
+  try {
+    if (window.electronAPI && typeof window.electronAPI.loadRatingCriteriaHistory === 'function') {
+      const history = await window.electronAPI.loadRatingCriteriaHistory();
+      if (history && Array.isArray(history.versions) && history.versions.length > 0) {
+        RATING_CRITERIA_HISTORY = history;
+        const current = history.versions.find(v => v.id === history.currentVersionId) || history.versions[0];
+        RATING_CRITERIA = current.criteria;
+        console.log('评分体系版本历史已加载，当前版本:', current.id, current.name);
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('加载评分体系版本历史失败，回退到旧 criteria:', error);
+  }
+
+  // 回退：老的单文件 rating-criteria.json
   try {
     if (window.electronAPI && typeof window.electronAPI.loadRatingCriteria === 'function') {
       RATING_CRITERIA = await window.electronAPI.loadRatingCriteria();
-      console.log('评分标准已加载:', RATING_CRITERIA);
+      console.log('评分标准已加载（旧格式）:', RATING_CRITERIA);
     } else {
       console.warn('electronAPI.loadRatingCriteria 不可用，使用内置默认值');
       RATING_CRITERIA = getDefaultRatingCriteria();
@@ -611,6 +819,8 @@ class Book {
     status = '未开始',
     notes = [],
     rating = null,
+    rating_details = null,         // V2.x 双轨制兼容字段
+    ratingHistory = null,          // V3.0 追加式评分历史
     tags = [],
     enableRating = false,
     enableInspiration = false,
@@ -619,6 +829,7 @@ class Book {
     totalLength = 0,
     progressUnit = '章',
     evaluation = '',
+    deleted = false,               // V3.0 软删除标记
     createdAt = new Date().toISOString(),
     updatedAt = new Date().toISOString()
   } = {}) {
@@ -630,6 +841,8 @@ class Book {
     this.status = status;
     this.notes = notes;
     this.rating = rating;
+    this.rating_details = rating_details;
+    this.ratingHistory = ratingHistory;
     this.tags = tags;
     this.enableRating = enableRating;
     this.enableInspiration = enableInspiration;
@@ -638,6 +851,7 @@ class Book {
     this.totalLength = totalLength;
     this.progressUnit = progressUnit;
     this.evaluation = evaluation;
+    this.deleted = deleted;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -668,7 +882,7 @@ class Book {
   }
 
   update(updates) {
-    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'tags', 'enableRating', 'enableInspiration', 'folderId', 'currentProgress', 'totalLength', 'progressUnit', 'evaluation'];
+    const allowedFields = ['title', 'author', 'startDate', 'endDate', 'status', 'notes', 'rating', 'rating_details', 'ratingHistory', 'tags', 'enableRating', 'enableInspiration', 'folderId', 'currentProgress', 'totalLength', 'progressUnit', 'evaluation', 'deleted'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) this[field] = updates[field];
     });
@@ -703,12 +917,15 @@ class Book {
       id: this.id, title: this.title, author: this.author,
       startDate: this.startDate, endDate: this.endDate,
       status: this.status, notes: this.notes, rating: this.rating,
+      rating_details: this.rating_details,           // V2.x 双轨制兼容
+      ratingHistory: this.ratingHistory,             // V3.0 追加式评分历史
       tags: this.tags, enableRating: this.enableRating, enableInspiration: this.enableInspiration,
       folderId: this.folderId,
       currentProgress: this.currentProgress,
       totalLength: this.totalLength,
       progressUnit: this.progressUnit,
       evaluation: this.evaluation,
+      deleted: this.deleted,                          // V3.0 软删除标记
       createdAt: this.createdAt, updatedAt: this.updatedAt
     };
   }
@@ -787,8 +1004,10 @@ class StorageService {
   }
 
   getBooksByFolder(folderId) {
-    if (folderId === 'all') return this.books;
-    return this.books.filter(book => book.folderId === folderId);
+    // V3.0：列表场景过滤掉软删除的书
+    const live = this.books.filter(book => book.deleted !== true);
+    if (folderId === 'all') return live;
+    return live.filter(book => book.folderId === folderId);
   }
 
   async loadBooks() {
@@ -839,7 +1058,12 @@ class StorageService {
     }
   }
 
-  getAllBooks() { return [...this.books]; }
+  // V3.0：getAllBooks 收口过滤掉软删除的书（决策 Q7-3-γ）
+  // 列表渲染/排序/筛选/统计/导出等所有上层路径都通过这里读取，自动受益。
+  // 真正需要"包含已删除"的极少数场景（例如对比项目按 bookId 反查）
+  // 应直接访问 this.books / this.bookMap。
+  getAllBooks() { return this.books.filter(b => b.deleted !== true); }
+  getAllBooksIncludingDeleted() { return [...this.books]; }
   getBookById(id) { return this.bookMap.get(id) || null; }
 
   async addBook(bookData) {
@@ -890,22 +1114,29 @@ class StorageService {
   }
 
   async deleteBook(id) {
-    const bookIndex = this.books.findIndex(book => book.id === id);
-    if (bookIndex === -1) throw new Error('书籍不存在');
-    const deletedBook = this.books[bookIndex];
-    this.books.splice(bookIndex, 1);
-    this.bookMap.delete(id);  // 同步更新索引
+    // V3.0 软删除（决策 Q7-3-γ：γ-1 后台软删，对比项目里通过 bookId 引用的书永远能找到）
+    // 不再从 this.books / this.bookMap 中物理移除，只标记 deleted=true。
+    // 列表渲染、排序、筛选、统计等通过 getAllBooks() 自动过滤。
+    const book = this.bookMap.get(id);
+    if (!book) throw new Error('书籍不存在');
+    if (book.deleted === true) return true; // 已经是软删，幂等
+
+    const previousDeleted = book.deleted;
+    const previousUpdatedAt = book.updatedAt;
+    book.deleted = true;
+    book.updatedAt = new Date().toISOString();
+
     try {
       const success = await this.saveBooks();
       if (!success) {
-        this.books.splice(bookIndex, 0, deletedBook);
-        this.bookMap.set(id, deletedBook);  // 回滚索引
+        book.deleted = previousDeleted;
+        book.updatedAt = previousUpdatedAt;
         throw new Error('删除书籍失败');
       }
       return true;
     } catch (error) {
-      this.books.splice(bookIndex, 0, deletedBook);
-      this.bookMap.set(id, deletedBook);  // 回滚索引
+      book.deleted = previousDeleted;
+      book.updatedAt = previousUpdatedAt;
       throw error;
     }
   }
@@ -2087,6 +2318,9 @@ class BookApp {
     });
     // 灵感数据延迟加载，不阻塞主界面
     setTimeout(() => this.loadJournals(), 100);
+    // V3.0：对比项目数据延迟加载
+    this.comparisons = [];
+    setTimeout(() => this.loadComparisons(), 120);
     // 确保 overlay 初始为隐藏状态
     this.overlay.classList.remove('active');
     // 确保右键菜单初始为隐藏状态（使用 class 控制，显示时添加 .visible）
@@ -2213,6 +2447,28 @@ class BookApp {
     this.domCache.filterTagsContainer = document.getElementById('inspirationFilterTagsContainer');
     this.domCache.filterDateFrom = document.getElementById('filterDateFrom');
     this.domCache.filterDateTo = document.getElementById('filterDateTo');
+    // V3.0 对比分析视图
+    this.domCache.viewComparison = document.getElementById('viewComparison');
+    this.domCache.comparisonSection = document.getElementById('comparisonContainer');
+    this.domCache.comparisonListView = document.getElementById('comparisonListView');
+    this.domCache.comparisonWorkspace = document.getElementById('comparisonWorkspace');
+    this.domCache.comparisonGrid = document.getElementById('comparisonGrid');
+    this.domCache.comparisonEmptyState = document.getElementById('comparisonEmptyState');
+    this.domCache.comparisonCount = document.getElementById('comparisonCount');
+    // 工作区元素（4a）
+    this.domCache.cmpWorkspaceTitle = document.getElementById('cmpWorkspaceTitle');
+    this.domCache.cmpWorkspaceCriteria = document.getElementById('cmpWorkspaceCriteria');
+    this.domCache.cmpWorkspaceDesc = document.getElementById('cmpWorkspaceDesc');
+    this.domCache.cmpWorkspaceBooks = document.getElementById('cmpWorkspaceBooks');
+    this.domCache.cmpVersionChips = document.getElementById('cmpVersionChips');
+    this.domCache.cmpAnnotationEditor = document.getElementById('cmpAnnotationEditor');
+    this.domCache.cmpAnnotationVer = document.getElementById('cmpAnnotationVer');
+    this.domCache.cmpAnnotationSaveState = document.getElementById('cmpAnnotationSaveState');
+    this.domCache.cmpChartsContainer = document.getElementById('cmpChartsContainer');
+    // 评分体系抽屉（4c）
+    this.domCache.cmpCriteriaDrawer = document.getElementById('cmpCriteriaDrawer');
+    this.domCache.cmpCriteriaVersionList = document.getElementById('cmpCriteriaVersionList');
+    this.domCache.cmpCriteriaDiff = document.getElementById('cmpCriteriaDiff');
   }
 
   bindEvents() {
@@ -2296,6 +2552,80 @@ class BookApp {
     this.compareBookList = document.getElementById('compareBookList');
     this.compareResults = document.getElementById('compareResults');
     this.compareRatingBtn.addEventListener('click', () => this.showCompareModal());
+
+    // V3.0 对比分析视图按钮
+    const newCmpBtn = document.getElementById('newComparisonBtn');
+    if (newCmpBtn) newCmpBtn.addEventListener('click', () => this.openNewComparisonDialog());
+    const cmpBackBtn = document.getElementById('cmpBackToListBtn');
+    if (cmpBackBtn) cmpBackBtn.addEventListener('click', () => { this._flushAnnotationSave(); this._flushDescSave(); this.showComparisonListView(); });
+
+    // 工作区：评价编辑器（WYSIWYG，5a）
+    const annoEditor = document.getElementById('cmpAnnotationEditor');
+    if (annoEditor) {
+      annoEditor.addEventListener('input', () => {
+        if (this._imeComposing) { this._scheduleAnnotationSave(); return; }
+        this._scheduleAnnotationLiveRender();
+        this._scheduleAnnotationSave();
+      });
+      // IME（中文输入法）合成期间不重渲染，避免吞字/光标乱跳
+      annoEditor.addEventListener('compositionstart', () => { this._imeComposing = true; });
+      annoEditor.addEventListener('compositionend', () => {
+        this._imeComposing = false;
+        this._scheduleAnnotationLiveRender();
+        this._scheduleAnnotationSave();
+      });
+      // Enter：插入换行（contenteditable 默认会生成 div，需归一化为纯文本换行）
+      annoEditor.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        document.execCommand('insertText', false, text);
+      });
+      annoEditor.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          // 统一用 \n，避免 Chromium 生成 <div>/<br> 打乱行模型
+          e.preventDefault();
+          document.execCommand('insertText', false, '\n');
+        }
+      });
+      // 光标移动 → 高亮当前行（仅当前行显示标记符，Typora 行为，5a）
+      annoEditor.addEventListener('keyup', () => this._updateActiveAnnoLine());
+      annoEditor.addEventListener('mouseup', () => this._updateActiveAnnoLine());
+      annoEditor.addEventListener('focus', () => this._updateActiveAnnoLine());
+      annoEditor.addEventListener('blur', () => {
+        annoEditor.querySelectorAll('.md-line.md-active').forEach(l => l.classList.remove('md-active'));
+      });
+    }
+    // 工作区：描述自动保存（blur 时）
+    const descInput = document.getElementById('cmpWorkspaceDesc');
+    if (descInput) descInput.addEventListener('blur', () => this._flushDescSave());
+    // 工作区：刷新版本（4f）/ Fork（4i）
+    const refreshBtn = document.getElementById('cmpRefreshBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this.refreshComparisonVersion());
+    const forkBtn = document.getElementById('cmpForkBtn');
+    if (forkBtn) forkBtn.addEventListener('click', () => this.openForkDialog());
+    // 下钻雷达：层面切换 tab（5e）
+    const radarTabs = document.getElementById('cmpRadarTabs');
+    if (radarTabs) radarTabs.addEventListener('click', (e) => {
+      const btn = e.target.closest('.cmp-radar-tab');
+      if (!btn) return;
+      this._radarDrillLayer = btn.dataset.layer || null;
+      this._renderDrillRadar();
+    });
+    // 评分体系抽屉（4c）
+    const criteriaBtn = document.getElementById('cmpCriteriaBtn');
+    if (criteriaBtn) criteriaBtn.addEventListener('click', () => this.openCriteriaDrawer());
+    const drawerClose = document.getElementById('cmpDrawerCloseBtn');
+    if (drawerClose) drawerClose.addEventListener('click', () => this.closeCriteriaDrawer());
+    const drawerOverlay = document.getElementById('cmpDrawerOverlay');
+    if (drawerOverlay) drawerOverlay.addEventListener('click', () => this.closeCriteriaDrawer());
+    const newCriteriaBtn = document.getElementById('cmpNewCriteriaBtn');
+    if (newCriteriaBtn) newCriteriaBtn.addEventListener('click', () => this.openForkDialog());
+    // 工作区图表自适应窗口
+    window.addEventListener('resize', () => {
+      if (this.currentView === 'comparison' && this._cmpCharts) {
+        Object.values(this._cmpCharts).forEach(ch => { try { ch.resize(); } catch (e) {} });
+      }
+    });
 
     // 权重调节面板事件
     const toggleWeightPanelBtn = document.getElementById('toggleWeightPanel');
@@ -2607,11 +2937,46 @@ class BookApp {
     this.currentView = viewName;
     this.currentInspirationFilterBookId = bookId;
 
+    // 离开对比视图时释放图表实例，并 flush 未保存的评价/描述
+    if (viewName !== 'comparison' && this._cmpCharts) {
+      this._flushAnnotationSave();
+      this._flushDescSave();
+      this._disposeComparisonCharts();
+    }
+
+    // V3.0：对比分析视图（与知识库/灵感记录平级）
+    if (viewName === 'comparison') {
+      this._cleanupReviewState();
+      // 隐藏知识库
+      if (c.kbSidebar) c.kbSidebar.style.display = 'none';
+      if (c.kbToolbar) c.kbToolbar.style.display = 'none';
+      if (c.bookSection) c.bookSection.style.display = 'none';
+      // 隐藏灵感
+      if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'none';
+      if (c.inspirationSection) c.inspirationSection.style.display = 'none';
+      // 显示对比分析
+      if (c.comparisonSection) c.comparisonSection.style.display = 'block';
+      // 切换按钮状态
+      if (c.viewKnowledge) c.viewKnowledge.classList.remove('active');
+      if (c.viewInspiration) c.viewInspiration.classList.remove('active');
+      if (c.viewComparison) c.viewComparison.classList.add('active');
+      // 清灵感筛选
+      this.currentInspirationFilterBookId = null;
+      this.inspirationFilters.lockedBookId = null;
+      this._hideLockedBookIndicator();
+      // 渲染列表（默认回到列表页）
+      requestAnimationFrame(() => {
+        this.showComparisonListView();
+      });
+      return;
+    }
+
     if (viewName === 'inspiration') {
       // 步骤1：立即执行 DOM 显示切换（视觉快速响应）
       if (c.kbSidebar) c.kbSidebar.style.display = 'none';
       if (c.kbToolbar) c.kbToolbar.style.display = 'none';
       if (c.bookSection) c.bookSection.style.display = 'none';
+      if (c.comparisonSection) c.comparisonSection.style.display = 'none';
 
       // 显示灵感模块
       if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'flex';
@@ -2622,6 +2987,7 @@ class BookApp {
 
       // 更新切换按钮状态
       if (c.viewKnowledge) c.viewKnowledge.classList.remove('active');
+      if (c.viewComparison) c.viewComparison.classList.remove('active');
       if (c.viewInspiration) c.viewInspiration.classList.add('active');
 
       // 如果是从作品转跳过来，锁定作品筛选
@@ -2647,6 +3013,8 @@ class BookApp {
       // 隐藏灵感模块
       if (c.inspirationToolbar) c.inspirationToolbar.style.display = 'none';
       if (c.inspirationSection) c.inspirationSection.style.display = 'none';
+      // 隐藏对比分析
+      if (c.comparisonSection) c.comparisonSection.style.display = 'none';
 
       // 显示知识库模块
       if (c.kbSidebar) c.kbSidebar.style.display = 'block';
@@ -2655,6 +3023,7 @@ class BookApp {
 
       // 更新切换按钮状态
       if (c.viewInspiration) c.viewInspiration.classList.remove('active');
+      if (c.viewComparison) c.viewComparison.classList.remove('active');
       if (c.viewKnowledge) c.viewKnowledge.classList.add('active');
 
       // 清除灵感筛选状态
@@ -2664,7 +3033,1362 @@ class BookApp {
     }
   }
 
-  // 更新锁定书籍指示器（显示在筛选按钮右侧）
+  // ============================================================
+  // V3.0 对比分析（Comparison）数据层 + 列表页
+  // ============================================================
+  async loadComparisons() {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.loadComparisons === 'function') {
+        const arr = await window.electronAPI.loadComparisons();
+        this.comparisons = Array.isArray(arr) ? arr : [];
+      } else {
+        this.comparisons = [];
+      }
+      log('对比项目已加载, 数量:', this.comparisons.length);
+    } catch (e) {
+      console.error('加载对比项目失败:', e);
+      this.comparisons = [];
+    }
+    // 若当前正处于对比视图，刷新列表
+    if (this.currentView === 'comparison') this.showComparisonListView();
+  }
+
+  async saveComparisons() {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.saveComparisons === 'function') {
+        const result = await window.electronAPI.saveComparisons(this.comparisons);
+        return result && result.success === true;
+      }
+      return false;
+    } catch (e) {
+      console.error('保存对比项目失败:', e);
+      return false;
+    }
+  }
+
+  // 显示列表页（隐藏工作区）
+  showComparisonListView() {
+    const c = this.domCache;
+    this._disposeComparisonCharts();
+    if (c.comparisonWorkspace) c.comparisonWorkspace.style.display = 'none';
+    if (c.comparisonListView) c.comparisonListView.style.display = 'block';
+    this.renderComparisonList();
+  }
+
+  // 渲染项目卡片网格（意图 2：评估项目状态）
+  renderComparisonList() {
+    const c = this.domCache;
+    if (!c.comparisonGrid) return;
+
+    const list = this.comparisons || [];
+    if (c.comparisonCount) c.comparisonCount.textContent = list.length > 0 ? `${list.length} 个项目` : '';
+
+    if (list.length === 0) {
+      c.comparisonGrid.innerHTML = '';
+      if (c.comparisonEmptyState) c.comparisonEmptyState.style.display = 'block';
+      return;
+    }
+    if (c.comparisonEmptyState) c.comparisonEmptyState.style.display = 'none';
+
+    // 按 updatedAt 倒序
+    const sorted = [...list].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    c.comparisonGrid.innerHTML = sorted.map(cmp => this._renderComparisonCard(cmp)).join('');
+
+    // 绑定卡片点击
+    c.comparisonGrid.querySelectorAll('.cmp-card').forEach(el => {
+      el.addEventListener('click', () => this.openComparisonWorkspace(el.dataset.id));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openComparisonWorkspace(el.dataset.id); }
+      });
+    });
+    // 绑定删除按钮（两步内联确认，阻止冒泡到卡片打开）
+    c.comparisonGrid.querySelectorAll('.cmp-card-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.requestDeleteComparison(btn.dataset.delId);
+      });
+    });
+  }
+
+  // 单张卡片 HTML
+  _renderComparisonCard(cmp) {
+    const tip = this._getComparisonTipVersion(cmp);
+    const criteriaVersionId = tip ? tip.criteriaVersionId : null;
+    const criteriaLabel = criteriaVersionId || '—';
+
+    // 涉及的书标题（按 bookId 反查，含已删除书）
+    const bookTitles = (tip && Array.isArray(tip.bookRefs) ? tip.bookRefs : [])
+      .map(ref => {
+        const book = this.storageService.bookMap.get(ref.bookId);
+        return book ? book.title : '（已删除作品）';
+      });
+    const booksText = bookTitles.length > 0
+      ? bookTitles.map(t => `《${this.escapeHtml(t)}》`).join(' ')
+      : '<span style="opacity:0.6">未选择作品</span>';
+
+    // 版本结构概览
+    const versions = Array.isArray(cmp.versions) ? cmp.versions : [];
+    const mainCount = versions.filter(v => (v.branchName || 'main') === 'main').length;
+    const expCount = versions.length - mainCount;
+    const versionSummary = `主线 ${mainCount} 版${expCount > 0 ? ` · 实验 ${expCount}` : ''}`;
+
+    const relTime = this._relativeTime(cmp.updatedAt);
+    const desc = cmp.description ? this.escapeHtml(cmp.description.split('\n')[0]) : '';
+    const stale = this._isComparisonStale(cmp);
+
+    return `
+      <div class="cmp-card" data-id="${cmp.id}" tabindex="0" role="button" aria-label="打开对比项目 ${this.escapeHtml(cmp.title || '')}">
+        <button class="cmp-card-del" data-del-id="${cmp.id}" title="删除此对比项目" aria-label="删除此对比项目">
+          <i class="fas fa-trash"></i>
+        </button>
+        <div class="cmp-card-head">
+          <h3 class="cmp-card-title">${this.escapeHtml(cmp.title || '未命名对比')}</h3>
+          <span class="cmp-card-criteria" title="评分体系版本">${this.escapeHtml(criteriaLabel)}</span>
+        </div>
+        ${desc ? `<p class="cmp-card-desc">${desc}</p>` : ''}
+        <div class="cmp-card-books">${booksText}</div>
+        <div class="cmp-card-meta">
+          <span>${versionSummary}</span>
+          <span>${relTime}</span>
+        </div>
+        ${stale ? `<span class="cmp-card-stale"><i class="fas fa-exclamation-triangle"></i> 有作品评分已更新</span>` : ''}
+      </div>
+    `;
+  }
+
+  // 取主线末端版本
+  _getComparisonTipVersion(cmp) {
+    if (!cmp || !Array.isArray(cmp.versions) || cmp.versions.length === 0) return null;
+    if (cmp.mainBranchTipId) {
+      const tip = cmp.versions.find(v => v.id === cmp.mainBranchTipId);
+      if (tip) return tip;
+    }
+    // 回退：最后一个 main 分支版本，再回退到最后一个
+    const mains = cmp.versions.filter(v => (v.branchName || 'main') === 'main');
+    return mains.length > 0 ? mains[mains.length - 1] : cmp.versions[cmp.versions.length - 1];
+  }
+
+  // 检测过期：主线末端版本里任一书的 ratingHistory 最新条目 id 已不等于 bookRefs 记录的 ratingEntryId
+  _isComparisonStale(cmp) {
+    const tip = this._getComparisonTipVersion(cmp);
+    if (!tip || !Array.isArray(tip.bookRefs)) return false;
+    return tip.bookRefs.some(ref => {
+      const book = this.storageService.bookMap.get(ref.bookId);
+      if (!book || !Array.isArray(book.ratingHistory) || book.ratingHistory.length === 0) return false;
+      const latestId = book.ratingHistory[book.ratingHistory.length - 1].id;
+      return ref.ratingEntryId && latestId !== ref.ratingEntryId;
+    });
+  }
+
+  // 相对时间
+  _relativeTime(iso) {
+    if (!iso) return '';
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const diff = Date.now() - then;
+    const day = 24 * 3600 * 1000;
+    if (diff < 3600 * 1000) return '刚刚';
+    if (diff < day) return `${Math.floor(diff / (3600 * 1000))} 小时前`;
+    if (diff < 30 * day) return `${Math.floor(diff / day)} 天前`;
+    return new Date(iso).toLocaleDateString('zh-CN');
+  }
+
+  // 新建对比项目对话框（modal：命名 + 多选已评分作品）
+  openNewComparisonDialog() {
+    const rated = this.storageService.books.filter(b => !b.deleted && Array.isArray(b.ratingHistory) && b.ratingHistory.length > 0);
+    if (rated.length < 2) {
+      this.showToast('需要至少 2 本已评分的作品才能创建对比', 'warning');
+      return;
+    }
+
+    const modal = document.getElementById('newComparisonModal');
+    const titleInput = document.getElementById('cmpNewTitle');
+    const picker = document.getElementById('cmpNewBookPicker');
+    const hint = document.getElementById('cmpNewHint');
+    let createBtn = document.getElementById('cmpNewCreateBtn');
+    if (!modal || !titleInput || !picker || !createBtn) return;
+
+    // 先克隆替换创建按钮以清除旧 handler，并拿到 live 引用（后续 updateHint 必须操作它）
+    const freshCreateBtn = createBtn.cloneNode(true);
+    createBtn.parentNode.replaceChild(freshCreateBtn, createBtn);
+    createBtn = freshCreateBtn;
+    createBtn.addEventListener('click', () => this._confirmCreateComparison());
+
+    // 重置
+    titleInput.value = '';
+    this._cmpNewSelected = new Set();
+
+    // 渲染可选书列表
+    picker.innerHTML = rated.map(b => {
+      const latest = b.ratingHistory[b.ratingHistory.length - 1];
+      const score = typeof latest.totalScore === 'number' ? latest.totalScore.toFixed(1) : '—';
+      return `
+        <label class="cmp-book-option" data-id="${b.id}">
+          <input type="checkbox" value="${b.id}">
+          <span class="cmp-book-option-title">${this.escapeHtml(b.title)}</span>
+          <span class="cmp-book-option-score">${score}</span>
+        </label>
+      `;
+    }).join('');
+
+    const updateHint = () => {
+      const n = this._cmpNewSelected.size;
+      if (hint) hint.textContent = `已选 ${n} 部`;
+      createBtn.disabled = n < 2;
+      createBtn.style.opacity = n < 2 ? '0.5' : '1';
+      createBtn.style.cursor = n < 2 ? 'not-allowed' : 'pointer';
+    };
+    updateHint();
+
+    picker.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) this._cmpNewSelected.add(cb.value);
+        else this._cmpNewSelected.delete(cb.value);
+        const opt = cb.closest('.cmp-book-option');
+        if (opt) opt.classList.toggle('selected', cb.checked);
+        updateHint();
+      });
+    });
+
+    modal.style.display = 'flex';
+    if (this.overlay) this.overlay.classList.add('active');
+    setTimeout(() => titleInput.focus(), 50);
+  }
+
+  closeNewComparisonModal() {
+    const modal = document.getElementById('newComparisonModal');
+    if (modal) modal.style.display = 'none';
+    if (this.overlay) this.overlay.classList.remove('active');
+    this._cmpNewSelected = null;
+  }
+
+  async _confirmCreateComparison() {
+    const titleInput = document.getElementById('cmpNewTitle');
+    const title = (titleInput ? titleInput.value : '').trim() || '未命名对比';
+    const ids = Array.from(this._cmpNewSelected || []);
+    if (ids.length < 2) {
+      this.showToast('请至少选择 2 部作品', 'warning');
+      return;
+    }
+    const books = ids.map(id => this.storageService.bookMap.get(id)).filter(Boolean);
+    const cmp = this._buildNewComparison(title, books);
+    this.comparisons.push(cmp);
+    const ok = await this.saveComparisons();
+    if (!ok) {
+      this.comparisons = this.comparisons.filter(x => x.id !== cmp.id);
+      this.showToast('创建失败', 'error');
+      return;
+    }
+    this.closeNewComparisonModal();
+    this.showToast('对比项目已创建', 'success');
+    this.renderComparisonList();
+    this.openComparisonWorkspace(cmp.id);
+  }
+
+  // 构造一个新的 Comparison 对象（含 v1 版本）
+  _buildNewComparison(title, books) {
+    const now = new Date().toISOString();
+    const id = `cmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const versionId = 'ver_v1';
+    const bookRefs = books.map(b => ({
+      bookId: b.id,
+      ratingEntryId: (Array.isArray(b.ratingHistory) && b.ratingHistory.length > 0)
+        ? b.ratingHistory[b.ratingHistory.length - 1].id
+        : null
+    }));
+    return {
+      id,
+      title,
+      description: '',
+      createdAt: now,
+      updatedAt: now,
+      mainBranchTipId: versionId,
+      versions: [
+        {
+          id: versionId,
+          parentId: null,
+          branchName: 'main',
+          createdAt: now,
+          createReason: 'initial',
+          forkNote: '',
+          criteriaVersionId: getCurrentCriteriaVersionId(),
+          bookRefs,
+          annotation: ''
+        }
+      ]
+    };
+  }
+
+  // 打开工作区（4a：双列布局 + 版本时间线 + 评价编辑器）
+  openComparisonWorkspace(comparisonId) {
+    const cmp = (this.comparisons || []).find(x => x.id === comparisonId);
+    if (!cmp) { this.showToast('对比项目不存在', 'error'); return; }
+    this._activeComparisonId = comparisonId;
+    // 默认查看主线末端版本（决策 C-3：默认 mainBranchTipId，不记忆）
+    const tip = this._getComparisonTipVersion(cmp);
+    this._activeVersionId = tip ? tip.id : null;
+
+    const c = this.domCache;
+    if (c.comparisonListView) c.comparisonListView.style.display = 'none';
+    if (c.comparisonWorkspace) c.comparisonWorkspace.style.display = 'block';
+
+    this.renderComparisonWorkspace();
+  }
+
+  // 取当前活动的对比项目 / 版本
+  _getActiveComparison() {
+    return (this.comparisons || []).find(x => x.id === this._activeComparisonId) || null;
+  }
+  _getActiveVersion() {
+    const cmp = this._getActiveComparison();
+    if (!cmp || !Array.isArray(cmp.versions)) return null;
+    return cmp.versions.find(v => v.id === this._activeVersionId)
+      || this._getComparisonTipVersion(cmp);
+  }
+
+  // 渲染整个工作区（meta + chips + 评价）
+  renderComparisonWorkspace() {
+    const cmp = this._getActiveComparison();
+    if (!cmp) return;
+    const version = this._getActiveVersion();
+    const c = this.domCache;
+
+    // 标题
+    if (c.cmpWorkspaceTitle) c.cmpWorkspaceTitle.textContent = cmp.title || '对比项目';
+
+    // criteria 版本角标
+    if (c.cmpWorkspaceCriteria) {
+      const vid = version ? version.criteriaVersionId : null;
+      c.cmpWorkspaceCriteria.textContent = vid || '—';
+      const meta = vid ? getCriteriaVersionMeta(vid) : null;
+      c.cmpWorkspaceCriteria.title = meta ? `${meta.name}（${vid}）` : (vid || '');
+    }
+
+    // 描述（项目级）
+    if (c.cmpWorkspaceDesc) {
+      c.cmpWorkspaceDesc.value = cmp.description || '';
+    }
+
+    // 涉及的书
+    if (c.cmpWorkspaceBooks) {
+      const refs = version && Array.isArray(version.bookRefs) ? version.bookRefs : [];
+      c.cmpWorkspaceBooks.innerHTML = refs.map(ref => {
+        const book = this.storageService.bookMap.get(ref.bookId);
+        const title = book ? book.title : '（已删除作品）';
+        return `《${this.escapeHtml(title)}》`;
+      }).join(' ');
+    }
+
+    // 版本时间线 chip-rail
+    this.renderVersionChips();
+
+    // 评价编辑器（WYSIWYG，5a）：写入源码并即时渲染
+    if (c.cmpAnnotationEditor) {
+      const text = version ? (version.annotation || '') : '';
+      c.cmpAnnotationEditor.innerHTML = renderMarkdownLive(text);
+      c.cmpAnnotationEditor.classList.toggle('is-empty', text.length === 0);
+    }
+    if (c.cmpAnnotationVer) {
+      c.cmpAnnotationVer.textContent = version ? `(${version.id.replace('ver_', '')})` : '';
+    }
+    if (c.cmpAnnotationSaveState) c.cmpAnnotationSaveState.textContent = '';
+
+    // 渲染图表（4b）
+    this.renderComparisonCharts();
+  }
+
+  // ============================================================
+  // 4b：工作区图表（按版本 criteria 重算，决策 6-E 新功能重算）
+  // ============================================================
+
+  // 解析某版本的图表数据：每本书在「该版本 ratingEntry」下的 rating_details
+  // + 该版本 criteriaVersionId 对应的 criteria。返回 { criteria, books:[{id,title,details,scores}], ok }
+  _resolveComparisonData(version) {
+    if (!version) return { ok: false };
+    const warnings = [];
+    // 过期提示只在「主线最新版本」上有意义：历史版本是时间凝固快照，保留旧评分是预期行为
+    const cmp = this._getActiveComparison();
+    const tip = cmp ? this._getComparisonTipVersion(cmp) : null;
+    const isTip = tip && tip.id === version.id;
+    let criteria = getCriteriaByVersionId(version.criteriaVersionId);
+    if (!criteria) {
+      criteria = RATING_CRITERIA;
+      if (criteria) warnings.push(`评分体系版本「${version.criteriaVersionId || '未知'}」已缺失，已回退到当前默认体系，分数仅供参考`);
+    }
+    if (!criteria) return { ok: false };
+
+    let deletedCount = 0, fallbackEntryCount = 0, staleCount = 0;
+    const books = (version.bookRefs || []).map(ref => {
+      const book = this.storageService.bookMap.get(ref.bookId);
+      const isDeleted = !book || book.deleted;
+      const title = book ? book.title : '（已删除作品）';
+      if (isDeleted) deletedCount++;
+      // 找到 ref.ratingEntryId 对应的那条评分；找不到回退到最新一条
+      let details = {};
+      if (book && Array.isArray(book.ratingHistory) && book.ratingHistory.length > 0) {
+        let entry = book.ratingHistory.find(e => e.id === ref.ratingEntryId);
+        if (!entry) { entry = book.ratingHistory[book.ratingHistory.length - 1]; if (ref.ratingEntryId) fallbackEntryCount++; }
+        details = entry.rating_details || {};
+        // 引用的快照不是该书最新评分 → 过期（仅主线最新版本才提示）
+        const latestId = book.ratingHistory[book.ratingHistory.length - 1].id;
+        if (isTip && ref.ratingEntryId && entry.id === ref.ratingEntryId && latestId !== ref.ratingEntryId) staleCount++;
+      } else if (book && book.rating_details) {
+        details = book.rating_details;
+      }
+      const scores = calculateWeightedScores({ rating_details: details }, criteria);
+      return { id: ref.bookId, title, details, scores, deleted: isDeleted };
+    });
+
+    if (deletedCount > 0) warnings.push(`${deletedCount} 本作品已被删除，仍按快照引用显示`);
+    if (fallbackEntryCount > 0) warnings.push(`${fallbackEntryCount} 本作品的评分快照已失效，已回退到最新评分`);
+    if (staleCount > 0) warnings.push(`${staleCount} 本作品评分已更新，此版本仍显示创建时的快照（可"刷新版本"获取最新）`);
+
+    return { ok: books.length > 0, criteria, books, warnings };
+  }
+
+  // 调度：渲染当前版本的全部图表
+  renderComparisonCharts() {
+    const version = this._getActiveVersion();
+    const data = this._resolveComparisonData(version);
+    const container = this.domCache.cmpChartsContainer || document.getElementById('cmpChartsContainer');
+    const empty = document.getElementById('cmpChartsEmpty');
+
+    if (!data.ok) {
+      if (container) container.style.display = 'none';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+    if (container) container.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+
+    // 5d：引用缺失/降级警告横条
+    this._renderComparisonWarnings(data.warnings);
+
+    // 颜色板（每本书一个色）
+    this._cmpColors = ['#2563EB', '#059669', '#DC2626', '#F59E0B', '#7C3AED', '#0891B2', '#DB2777', '#475569'];
+
+    this._renderCmpTotals(data);
+    this._cmpData = data; // 下钻雷达复用
+    // 每次重渲染默认回到层面视图
+    this._radarDrillLayer = null;
+    // ECharts 容器需要可见尺寸；用 rAF 确保布局完成
+    requestAnimationFrame(() => {
+      this._renderDrillRadar();
+    });
+  }
+
+  _cmpIsDark() {
+    return document.documentElement.getAttribute('data-theme') === 'dark';
+  }
+
+  // 5d：渲染引用缺失/降级警告横条
+  _renderComparisonWarnings(warnings) {
+    const el = document.getElementById('cmpChartsWarn');
+    if (!el) return;
+    if (!warnings || warnings.length === 0) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    const items = warnings.map(w => `<li>${this.escapeHtml(w)}</li>`).join('');
+    el.innerHTML = `<i class="fas fa-triangle-exclamation"></i><div class="cmp-warn-body"><strong>引用提示</strong><ul>${items}</ul></div>`;
+    el.style.display = 'flex';
+  }
+
+  // 获取/创建 ECharts 实例（按容器 id 缓存，复用避免泄漏）
+  _cmpChart(domId) {
+    if (!this._cmpCharts) this._cmpCharts = {};
+    const dom = document.getElementById(domId);
+    if (!dom) return null;
+    if (this._cmpCharts[domId]) {
+      try { this._cmpCharts[domId].dispose(); } catch (e) {}
+    }
+    this._cmpCharts[domId] = echarts.init(dom, null, { renderer: 'canvas' });
+    return this._cmpCharts[domId];
+  }
+
+  // 综合得分卡片（按总分排名，第一名高亮）
+  _renderCmpTotals(data) {
+    const el = document.getElementById('cmpChartTotals');
+    if (!el) return;
+    const ranked = [...data.books].sort((a, b) => b.scores.total - a.scores.total);
+    const topId = ranked.length > 0 ? ranked[0].id : null;
+    el.innerHTML = data.books.map(b => `
+      <div class="cmp-total-card${b.id === topId ? ' rank-1' : ''}">
+        <div class="cmp-total-card-title" title="${this.escapeHtml(b.title)}">${this.escapeHtml(b.title)}</div>
+        <div class="cmp-total-card-score">${(b.scores.total + 50).toFixed(1)}</div>
+      </div>
+    `).join('');
+  }
+
+  // 层面堆叠柱状图
+  _renderCmpStackedBar(data) {
+    const chart = this._cmpChart('cmpChartStackedBar');
+    if (!chart) return;
+    const dark = this._cmpIsDark();
+    const axisColor = dark ? '#94A3B8' : '#475569';
+    const names = data.books.map(b => b.title);
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { data: ['作者层面', '文本层面', '读者层面'], textStyle: { color: axisColor }, top: 0 },
+      grid: { left: 8, right: 16, bottom: 8, top: 32, containLabel: true },
+      xAxis: { type: 'category', data: names, axisLabel: { color: axisColor, interval: 0, rotate: names.length > 3 ? 20 : 0 }, axisLine: { lineStyle: { color: axisColor } } },
+      yAxis: { type: 'value', axisLabel: { color: axisColor }, splitLine: { lineStyle: { color: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' } } },
+      series: [
+        { name: '作者层面', type: 'bar', stack: 'total', data: data.books.map(b => +b.scores.authorLayer.toFixed(2)), itemStyle: { color: '#2563EB' } },
+        { name: '文本层面', type: 'bar', stack: 'total', data: data.books.map(b => +b.scores.textLayer.toFixed(2)), itemStyle: { color: '#059669' } },
+        { name: '读者层面', type: 'bar', stack: 'total', data: data.books.map(b => +b.scores.readerLayer.toFixed(2)), itemStyle: { color: '#F59E0B' } }
+      ]
+    });
+  }
+
+  // 维度热力图（行=维度，列=书）
+  _renderCmpHeatmap(data) {
+    const chart = this._cmpChart('cmpChartHeatmap');
+    if (!chart) return;
+    const dark = this._cmpIsDark();
+    const axisColor = dark ? '#94A3B8' : '#475569';
+    const dims = [];
+    ['author_layer', 'text_layer', 'reader_layer'].forEach(layer => {
+      (data.criteria[layer] || []).forEach(d => dims.push(d));
+    });
+    const bookNames = data.books.map(b => b.title);
+    const dimNames = dims.map(d => d.name);
+    const points = [];
+    data.books.forEach((b, bi) => {
+      dims.forEach((d, di) => {
+        const v = b.details[d.id] || 0;
+        points.push([bi, di, v]);
+      });
+    });
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {
+        position: 'top',
+        formatter: (p) => `${bookNames[p.data[0]]}<br/>${dimNames[p.data[1]]}: ${p.data[2]}`
+      },
+      grid: { left: 8, right: 16, top: 8, bottom: 40, containLabel: true },
+      xAxis: { type: 'category', data: bookNames, axisLabel: { color: axisColor, interval: 0, rotate: bookNames.length > 3 ? 20 : 0 }, splitArea: { show: true, areaStyle: { color: dark ? ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] : ['rgba(0,0,0,0.01)', 'rgba(0,0,0,0.03)'] } } },
+      yAxis: { type: 'category', data: dimNames, axisLabel: { color: axisColor, fontSize: 10 }, splitArea: { show: true, areaStyle: { color: dark ? ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] : ['rgba(0,0,0,0.01)', 'rgba(0,0,0,0.03)'] } } },
+      visualMap: {
+        min: -1, max: 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 0,
+        inRange: { color: dark ? ['#7F1D1D', '#1E293B', '#065F46'] : ['#DC2626', '#F1F5F9', '#059669'] },
+        textStyle: { color: axisColor }
+      },
+      series: [{
+        type: 'heatmap', data: points,
+        label: { show: true, color: dark ? '#E2E8F0' : '#0F172A', fontSize: 10 },
+        itemStyle: { borderColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderWidth: 1 },
+        emphasis: { itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.3)' } }
+      }]
+    });
+  }
+
+  // 可下钻雷达（5e）：默认层面视图（作者/文本/读者），点轴下钻到该层细维度
+  // 层面映射
+  _radarLayers() {
+    return [
+      { key: 'author_layer', name: '作者层面', scoreKey: 'authorLayer' },
+      { key: 'text_layer', name: '文本层面', scoreKey: 'textLayer' },
+      { key: 'reader_layer', name: '读者层面', scoreKey: 'readerLayer' }
+    ];
+  }
+
+  // 某层面的归一化得分（层面加权和 ÷ 该层权重总和，落到 -1~1，便于与细维度同标度）
+  _layerNormScore(book, criteria, layerKey, scoreKey) {
+    const dims = criteria[layerKey] || [];
+    const wsum = dims.reduce((s, d) => s + (d.weight || 0), 0);
+    if (wsum <= 0) return 0;
+    return (book.scores[scoreKey] || 0) / wsum;
+  }
+
+  _renderDrillRadar() {
+    const data = this._cmpData;
+    if (!data) return;
+    const chart = this._cmpChart('cmpChartDrillRadar');
+    if (!chart) return;
+    const dark = this._cmpIsDark();
+    const axisColor = dark ? '#94A3B8' : '#666';
+    const layers = this._radarLayers();
+    const drill = this._radarDrillLayer; // null=层面视图；否则为 layerKey
+
+    // 更新标题 + tab 高亮
+    const titleEl = document.getElementById('cmpRadarTitle');
+    document.querySelectorAll('#cmpRadarTabs .cmp-radar-tab').forEach(b => {
+      b.classList.toggle('active', (b.dataset.layer || '') === (drill || ''));
+    });
+    let indicator, valueOf;
+    if (!drill) {
+      if (titleEl) titleEl.textContent = '层面对比雷达';
+      // 各层面用实际加权总分；满分=该层权重总和（轴 max 各不同），可正可负
+      indicator = layers.map(L => {
+        const wsum = (data.criteria[L.key] || []).reduce((s, d) => s + (d.weight || 0), 0);
+        return { name: `${L.name}\n(满分${+wsum.toFixed(1)})`, max: +wsum.toFixed(2), min: -wsum };
+      });
+      valueOf = (b) => layers.map(L => +(b.scores[L.scoreKey] || 0).toFixed(2));
+    } else {
+      const L = layers.find(x => x.key === drill);
+      const dims = data.criteria[drill] || [];
+      if (titleEl) titleEl.textContent = `${L ? L.name : ''} · 细维度`;
+      // 各维度用加权贡献（原始分 × 权重）；满分=该维度权重
+      indicator = dims.map(d => ({ name: `${d.name}\n(满分${+(d.weight || 0).toFixed(1)})`, max: +(d.weight || 0).toFixed(2), min: -(d.weight || 0) }));
+      valueOf = (b) => dims.map(d => +((b.details[d.id] || 0) * (d.weight || 0)).toFixed(2));
+    }
+
+    const series = [{
+      type: 'radar',
+      data: data.books.map((b, i) => ({
+        value: valueOf(b),
+        name: b.title,
+        lineStyle: { color: this._cmpColors[i % this._cmpColors.length] },
+        itemStyle: { color: this._cmpColors[i % this._cmpColors.length] },
+        areaStyle: { opacity: 0.08 }
+      }))
+    }];
+
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {},
+      legend: { data: data.books.map(b => b.title), textStyle: { color: axisColor, fontSize: 11 }, top: 0, type: 'scroll' },
+      radar: {
+        indicator, shape: 'polygon', radius: '62%', center: ['50%', '56%'],
+        axisName: {
+          color: !drill ? (dark ? '#E2E8F0' : '#334155') : axisColor,
+          fontSize: !drill ? 13 : 10,
+          fontWeight: !drill ? 600 : 400
+        },
+        splitLine: { lineStyle: { color: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' } },
+        splitArea: { areaStyle: { color: dark ? ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] : ['rgba(0,0,0,0.01)', 'rgba(0,0,0,0.03)'] } }
+      },
+      series
+    }, true);
+  }
+
+  // 释放工作区图表实例
+  _disposeComparisonCharts() {
+    if (this._cmpCharts) {
+      Object.values(this._cmpCharts).forEach(ch => { try { ch.dispose(); } catch (e) {} });
+      this._cmpCharts = {};
+    }
+  }
+
+  // ============================================================
+  // 4c-1：评分体系版本抽屉（版本列表 + 切换当前 + diff）
+  // ============================================================
+  openCriteriaDrawer() {
+    const drawer = this.domCache.cmpCriteriaDrawer || document.getElementById('cmpCriteriaDrawer');
+    if (!drawer) { console.error('cmpCriteriaDrawer 不存在'); return; }
+    // 先显示抽屉，确保关闭按钮一定可用
+    drawer.style.display = 'block';
+    try {
+      this.renderCriteriaVersionList();
+    } catch (e) {
+      console.error('renderCriteriaVersionList 出错:', e);
+    }
+    try {
+      this._renderCriteriaDiffForActive();
+    } catch (e) {
+      console.error('_renderCriteriaDiffForActive 出错:', e);
+    }
+  }
+
+  closeCriteriaDrawer() {
+    const drawer = this.domCache.cmpCriteriaDrawer;
+    if (drawer) drawer.style.display = 'none';
+  }
+
+  renderCriteriaVersionList() {
+    const list = this.domCache.cmpCriteriaVersionList;
+    if (!list) return;
+    const history = RATING_CRITERIA_HISTORY;
+    if (!history || !Array.isArray(history.versions)) { list.innerHTML = '<p style="color:var(--cmp-fg-muted)">无版本数据</p>'; return; }
+
+    const currentId = history.currentVersionId;
+    list.innerHTML = history.versions.filter(v => !v.deleted).map(v => {
+      const isCurrent = v.id === currentId;
+      const dimCount = ['author_layer', 'text_layer', 'reader_layer'].reduce((s, k) => s + ((v.criteria[k] || []).length), 0);
+      const usedCount = this._countBooksUsingCriteria(v.id);
+      return `
+        <div class="cmp-criteria-version-row${isCurrent ? ' current' : ''}" data-version-id="${v.id}">
+          <span class="cmp-cvr-radio"><i class="fas ${isCurrent ? 'fa-check-circle' : 'fa-circle'}"></i></span>
+          <div class="cmp-cvr-main">
+            <div class="cmp-cvr-name">${this.escapeHtml(v.name || v.id)}</div>
+            <div class="cmp-cvr-meta">${v.id} · ${dimCount} 维度 · ${usedCount} 本书使用</div>
+          </div>
+          <div class="cmp-cvr-actions">
+            ${isCurrent ? '' : `<button class="cmp-cvr-btn" data-act="set-current" data-id="${v.id}">设为当前</button>`}
+            <button class="cmp-cvr-btn" data-act="diff" data-id="${v.id}">diff</button>
+            ${isCurrent ? '' : `<button class="cmp-cvr-btn cmp-cvr-btn-danger${this._pendingDeleteCriteriaId === v.id ? ' confirming' : ''}" data-act="delete" data-id="${v.id}" title="删除此版本">${this._pendingDeleteCriteriaId === v.id ? '确认删除' : '删除'}</button>`}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 绑定操作
+    list.querySelectorAll('.cmp-cvr-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        if (btn.dataset.act === 'set-current') this.setCurrentCriteriaVersion(id);
+        else if (btn.dataset.act === 'diff') this._renderCriteriaDiff(id);
+        else if (btn.dataset.act === 'delete') this.deleteCriteriaVersion(id);
+      });
+    });
+  }
+
+  // 统计有多少本书的最新评分用了某 criteria 版本
+  _countBooksUsingCriteria(versionId) {
+    let n = 0;
+    this.storageService.books.forEach(b => {
+      if (b.deleted) return;
+      if (Array.isArray(b.ratingHistory) && b.ratingHistory.length > 0) {
+        const latest = b.ratingHistory[b.ratingHistory.length - 1];
+        if (latest.criteriaVersionId === versionId) n++;
+      }
+    });
+    return n;
+  }
+
+  // 统计有多少对比项目版本引用了该评分体系版本
+  _countComparisonsUsingCriteria(versionId) {
+    let n = 0;
+    (this.comparisons || []).forEach(cmp => {
+      (cmp.versions || []).forEach(v => { if (v.criteriaVersionId === versionId) n++; });
+    });
+    return n;
+  }
+
+  // 删除评分体系版本（5e 补充）：带引用完整性校验
+  // 软删评分体系版本（5e）：标记 deleted 隐藏出列表，但保留数据让对比快照仍可解析
+  async deleteCriteriaVersion(versionId) {
+    if (!RATING_CRITERIA_HISTORY || !Array.isArray(RATING_CRITERIA_HISTORY.versions)) return;
+    const v = RATING_CRITERIA_HISTORY.versions.find(x => x.id === versionId);
+    if (!v) return;
+
+    // 当前版本不能删
+    if (RATING_CRITERIA_HISTORY.currentVersionId === versionId) {
+      this.showToast('这是「当前」评分体系，请先切换到其他版本再删除', 'warning');
+      return;
+    }
+    // 至少保留一个未删除版本
+    const aliveCount = RATING_CRITERIA_HISTORY.versions.filter(x => !x.deleted).length;
+    if (aliveCount <= 1) {
+      this.showToast('至少保留一个评分体系版本', 'warning');
+      return;
+    }
+
+    // 两步内联确认（Electron 下 confirm() 不可靠）：首次点击进入待确认态
+    if (this._pendingDeleteCriteriaId !== versionId) {
+      this._pendingDeleteCriteriaId = versionId;
+      this.renderCriteriaVersionList();
+      const refs = this._countComparisonsUsingCriteria(versionId);
+      this.showToast(refs > 0
+        ? `该版本被 ${refs} 个对比版本引用，删除后将从列表隐藏（对比快照仍保留）。再次点击「确认删除」`
+        : '再次点击「确认删除」以删除该版本', 'info');
+      clearTimeout(this._pendingDeleteTimer);
+      this._pendingDeleteTimer = setTimeout(() => {
+        this._pendingDeleteCriteriaId = null;
+        this.renderCriteriaVersionList();
+      }, 8000);
+      return;
+    }
+    this._pendingDeleteCriteriaId = null;
+    clearTimeout(this._pendingDeleteTimer);
+
+    v.deleted = true;
+    const ok = await this._saveCriteriaHistory();
+    if (!ok) {
+      delete v.deleted;
+      this.showToast('删除失败', 'error');
+      return;
+    }
+    this.showToast(`已删除版本「${v.name || versionId}」`, 'success');
+    this.renderCriteriaVersionList();
+    const el = this.domCache.cmpCriteriaDiff;
+    if (el) el.innerHTML = '';
+  }
+
+  // 切换当前评分体系版本（之后新评分用它）
+  async setCurrentCriteriaVersion(versionId) {
+    if (!RATING_CRITERIA_HISTORY) return;
+    const v = RATING_CRITERIA_HISTORY.versions.find(x => x.id === versionId);
+    if (!v) return;
+    RATING_CRITERIA_HISTORY.currentVersionId = versionId;
+    RATING_CRITERIA = v.criteria;
+    const ok = await this._saveCriteriaHistory();
+    if (!ok) { this.showToast('切换失败', 'error'); return; }
+    this.showToast(`已切换当前评分体系为 ${v.name || versionId}（仅影响之后的"刷新版本/Fork"，已有对比版本保持快照不变）`, 'success');
+    this.renderCriteriaVersionList();
+    this._renderCriteriaDiff(versionId);
+  }
+
+  async _saveCriteriaHistory() {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.saveRatingCriteriaHistory === 'function') {
+        const r = await window.electronAPI.saveRatingCriteriaHistory(RATING_CRITERIA_HISTORY);
+        return r && r.success === true;
+      }
+    } catch (e) { console.error('保存评分体系历史失败:', e); }
+    return false;
+  }
+
+  // diff：versionId vs 其 parent
+  _renderCriteriaDiff(versionId) {
+    const el = this.domCache.cmpCriteriaDiff;
+    if (!el || !RATING_CRITERIA_HISTORY) return;
+    const v = RATING_CRITERIA_HISTORY.versions.find(x => x.id === versionId);
+    if (!v) { el.innerHTML = ''; return; }
+    const parent = v.parentId ? RATING_CRITERIA_HISTORY.versions.find(x => x.id === v.parentId) : null;
+
+    if (!parent) {
+      const rows0 = [];
+      let sum0 = 0;
+      ['author_layer', 'text_layer', 'reader_layer'].forEach(k => {
+        (v.criteria[k] || []).forEach(d => {
+          sum0 += (d.weight || 0);
+          rows0.push(`<div class="cmp-diff-row"><span class="cmp-diff-dim">${this.escapeHtml(d.name)}</span><span class="cmp-diff-val same">${d.weight}</span></div>`);
+        });
+      });
+      el.innerHTML = `<div class="cmp-diff-title">${this.escapeHtml(v.name || v.id)}（初始版本 · 权重总和 ${sum0}）</div>${rows0.join('')}`;
+      return;
+    }
+
+    // 构造 parent 的 id→weight
+    const pw = {};
+    ['author_layer', 'text_layer', 'reader_layer'].forEach(k => (parent.criteria[k] || []).forEach(d => { pw[d.id] = d.weight; }));
+
+    const rows = [];
+    let sumNew = 0, sumOld = 0;
+    ['author_layer', 'text_layer', 'reader_layer'].forEach(k => {
+      (v.criteria[k] || []).forEach(d => {
+        const oldW = pw[d.id];
+        const newW = d.weight;
+        sumNew += (newW || 0);
+        sumOld += (oldW || 0);
+        const changed = oldW !== newW;
+        let cls = 'same', txt = `${newW}`;
+        if (changed) {
+          cls = newW > oldW ? 'up' : 'down';
+          txt = `${oldW} → ${newW}`;
+        }
+        rows.push(`<div class="cmp-diff-row${changed ? ' changed' : ''}"><span class="cmp-diff-dim">${this.escapeHtml(d.name)}</span><span class="cmp-diff-val ${cls}">${txt}</span></div>`);
+      });
+    });
+    el.innerHTML = `<div class="cmp-diff-title">diff: ${this.escapeHtml(v.name || v.id)} vs ${this.escapeHtml(parent.name || parent.id)}（总和 ${sumOld} → ${sumNew}）</div>${rows.join('')}`;
+  }
+
+  _renderCriteriaDiffForActive() {
+    const version = this._getActiveVersion();
+    if (version && version.criteriaVersionId) this._renderCriteriaDiff(version.criteriaVersionId);
+  }
+
+  // fork dialog 占位（4c-2/3 实现）
+  openForkDialog() {
+    const cmp = this._getActiveComparison();
+    const version = this._getActiveVersion();
+    if (!cmp || !version) { this.showToast('请先打开一个对比项目', 'warning'); return; }
+
+    // 若从评分体系抽屉打开，先关抽屉避免层级遮挡；取消时再恢复
+    const drawer = document.getElementById('cmpCriteriaDrawer');
+    this._forkFromDrawer = !!(drawer && drawer.style.display !== 'none' && getComputedStyle(drawer).display !== 'none');
+    if (this._forkFromDrawer) this.closeCriteriaDrawer();
+
+    // 基准 criteria = 当前版本所用的 criteria（深拷贝出可编辑副本）
+    const baseCriteria = getCriteriaByVersionId(version.criteriaVersionId) || RATING_CRITERIA;
+    if (!baseCriteria) { this.showToast('找不到基准评分体系', 'error'); return; }
+    this._forkBaseCriteria = JSON.parse(JSON.stringify(baseCriteria));
+    this._forkEditCriteria = JSON.parse(JSON.stringify(baseCriteria));
+    this._forkBaseVersionId = version.criteriaVersionId;
+
+    // 重置表单
+    const nameInput = document.getElementById('cmpForkName');
+    const noteInput = document.getElementById('cmpForkNote');
+    if (nameInput) nameInput.value = '';
+    if (noteInput) noteInput.value = '';
+
+    this._buildForkSliders();
+    this._renderForkPreview();
+    this._updateForkSum();
+
+    // 绑定创建按钮（克隆去重）
+    let createBtn = document.getElementById('cmpForkCreateBtn');
+    if (createBtn) {
+      const fresh = createBtn.cloneNode(true);
+      createBtn.parentNode.replaceChild(fresh, createBtn);
+      fresh.addEventListener('click', () => this._confirmFork());
+    }
+
+    const modal = document.getElementById('cmpForkModal');
+    if (modal) modal.style.display = 'flex';
+    if (this.overlay) this.overlay.classList.add('active');
+  }
+
+  closeForkDialog() {
+    const modal = document.getElementById('cmpForkModal');
+    if (modal) modal.style.display = 'none';
+    if (this.overlay) this.overlay.classList.remove('active');
+    this._forkBaseCriteria = null;
+    this._forkEditCriteria = null;
+    // 取消时若来自抽屉，恢复抽屉以便继续管理版本
+    if (this._forkFromDrawer) {
+      this._forkFromDrawer = false;
+      this.openCriteriaDrawer();
+    }
+  }
+
+  // 5c：Esc 按层级关闭对比视图浮层；关掉一个返回 true
+  _handleComparisonEscape() {
+    const isShown = (el) => el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+    const confirmModal = document.getElementById('cmpConfirmModal');
+    if (isShown(confirmModal)) { this.closeConfirmDialog(); return true; }
+    const fork = document.getElementById('cmpForkModal');
+    if (isShown(fork)) { this.closeForkDialog(); return true; }
+    const drawer = document.getElementById('cmpCriteriaDrawer');
+    if (isShown(drawer)) { this.closeCriteriaDrawer(); return true; }
+    const newModal = document.getElementById('newComparisonModal');
+    if (isShown(newModal)) { this.closeNewComparisonModal(); return true; }
+    return false;
+  }
+
+  // 构建权重滑块（按层分组）
+  _buildForkSliders() {
+    const container = document.getElementById('cmpForkSliders');
+    if (!container || !this._forkEditCriteria) return;
+    const layerNames = { author_layer: '作者层面', text_layer: '文本层面', reader_layer: '读者层面' };
+    const parts = [];
+    ['author_layer', 'text_layer', 'reader_layer'].forEach(layer => {
+      const dims = this._forkEditCriteria[layer] || [];
+      if (dims.length === 0) return;
+      parts.push(`<div class="cmp-drawer-section-label" style="margin-top:8px">${layerNames[layer]}</div>`);
+      dims.forEach(dim => {
+        parts.push(`
+          <div class="cmp-fork-slider-row" data-layer="${layer}" data-dim-id="${dim.id}">
+            <span class="cmp-fork-slider-name" title="${this.escapeHtml(dim.name)}">${this.escapeHtml(dim.name)}</span>
+            <input type="range" min="0" max="10" step="0.5" value="${dim.weight}">
+            <span class="cmp-fork-slider-val">${dim.weight}</span>
+          </div>
+        `);
+      });
+    });
+    container.innerHTML = parts.join('');
+
+    container.querySelectorAll('.cmp-fork-slider-row').forEach(row => {
+      const layer = row.dataset.layer;
+      const dimId = row.dataset.dimId;
+      const input = row.querySelector('input');
+      const valEl = row.querySelector('.cmp-fork-slider-val');
+      input.addEventListener('input', () => {
+        const newW = parseFloat(input.value);
+        valEl.textContent = newW;
+        // 更新编辑副本
+        const dim = (this._forkEditCriteria[layer] || []).find(d => d.id === dimId);
+        if (dim) dim.weight = newW;
+        // 标记变化
+        const baseDim = (this._forkBaseCriteria[layer] || []).find(d => d.id === dimId);
+        row.classList.toggle('changed', baseDim && baseDim.weight !== newW);
+        // 实时预览
+        this._renderForkPreview();
+        this._updateForkSum();
+      });
+    });
+  }
+
+  // 计算编辑副本的权重总和；约束 = 50。返回 sum
+  _forkWeightSum() {
+    if (!this._forkEditCriteria) return 0;
+    let sum = 0;
+    ['author_layer', 'text_layer', 'reader_layer'].forEach(layer => {
+      (this._forkEditCriteria[layer] || []).forEach(d => { sum += (d.weight || 0); });
+    });
+    return Math.round(sum * 100) / 100;
+  }
+
+  // 更新权重总和状态条 + 控制保存按钮可用性
+  _updateForkSum() {
+    const TARGET = 50;
+    const sum = this._forkWeightSum();
+    const valEl = document.getElementById('cmpForkSumValue');
+    const hintEl = document.getElementById('cmpForkSumHint');
+    const createBtn = document.getElementById('cmpForkCreateBtn');
+    const diff = Math.round((sum - TARGET) * 100) / 100;
+
+    if (valEl) {
+      valEl.textContent = `${sum} / ${TARGET}`;
+      valEl.classList.toggle('over', diff > 0);
+      valEl.classList.toggle('under', diff < 0);
+    }
+    if (hintEl) {
+      if (diff > 0) hintEl.textContent = `超出 ${diff} 分，请下调后再保存`;
+      else if (diff < 0) hintEl.textContent = `还差 ${Math.abs(diff)} 分（可保存，但建议补满 50）`;
+      else hintEl.textContent = '';
+    }
+    // 超过 50 禁止保存（不足允许，仅提示）
+    if (createBtn) {
+      const blocked = diff > 0;
+      createBtn.disabled = blocked;
+      createBtn.style.opacity = blocked ? '0.5' : '1';
+      createBtn.style.cursor = blocked ? 'not-allowed' : 'pointer';
+    }
+    return sum;
+  }
+
+  // 实时影响预览：当前版本的书，在 base 权重 vs edit 权重下的总分和排名变化
+  _renderForkPreview() {
+    const el = document.getElementById('cmpForkPreview');
+    if (!el) return;
+    const version = this._getActiveVersion();
+    if (!version || !this._forkBaseCriteria || !this._forkEditCriteria) { el.innerHTML = ''; return; }
+
+    // 解析每本书的 details（用当前版本的 ratingEntry）
+    const books = (version.bookRefs || []).map(ref => {
+      const book = this.storageService.bookMap.get(ref.bookId);
+      const title = book ? book.title : '（已删除作品）';
+      let details = {};
+      if (book && Array.isArray(book.ratingHistory) && book.ratingHistory.length > 0) {
+        let entry = book.ratingHistory.find(e => e.id === ref.ratingEntryId) || book.ratingHistory[book.ratingHistory.length - 1];
+        details = entry.rating_details || {};
+      } else if (book && book.rating_details) {
+        details = book.rating_details;
+      }
+      const baseTotal = calculateWeightedScores({ rating_details: details }, this._forkBaseCriteria).total + 50;
+      const newTotal = calculateWeightedScores({ rating_details: details }, this._forkEditCriteria).total + 50;
+      return { title, baseTotal, newTotal };
+    });
+
+    // 计算 base 排名 和 new 排名
+    const baseRank = this._rankMap(books, 'baseTotal');
+    const newRank = this._rankMap(books, 'newTotal');
+
+    // 按新分数降序展示
+    const sorted = [...books].sort((a, b) => b.newTotal - a.newTotal);
+    el.innerHTML = sorted.map(b => {
+      const delta = b.newTotal - b.baseTotal;
+      let cls = 'same', sign = '';
+      if (Math.abs(delta) >= 0.05) { cls = delta > 0 ? 'up' : 'down'; sign = delta > 0 ? '+' : ''; }
+      const rankUp = newRank[b.title] < baseRank[b.title]
+        ? `<span class="cmp-preview-rank-up"><i class="fas fa-arrow-up"></i>排名↑</span>` : '';
+      return `
+        <div class="cmp-preview-row">
+          <span class="cmp-preview-name" title="${this.escapeHtml(b.title)}">${this.escapeHtml(b.title)}${rankUp}</span>
+          <span class="cmp-preview-score">${b.baseTotal.toFixed(1)} → ${b.newTotal.toFixed(1)}</span>
+          <span class="cmp-preview-delta ${cls}">${sign}${delta.toFixed(1)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 给一组对象按某字段降序排名，返回 {title: rank}
+  _rankMap(books, field) {
+    const sorted = [...books].sort((a, b) => b[field] - a[field]);
+    const map = {};
+    sorted.forEach((b, i) => { map[b.title] = i + 1; });
+    return map;
+  }
+
+  // 提交 fork：新建评分体系版本 + 在对比项目里 fork 一个实验分支版本
+  async _confirmFork() {
+    const cmp = this._getActiveComparison();
+    const version = this._getActiveVersion();
+    if (!cmp || !version || !this._forkEditCriteria) return;
+
+    // 权重总和约束：不允许超过 50
+    const sum = this._forkWeightSum();
+    if (sum > 50) {
+      this.showToast(`权重总和为 ${sum}，超出 50 分 ${Math.round((sum - 50) * 100) / 100} 分，无法保存`, 'error');
+      return;
+    }
+
+    const nameInput = document.getElementById('cmpForkName');
+    const noteInput = document.getElementById('cmpForkNote');
+    const name = (nameInput ? nameInput.value : '').trim() || '未命名实验';
+    const note = noteInput ? noteInput.value : '';
+
+    // 1. 新建评分体系版本
+    const newCriteriaId = `rc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const newCriteriaVersion = {
+      id: newCriteriaId,
+      name,
+      note,
+      parentId: this._forkBaseVersionId,
+      createdAt: new Date().toISOString(),
+      criteria: JSON.parse(JSON.stringify(this._forkEditCriteria))
+    };
+    RATING_CRITERIA_HISTORY.versions.push(newCriteriaVersion);
+    const ok1 = await this._saveCriteriaHistory();
+    if (!ok1) { RATING_CRITERIA_HISTORY.versions.pop(); this.showToast('保存评分体系失败', 'error'); return; }
+
+    // 2. 在对比项目里 fork 一个实验分支版本（基于当前查看版本）
+    const now = new Date().toISOString();
+    const expCount = cmp.versions.filter(v => (v.branchName || 'main') !== 'main').length;
+    const newVer = {
+      id: `ver_exp${expCount + 1}`,
+      parentId: version.id,
+      branchName: `exp-${expCount + 1}`,
+      createdAt: now,
+      createReason: 'fork',
+      forkNote: name,
+      criteriaVersionId: newCriteriaId,
+      bookRefs: JSON.parse(JSON.stringify(version.bookRefs || [])),
+      annotation: ''
+    };
+    cmp.versions.push(newVer);
+    cmp.updatedAt = now;
+    const ok2 = await this.saveComparisons();
+    if (!ok2) { cmp.versions.pop(); this.showToast('保存实验分支失败', 'error'); return; }
+
+    // 成功 Fork：不回抽屉，直接切到新版本
+    this._forkFromDrawer = false;
+    this.closeForkDialog();
+    this.showToast(`已 Fork 实验：${name}`, 'success');
+    // 切到新实验版本查看
+    this._activeVersionId = newVer.id;
+    this.renderComparisonWorkspace();
+  }
+
+  // 渲染版本 chip-rail（4a：只读展示 + 点击切换由 4e/此处一并实现）
+  renderVersionChips() {
+    const c = this.domCache;
+    if (!c.cmpVersionChips) return;
+    const cmp = this._getActiveComparison();
+    if (!cmp || !Array.isArray(cmp.versions)) { c.cmpVersionChips.innerHTML = ''; return; }
+
+    // 主线
+    const mains = cmp.versions.filter(v => (v.branchName || 'main') === 'main');
+    const exps = cmp.versions.filter(v => (v.branchName || 'main') !== 'main');
+    const parts = [];
+    mains.forEach((v, i) => {
+      if (i > 0) parts.push('<span class="cmp-chip-connector"></span>');
+      const isCurrent = v.id === this._activeVersionId;
+      const label = v.id.replace('ver_', '');
+      parts.push(
+        `<button class="cmp-chip${isCurrent ? ' current' : ''}" data-version-id="${v.id}" ` +
+        `title="${v.createReason || ''} · ${this._relativeTime(v.createdAt)}">${this.escapeHtml(label)}</button>`
+      );
+    });
+
+    // 实验分支（菱形 chip，跟在主线后面）
+    if (exps.length > 0) {
+      parts.push('<span class="cmp-rail-branch-label"><i class="fas fa-code-branch"></i> 实验</span>');
+      exps.forEach(v => {
+        const isCurrent = v.id === this._activeVersionId;
+        const label = v.id.replace('ver_', '');
+        const note = v.forkNote ? `：${v.forkNote}` : '';
+        parts.push(
+          `<button class="cmp-chip cmp-chip-exp${isCurrent ? ' current' : ''}" data-version-id="${v.id}" ` +
+          `title="fork from ${v.parentId ? v.parentId.replace('ver_', '') : '?'}${this.escapeHtml(note)}">${this.escapeHtml(label)}</button>`
+        );
+      });
+    }
+
+    c.cmpVersionChips.innerHTML = parts.join('');
+
+    // 绑定点击切换版本
+    c.cmpVersionChips.querySelectorAll('.cmp-chip').forEach(chip => {
+      chip.addEventListener('click', () => this.switchComparisonVersion(chip.dataset.versionId));
+    });
+  }
+
+  // 切换查看的版本
+  switchComparisonVersion(versionId) {
+    if (!versionId || versionId === this._activeVersionId) return;
+    // 切换前先 flush 当前评价的未保存内容
+    this._flushAnnotationSave();
+    this._activeVersionId = versionId;
+    this.renderComparisonWorkspace();
+  }
+
+  // WYSIWYG 实时渲染（5a）：防抖，重渲染后恢复光标
+  _scheduleAnnotationLiveRender() {
+    clearTimeout(this._annoRenderTimer);
+    this._annoRenderTimer = setTimeout(() => this._renderAnnotationLive(), 120);
+  }
+
+  _renderAnnotationLive() {
+    const c = this.domCache;
+    const el = c.cmpAnnotationEditor;
+    if (!el || this._imeComposing) return;
+    const text = ceGetText(el);
+    const caret = ceGetCaret(el);
+    const html = renderMarkdownLive(text);
+    if (el.innerHTML !== html) {
+      el.innerHTML = html;
+      ceSetCaret(el, caret);
+    }
+    el.classList.toggle('is-empty', text.length === 0);
+    this._updateActiveAnnoLine();
+  }
+
+  // 高亮光标所在行（仅该行显示 markdown 标记符，5a）
+  _updateActiveAnnoLine() {
+    const el = this.domCache.cmpAnnotationEditor;
+    if (!el) return;
+    const sel = window.getSelection();
+    let lineEl = null;
+    if (sel && sel.rangeCount) {
+      let node = sel.getRangeAt(0).startContainer;
+      while (node && node !== el) {
+        if (node.classList && node.classList.contains('md-line')) { lineEl = node; break; }
+        node = node.parentNode;
+      }
+    }
+    el.querySelectorAll('.md-line.md-active').forEach(l => { if (l !== lineEl) l.classList.remove('md-active'); });
+    if (lineEl) lineEl.classList.add('md-active');
+  }
+
+  // 评价自动保存（debounce 800ms，决策 C-2）
+  _scheduleAnnotationSave() {
+    const c = this.domCache;
+    if (c.cmpAnnotationSaveState) c.cmpAnnotationSaveState.textContent = '编辑中…';
+    clearTimeout(this._annotationSaveTimer);
+    this._annotationSaveTimer = setTimeout(() => this._flushAnnotationSave(), 800);
+  }
+
+  async _flushAnnotationSave() {
+    clearTimeout(this._annotationSaveTimer);
+    const c = this.domCache;
+    const cmp = this._getActiveComparison();
+    const version = this._getActiveVersion();
+    if (!cmp || !version || !c.cmpAnnotationEditor) return;
+
+    const val = ceGetText(c.cmpAnnotationEditor);
+    if (val === (version.annotation || '')) return; // 无变化不写盘
+
+    version.annotation = val;
+    cmp.updatedAt = new Date().toISOString();
+    const ok = await this.saveComparisons();
+    if (c.cmpAnnotationSaveState) {
+      c.cmpAnnotationSaveState.textContent = ok ? '已自动保存' : '保存失败';
+      if (ok) setTimeout(() => { if (c.cmpAnnotationSaveState) c.cmpAnnotationSaveState.textContent = ''; }, 2000);
+    }
+  }
+
+  // 描述自动保存
+  async _flushDescSave() {
+    const c = this.domCache;
+    const cmp = this._getActiveComparison();
+    if (!cmp || !c.cmpWorkspaceDesc) return;
+    const val = c.cmpWorkspaceDesc.value;
+    if (val === (cmp.description || '')) return;
+    cmp.description = val;
+    cmp.updatedAt = new Date().toISOString();
+    await this.saveComparisons();
+  }
+
+  // 刷新版本（4f）：基于最新评分数据，在主线末端追加一个新版本
+  async refreshComparisonVersion() {
+    const cmp = this._getActiveComparison();
+    if (!cmp) return;
+    this._flushAnnotationSave();
+
+    const tip = this._getComparisonTipVersion(cmp);
+    if (!tip) return;
+
+    // 用 tip 的书集合，重新取每本书最新的 ratingEntryId
+    const bookRefs = (tip.bookRefs || []).map(ref => {
+      const book = this.storageService.bookMap.get(ref.bookId);
+      const latestId = (book && Array.isArray(book.ratingHistory) && book.ratingHistory.length > 0)
+        ? book.ratingHistory[book.ratingHistory.length - 1].id
+        : ref.ratingEntryId;
+      return { bookId: ref.bookId, ratingEntryId: latestId };
+    });
+
+    // 检查是否真有变化：每本书的 ratingEntryId 与 criteriaVersionId 均未变 → 无需刷新
+    const curCriteriaId = getCurrentCriteriaVersionId();
+    const entryChanged = bookRefs.some(nr => {
+      const old = (tip.bookRefs || []).find(o => o.bookId === nr.bookId);
+      return !old || old.ratingEntryId !== nr.ratingEntryId;
+    });
+    const criteriaChanged = (tip.criteriaVersionId || null) !== (curCriteriaId || null);
+    if (!entryChanged && !criteriaChanged) {
+      this.showToast('当前已是最新，没有任何更改', 'info');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const mains = cmp.versions.filter(v => (v.branchName || 'main') === 'main');
+    const nextNum = mains.length + 1;
+    const newVersion = {
+      id: `ver_v${nextNum}`,
+      parentId: tip.id,
+      branchName: 'main',
+      createdAt: now,
+      createReason: 'refresh',
+      forkNote: '',
+      criteriaVersionId: curCriteriaId,
+      bookRefs,
+      annotation: ''
+    };
+    cmp.versions.push(newVersion);
+    cmp.mainBranchTipId = newVersion.id;
+    cmp.updatedAt = now;
+
+    const ok = await this.saveComparisons();
+    if (!ok) {
+      cmp.versions = cmp.versions.filter(v => v.id !== newVersion.id);
+      cmp.mainBranchTipId = tip.id;
+      this.showToast('刷新失败', 'error');
+      return;
+    }
+    this._activeVersionId = newVersion.id;
+    this.showToast(`已创建新版本 ${newVersion.id.replace('ver_', '')}`, 'success');
+    this.renderComparisonWorkspace();
+  }
+
+  // 通用确认对话框（替代 confirm()）：传入标题/消息/确认按钮文案/回调
+  openConfirmDialog({ title = '确认操作', message = '确定要执行此操作吗？', okText = '删除', onConfirm } = {}) {
+    const modal = document.getElementById('cmpConfirmModal');
+    if (!modal) { if (onConfirm) onConfirm(); return; }
+    const titleEl = document.getElementById('cmpConfirmTitle');
+    const msgEl = document.getElementById('cmpConfirmMessage');
+    const okBtn = document.getElementById('cmpConfirmOkBtn');
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+    if (okBtn) {
+      okBtn.textContent = okText;
+      // 克隆去重旧监听
+      const fresh = okBtn.cloneNode(true);
+      okBtn.parentNode.replaceChild(fresh, okBtn);
+      fresh.addEventListener('click', () => {
+        this.closeConfirmDialog();
+        if (onConfirm) onConfirm();
+      });
+    }
+    modal.style.display = 'flex';
+    if (this.overlay) this.overlay.classList.add('active');
+  }
+
+  closeConfirmDialog() {
+    const modal = document.getElementById('cmpConfirmModal');
+    if (modal) modal.style.display = 'none';
+    if (this.overlay) this.overlay.classList.remove('active');
+  }
+
+  // 删除对比项目：弹确认对话框
+  requestDeleteComparison(comparisonId) {
+    const cmp = (this.comparisons || []).find(x => x.id === comparisonId);
+    this.openConfirmDialog({
+      title: '删除对比项目',
+      message: `确定删除对比项目「${cmp ? (cmp.title || '未命名对比') : ''}」？该项目的所有版本和评价将一并删除，无法撤销。`,
+      okText: '删除',
+      onConfirm: () => this.deleteComparison(comparisonId)
+    });
+  }
+
+  // 删除对比项目
+  async deleteComparison(comparisonId) {
+    const removed = (this.comparisons || []).find(x => x.id === comparisonId);
+    this.comparisons = this.comparisons.filter(x => x.id !== comparisonId);
+    const ok = await this.saveComparisons();
+    if (!ok) {
+      if (removed) this.comparisons.push(removed);
+      this.showToast('删除失败', 'error');
+      return;
+    }
+    this.showToast(`已删除对比项目「${removed ? (removed.title || '未命名对比') : ''}」`, 'success');
+    this.renderComparisonList();
+  }
+
   _updateLockedBookIndicator() {
     const lockedBookId = this.inspirationFilters.lockedBookId;
     if (!lockedBookId) return;
@@ -2819,8 +4543,8 @@ class BookApp {
     const select = this.domCache.filterBookId;
     if (!select) return;
 
-    // 只显示开启了灵感功能的书籍
-    const books = (this.storageService.books || []).filter(book => book.enableInspiration);
+    // 只显示开启了灵感功能且未被软删除的书籍
+    const books = (this.storageService.books || []).filter(book => !book.deleted && book.enableInspiration);
     const currentValue = select.value;
 
     select.innerHTML = '<option value="">全部作品</option>' +
@@ -4107,8 +5831,37 @@ class BookApp {
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  createBookCard(book) {
-    const card = document.createElement('div');
+  // V3.0：构建知识库卡片的评分徽章 + 评分体系版本角标（决策 6-E）
+  // 显示「原值」—— 即评分当时记录的 totalScore，不按当前评分体系重算。
+  // 优先用 ratingHistory 最新一条；老数据回退到 book.rating。
+  _buildBookRatingBadge(book) {
+    let totalScore = null;
+    let versionId = null;
+
+    if (Array.isArray(book.ratingHistory) && book.ratingHistory.length > 0) {
+      const latest = book.ratingHistory[book.ratingHistory.length - 1];
+      totalScore = latest.totalScore;
+      versionId = latest.criteriaVersionId;
+    } else if (book.rating && typeof book.rating.totalScore === 'number') {
+      totalScore = book.rating.totalScore;
+    }
+
+    if (totalScore === null || totalScore === undefined) return '';
+
+    // 版本角标：优先显示版本 name，回退显示 id；当前版本不加额外强调
+    let versionBadge = '';
+    if (versionId) {
+      const meta = getCriteriaVersionMeta(versionId);
+      const label = versionId; // 角标用简短 id（如 rc_initial_v1）
+      const title = meta ? `${meta.name}（${versionId}）` : versionId;
+      const stale = (typeof getCurrentCriteriaVersionId === 'function' && versionId !== getCurrentCriteriaVersionId());
+      versionBadge = `<span class="rating-version-badge${stale ? ' stale' : ''}" title="评分体系版本：${this.escapeHtml(title)}">${this.escapeHtml(label)}</span>`;
+    }
+
+    return `<span class="book-rating-badge">评分: ${totalScore.toFixed(1)}</span>${versionBadge}`;
+  }
+
+  createBookCard(book) {    const card = document.createElement('div');
     card.className = `book-card ${book.status}`;
     card.dataset.id = book.id;
 
@@ -4128,10 +5881,8 @@ class BookApp {
     const showRatingBtn = book.enableRating === true;
     // 根据 enableInspiration 决定是否显示灵感按钮
     const showInspirationBtn = book.enableInspiration === true;
-    // 如果已有评分，显示评分
-    const ratingHtml = (book.rating && book.rating.totalScore)
-      ? `<span class="book-rating-badge">评分: ${book.rating.totalScore.toFixed(1)}</span>`
-      : '';
+    // 如果已有评分，显示评分（决策 6-E：知识库显示「原值」+ 评分体系版本角标，不按当前版本重算）
+    const ratingHtml = this._buildBookRatingBadge(book);
 
     const ratingButtonHtml = showRatingBtn
       ? `<button class="action-btn rating" data-action="rating" data-id="${book.id}">
@@ -4849,7 +6600,7 @@ class BookApp {
     initVolatileCriteria();
     this.buildWeightSliders();
 
-    const ratedBooks = this.storageService.books.filter(b => b.rating_details && Object.keys(b.rating_details).length > 0);
+    const ratedBooks = this.storageService.books.filter(b => !b.deleted && b.rating_details && Object.keys(b.rating_details).length > 0);
 
     if (ratedBooks.length < 2) {
       this.showToast('需要至少2本已评分的书籍才能对比', 'warning');
@@ -5795,7 +7546,7 @@ class BookApp {
     const bookBId = document.getElementById('compareBookB')?.value;
 
     // 获取所有已评分的书
-    let allBooks = this.storageService.books.filter(b => b.rating_details && Object.keys(b.rating_details).length > 0);
+    let allBooks = this.storageService.books.filter(b => !b.deleted && b.rating_details && Object.keys(b.rating_details).length > 0);
 
     // 基准线相关变量
     let markLineData = [];
@@ -6009,7 +7760,7 @@ class BookApp {
     const tagSelect = document.getElementById('scatterTagSelect');
     if (!tagSelect) return;
 
-    const allBooks = this.storageService.books.filter(b => b.rating_details && Object.keys(b.rating_details).length > 0);
+    const allBooks = this.storageService.books.filter(b => !b.deleted && b.rating_details && Object.keys(b.rating_details).length > 0);
     const tagSet = new Set();
     allBooks.forEach(book => {
       if (book.tags) {
@@ -6811,7 +8562,23 @@ class BookApp {
       book.rating_details = rating_details;
       book.rating.totalScore = totalScore;
 
-      const result = await this.storageService.updateBook(this.currentRatingBookId, { rating: ratingData, rating_details: rating_details });
+      // V3.0：追加式写入 ratingHistory（决策 6-C-2，永不覆盖老条目）
+      if (!Array.isArray(book.ratingHistory)) book.ratingHistory = [];
+      const seq = String(book.ratingHistory.length + 1).padStart(3, '0');
+      const newEntry = {
+        id: `rate_${book.id}_${seq}`,
+        criteriaVersionId: getCurrentCriteriaVersionId(),
+        rating_details: { ...rating_details },
+        totalScore: totalScore,
+        ratedAt: ratingData.ratedAt
+      };
+      book.ratingHistory.push(newEntry);
+
+      const result = await this.storageService.updateBook(this.currentRatingBookId, {
+        rating: ratingData,
+        rating_details: rating_details,
+        ratingHistory: book.ratingHistory
+      });
       console.error('updateBook result:', result);
 
       this.showToast('评分保存成功', 'success');
@@ -7179,6 +8946,11 @@ class BookApp {
     this.themeIcon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
 
     this.showToast(`已切换到${newTheme === 'dark' ? '深色' : '浅色'}模式`, 'info');
+
+    // 5b：对比视图图表用了主题色，切换后需重绘
+    if (this.currentView === 'comparison' && this._getActiveComparison()) {
+      requestAnimationFrame(() => this.renderComparisonCharts());
+    }
   }
 
   initTheme() {
@@ -7203,6 +8975,12 @@ class BookApp {
   // 4. 键盘快捷键
   handleKeydown(e) {
     const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+    // 5c：Esc 关闭对比视图的浮层（按层级，最上层优先；早于输入框拦截）
+    if (e.key === 'Escape' && this._handleComparisonEscape()) {
+      e.preventDefault();
+      return;
+    }
 
     // 防止在输入框中触发快捷键
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {

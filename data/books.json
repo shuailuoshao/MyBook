@@ -8,7 +8,7 @@
     "status": "已玩完",
     "notes": [],
     "rating": {
-      "totalScore": 51.5,
+      "totalScore": 54.5,
       "profile": "标准配置",
       "ratings": {
         "情节架构": 0,
@@ -18,10 +18,60 @@
         "象征与意象": 1,
         "登场人物塑造": 0,
         "代入感": -1,
-        "整体审美": 1
+        "整体审美": 1,
+        "叙述视角": 1,
+        "对话可咀嚼度": 1
       },
-      "ratedAt": "2026-04-24T06:09:25.979Z"
+      "ratedAt": "2026-06-14T03:08:02.721Z"
     },
+    "rating_details": {
+      "plot_architecture": 0,
+      "character_design": 1,
+      "worldview": -1,
+      "era_background": -1,
+      "symbolism": 1,
+      "character_development": 0,
+      "immersion": -1,
+      "overall_aesthetics": 1,
+      "narrative_perspective": 1,
+      "dialogue_depth": 1
+    },
+    "ratingHistory": [
+      {
+        "id": "rate_1772938575454_001",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "plot_architecture": 0,
+          "character_design": 1,
+          "worldview": -1,
+          "era_background": -1,
+          "symbolism": 1,
+          "character_development": 0,
+          "immersion": -1,
+          "overall_aesthetics": 1
+        },
+        "totalScore": 51.5,
+        "ratedAt": "2026-04-24T06:09:25.979Z"
+      },
+      {
+        "id": "rate_1772938575454_002",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "plot_architecture": 0,
+          "character_design": 1,
+          "worldview": -1,
+          "era_background": -1,
+          "symbolism": 1,
+          "character_development": 0,
+          "immersion": -1,
+          "overall_aesthetics": 1,
+          "narrative_perspective": 1,
+          "dialogue_depth": 1
+        },
+        "totalScore": 54.5,
+        "ratedAt": "2026-06-14T03:08:02.721Z"
+      }
+    ],
     "tags": [
       "游戏剧情",
       "奇幻",
@@ -34,8 +84,9 @@
     "totalLength": 22,
     "progressUnit": "章",
     "evaluation": "",
+    "deleted": false,
     "createdAt": "2026-03-08T02:56:15.453Z",
-    "updatedAt": "2026-04-24T06:11:15.463Z"
+    "updatedAt": "2026-06-14T03:08:02.721Z"
   },
   {
     "id": "1772938762057",
@@ -46,19 +97,163 @@
     "status": "已读完",
     "notes": [],
     "rating": {
-      "totalScore": 56.5,
+      "totalScore": 100,
       "profile": "标准配置",
       "ratings": {
         "时代背景": 1,
         "象征与意象": 1,
         "人物设计": 1,
-        "世界观": -1,
+        "世界观": 1,
         "登场人物塑造": 1,
         "代入感": 1,
-        "整体审美": 1
+        "整体审美": 1,
+        "人物关系网络": 1,
+        "叙述视角": 1,
+        "情节理解": 1,
+        "对话可咀嚼度": 1,
+        "作品主题": 1,
+        "情节架构": 1,
+        "叙事时间": 1,
+        "主题表达": 1,
+        "修辞手法": 1,
+        "情节故事性": 1,
+        "背景描写": 1,
+        "文笔文风信息量": 1,
+        "阅读前视野": 1,
+        "人物理解": 1,
+        "知识获取": 1,
+        "主题理解": 1,
+        "观念改变": 1,
+        "行为影响": 1
       },
-      "ratedAt": "2026-04-24T06:09:22.434Z"
+      "ratedAt": "2026-06-14T06:00:43.764Z"
     },
+    "rating_details": {
+      "era_background": 1,
+      "symbolism": 1,
+      "character_design": 1,
+      "worldview": 1,
+      "character_development": 1,
+      "immersion": 1,
+      "overall_aesthetics": 1,
+      "relationship_network": 1,
+      "narrative_perspective": 1,
+      "plot_understanding": 1,
+      "dialogue_depth": 1,
+      "theme_author": 1,
+      "plot_architecture": 1,
+      "narrative_time": 1,
+      "theme_expression": 1,
+      "rhetorical_devices": 1,
+      "plot_storytelling": 1,
+      "background_description": 1,
+      "writing_style": 1,
+      "pre_reading_horizon": 1,
+      "character_understanding": 1,
+      "knowledge_acquisition": 1,
+      "theme_understanding": 1,
+      "paradigm_shift": 1,
+      "behavioral_impact": 1
+    },
+    "ratingHistory": [
+      {
+        "id": "rate_1772938762057_001",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "era_background": 1,
+          "symbolism": 1,
+          "character_design": 1,
+          "worldview": -1,
+          "character_development": 1,
+          "immersion": 1,
+          "overall_aesthetics": 1
+        },
+        "totalScore": 56.5,
+        "ratedAt": "2026-04-24T06:09:22.434Z"
+      },
+      {
+        "id": "rate_1772938762057_002",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "era_background": 1,
+          "symbolism": 1,
+          "character_design": 1,
+          "worldview": -1,
+          "character_development": 1,
+          "immersion": 1,
+          "overall_aesthetics": 1
+        },
+        "totalScore": 56.5,
+        "ratedAt": "2026-06-14T03:07:08.628Z"
+      },
+      {
+        "id": "rate_1772938762057_003",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "era_background": 1,
+          "symbolism": -1,
+          "character_design": 1,
+          "worldview": -1,
+          "character_development": 1,
+          "immersion": 1,
+          "overall_aesthetics": 1
+        },
+        "totalScore": 54.5,
+        "ratedAt": "2026-06-14T03:07:46.758Z"
+      },
+      {
+        "id": "rate_1772938762057_004",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "era_background": 1,
+          "symbolism": -1,
+          "character_design": 1,
+          "worldview": -1,
+          "character_development": 1,
+          "immersion": 1,
+          "overall_aesthetics": 1,
+          "relationship_network": 1,
+          "narrative_perspective": 1,
+          "plot_understanding": 1,
+          "dialogue_depth": 1
+        },
+        "totalScore": 62,
+        "ratedAt": "2026-06-14T05:47:34.864Z"
+      },
+      {
+        "id": "rate_1772938762057_005",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "era_background": 1,
+          "symbolism": 1,
+          "character_design": 1,
+          "worldview": 1,
+          "character_development": 1,
+          "immersion": 1,
+          "overall_aesthetics": 1,
+          "relationship_network": 1,
+          "narrative_perspective": 1,
+          "plot_understanding": 1,
+          "dialogue_depth": 1,
+          "theme_author": 1,
+          "plot_architecture": 1,
+          "narrative_time": 1,
+          "theme_expression": 1,
+          "rhetorical_devices": 1,
+          "plot_storytelling": 1,
+          "background_description": 1,
+          "writing_style": 1,
+          "pre_reading_horizon": 1,
+          "character_understanding": 1,
+          "knowledge_acquisition": 1,
+          "theme_understanding": 1,
+          "paradigm_shift": 1,
+          "behavioral_impact": 1
+        },
+        "totalScore": 100,
+        "ratedAt": "2026-06-14T06:00:43.764Z"
+      }
+    ],
     "tags": [
       "社科",
       "悬疑",
@@ -71,8 +266,9 @@
     "totalLength": 21,
     "progressUnit": "章",
     "evaluation": "1111111111111",
+    "deleted": false,
     "createdAt": "2026-03-08T02:59:22.056Z",
-    "updatedAt": "2026-06-13T09:11:28.432Z"
+    "updatedAt": "2026-06-14T06:00:43.765Z"
   },
   {
     "id": "1772939122256",
@@ -83,6 +279,8 @@
     "status": "已读完",
     "notes": [],
     "rating": null,
+    "rating_details": null,
+    "ratingHistory": null,
     "tags": [
       "文学",
       "心理",
@@ -95,6 +293,7 @@
     "totalLength": 7,
     "progressUnit": "章",
     "evaluation": "",
+    "deleted": false,
     "createdAt": "2026-03-08T03:05:22.256Z",
     "updatedAt": "2026-06-13T09:15:51.959Z"
   },
@@ -136,6 +335,64 @@
       },
       "ratedAt": "2026-03-08T03:08:17.249Z"
     },
+    "rating_details": {
+      "theme_author": 1,
+      "plot_architecture": 0,
+      "character_design": 1,
+      "worldview": 1,
+      "narrative_time": 0,
+      "symbolism": 1,
+      "era_background": 1,
+      "character_development": 1,
+      "background_description": 1,
+      "theme_expression": 1,
+      "narrative_perspective": 1,
+      "writing_style": 1,
+      "rhetorical_devices": 1,
+      "dialogue_depth": 1,
+      "pre_reading_horizon": 0,
+      "immersion": 1,
+      "plot_understanding": 1,
+      "theme_understanding": 1,
+      "overall_aesthetics": 1,
+      "character_understanding": 1,
+      "knowledge_acquisition": 1,
+      "behavioral_impact": 1,
+      "paradigm_shift": 1
+    },
+    "ratingHistory": [
+      {
+        "id": "rate_1772939198038_001",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "theme_author": 1,
+          "plot_architecture": 0,
+          "character_design": 1,
+          "worldview": 1,
+          "narrative_time": 0,
+          "symbolism": 1,
+          "era_background": 1,
+          "character_development": 1,
+          "background_description": 1,
+          "theme_expression": 1,
+          "narrative_perspective": 1,
+          "writing_style": 1,
+          "rhetorical_devices": 1,
+          "dialogue_depth": 1,
+          "pre_reading_horizon": 0,
+          "immersion": 1,
+          "plot_understanding": 1,
+          "theme_understanding": 1,
+          "overall_aesthetics": 1,
+          "character_understanding": 1,
+          "knowledge_acquisition": 1,
+          "behavioral_impact": 1,
+          "paradigm_shift": 1
+        },
+        "totalScore": 94.5,
+        "ratedAt": "2026-03-08T03:08:17.249Z"
+      }
+    ],
     "tags": [
       "文学",
       "治愈",
@@ -148,6 +405,7 @@
     "totalLength": 6,
     "progressUnit": "章",
     "evaluation": "",
+    "deleted": false,
     "createdAt": "2026-03-08T03:06:38.038Z",
     "updatedAt": "2026-03-08T03:09:17.492Z"
   },
@@ -160,6 +418,8 @@
     "status": "已读完",
     "notes": [],
     "rating": null,
+    "rating_details": null,
+    "ratingHistory": null,
     "tags": [
       "工具",
       "社会"
@@ -171,6 +431,7 @@
     "totalLength": 12,
     "progressUnit": "章",
     "evaluation": "",
+    "deleted": false,
     "createdAt": "2026-03-08T03:09:02.908Z",
     "updatedAt": "2026-06-13T09:19:25.101Z"
   },
@@ -183,6 +444,8 @@
     "status": "已读完",
     "notes": [],
     "rating": null,
+    "rating_details": null,
+    "ratingHistory": null,
     "tags": [
       "学术论文",
       "商业",
@@ -195,6 +458,7 @@
     "totalLength": 4,
     "progressUnit": "章",
     "evaluation": "",
+    "deleted": false,
     "createdAt": "2026-03-08T03:11:11.532Z",
     "updatedAt": "2026-06-13T09:15:59.964Z"
   },
@@ -207,6 +471,8 @@
     "status": "已读完",
     "notes": [],
     "rating": null,
+    "rating_details": null,
+    "ratingHistory": null,
     "tags": [
       "轻小说",
       "社会"
@@ -218,6 +484,7 @@
     "totalLength": 16,
     "progressUnit": "章",
     "evaluation": "1111111111111111111111",
+    "deleted": false,
     "createdAt": "2026-03-08T03:12:46.649Z",
     "updatedAt": "2026-06-13T09:15:45.938Z"
   },
@@ -242,6 +509,30 @@
       },
       "ratedAt": "2026-04-24T06:09:31.363Z"
     },
+    "rating_details": {
+      "character_design": 1,
+      "worldview": -1,
+      "symbolism": 1,
+      "character_development": 1,
+      "pre_reading_horizon": -1,
+      "overall_aesthetics": 1
+    },
+    "ratingHistory": [
+      {
+        "id": "rate_1772956012201_001",
+        "criteriaVersionId": "rc_initial_v1",
+        "rating_details": {
+          "character_design": 1,
+          "worldview": -1,
+          "symbolism": 1,
+          "character_development": 1,
+          "pre_reading_horizon": -1,
+          "overall_aesthetics": 1
+        },
+        "totalScore": 54.5,
+        "ratedAt": "2026-04-24T06:09:31.363Z"
+      }
+    ],
     "tags": [
       "动漫",
       "悬疑",
@@ -254,6 +545,7 @@
     "totalLength": 1,
     "progressUnit": "章",
     "evaluation": "",
+    "deleted": false,
     "createdAt": "2026-03-08T07:46:52.200Z",
     "updatedAt": "2026-06-13T09:20:58.193Z"
   },
@@ -266,6 +558,8 @@
     "status": "阅读中",
     "notes": [],
     "rating": null,
+    "rating_details": null,
+    "ratingHistory": null,
     "tags": [],
     "enableRating": true,
     "enableInspiration": true,
@@ -274,7 +568,31 @@
     "totalLength": 0,
     "progressUnit": "章",
     "evaluation": "1111",
+    "deleted": true,
     "createdAt": "2026-06-13T06:07:12.652Z",
-    "updatedAt": "2026-06-13T06:16:36.389Z"
+    "updatedAt": "2026-06-14T02:28:11.003Z"
+  },
+  {
+    "id": "1781417016672",
+    "title": "11111",
+    "author": "",
+    "startDate": null,
+    "endDate": null,
+    "status": "已读完",
+    "notes": [],
+    "rating": null,
+    "rating_details": null,
+    "ratingHistory": null,
+    "tags": [],
+    "enableRating": true,
+    "enableInspiration": false,
+    "folderId": "uncategorized",
+    "currentProgress": 0,
+    "totalLength": 0,
+    "progressUnit": "章",
+    "evaluation": "",
+    "deleted": false,
+    "createdAt": "2026-06-14T06:03:36.672Z",
+    "updatedAt": "2026-06-14T06:03:36.672Z"
   }
 ]

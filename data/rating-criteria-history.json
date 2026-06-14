@@ -1,0 +1,709 @@
+{
+  "currentVersionId": "rc_initial_v1",
+  "versions": [
+    {
+      "id": "rc_initial_v1",
+      "name": "标准配置 (initial)",
+      "note": "从 V2.x 自动迁移生成的初始版本",
+      "parentId": null,
+      "createdAt": "2026-06-14T02:27:25.801Z",
+      "criteria": {
+        "author_layer": [
+          {
+            "id": "theme_author",
+            "name": "作品主题",
+            "weight": 4
+          },
+          {
+            "id": "plot_architecture",
+            "name": "情节架构",
+            "weight": 1.5
+          },
+          {
+            "id": "character_design",
+            "name": "人物设计",
+            "weight": 1
+          },
+          {
+            "id": "worldview",
+            "name": "世界观",
+            "weight": 1.5
+          },
+          {
+            "id": "narrative_time",
+            "name": "叙事时间",
+            "weight": 0.5
+          },
+          {
+            "id": "symbolism",
+            "name": "象征与意象",
+            "weight": 1
+          },
+          {
+            "id": "era_background",
+            "name": "时代背景",
+            "weight": 0.5
+          }
+        ],
+        "text_layer": [
+          {
+            "id": "plot_storytelling",
+            "name": "情节故事性",
+            "weight": 1
+          },
+          {
+            "id": "character_development",
+            "name": "登场人物塑造",
+            "weight": 3
+          },
+          {
+            "id": "relationship_network",
+            "name": "人物关系网络",
+            "weight": 1.5
+          },
+          {
+            "id": "background_description",
+            "name": "背景描写",
+            "weight": 2
+          },
+          {
+            "id": "theme_expression",
+            "name": "主题表达",
+            "weight": 6
+          },
+          {
+            "id": "narrative_perspective",
+            "name": "叙述视角",
+            "weight": 1.5
+          },
+          {
+            "id": "writing_style",
+            "name": "文笔文风信息量",
+            "weight": 2
+          },
+          {
+            "id": "rhetorical_devices",
+            "name": "修辞手法",
+            "weight": 1.5
+          },
+          {
+            "id": "dialogue_depth",
+            "name": "对话可咀嚼度",
+            "weight": 1.5
+          }
+        ],
+        "reader_layer": [
+          {
+            "id": "pre_reading_horizon",
+            "name": "阅读前视野",
+            "weight": 1
+          },
+          {
+            "id": "immersion",
+            "name": "代入感",
+            "weight": 0.5
+          },
+          {
+            "id": "plot_understanding",
+            "name": "情节理解",
+            "weight": 3
+          },
+          {
+            "id": "character_understanding",
+            "name": "人物理解",
+            "weight": 3
+          },
+          {
+            "id": "theme_understanding",
+            "name": "主题理解",
+            "weight": 4
+          },
+          {
+            "id": "overall_aesthetics",
+            "name": "整体审美",
+            "weight": 2
+          },
+          {
+            "id": "knowledge_acquisition",
+            "name": "知识获取",
+            "weight": 1.5
+          },
+          {
+            "id": "paradigm_shift",
+            "name": "观念改变",
+            "weight": 2.5
+          },
+          {
+            "id": "behavioral_impact",
+            "name": "行为影响",
+            "weight": 2.5
+          }
+        ]
+      }
+    },
+    {
+      "id": "rc_1781410314039_dj81",
+      "name": "未命名实验",
+      "note": "",
+      "parentId": "rc_initial_v1",
+      "createdAt": "2026-06-14T04:11:54.039Z",
+      "criteria": {
+        "author_layer": [
+          {
+            "id": "theme_author",
+            "name": "作品主题",
+            "weight": 6
+          },
+          {
+            "id": "plot_architecture",
+            "name": "情节架构",
+            "weight": 5.5
+          },
+          {
+            "id": "character_design",
+            "name": "人物设计",
+            "weight": 1
+          },
+          {
+            "id": "worldview",
+            "name": "世界观",
+            "weight": 1.5
+          },
+          {
+            "id": "narrative_time",
+            "name": "叙事时间",
+            "weight": 0.5
+          },
+          {
+            "id": "symbolism",
+            "name": "象征与意象",
+            "weight": 1
+          },
+          {
+            "id": "era_background",
+            "name": "时代背景",
+            "weight": 0.5
+          }
+        ],
+        "text_layer": [
+          {
+            "id": "plot_storytelling",
+            "name": "情节故事性",
+            "weight": 1
+          },
+          {
+            "id": "character_development",
+            "name": "登场人物塑造",
+            "weight": 3
+          },
+          {
+            "id": "relationship_network",
+            "name": "人物关系网络",
+            "weight": 1.5
+          },
+          {
+            "id": "background_description",
+            "name": "背景描写",
+            "weight": 2
+          },
+          {
+            "id": "theme_expression",
+            "name": "主题表达",
+            "weight": 6
+          },
+          {
+            "id": "narrative_perspective",
+            "name": "叙述视角",
+            "weight": 1.5
+          },
+          {
+            "id": "writing_style",
+            "name": "文笔文风信息量",
+            "weight": 2
+          },
+          {
+            "id": "rhetorical_devices",
+            "name": "修辞手法",
+            "weight": 1.5
+          },
+          {
+            "id": "dialogue_depth",
+            "name": "对话可咀嚼度",
+            "weight": 1.5
+          }
+        ],
+        "reader_layer": [
+          {
+            "id": "pre_reading_horizon",
+            "name": "阅读前视野",
+            "weight": 1
+          },
+          {
+            "id": "immersion",
+            "name": "代入感",
+            "weight": 0.5
+          },
+          {
+            "id": "plot_understanding",
+            "name": "情节理解",
+            "weight": 3
+          },
+          {
+            "id": "character_understanding",
+            "name": "人物理解",
+            "weight": 3
+          },
+          {
+            "id": "theme_understanding",
+            "name": "主题理解",
+            "weight": 4
+          },
+          {
+            "id": "overall_aesthetics",
+            "name": "整体审美",
+            "weight": 2
+          },
+          {
+            "id": "knowledge_acquisition",
+            "name": "知识获取",
+            "weight": 1.5
+          },
+          {
+            "id": "paradigm_shift",
+            "name": "观念改变",
+            "weight": 2.5
+          },
+          {
+            "id": "behavioral_impact",
+            "name": "行为影响",
+            "weight": 2.5
+          }
+        ]
+      },
+      "deleted": true
+    },
+    {
+      "id": "rc_1781410399508_61xl",
+      "name": "降低",
+      "note": "",
+      "parentId": "rc_1781410314039_dj81",
+      "createdAt": "2026-06-14T04:13:19.508Z",
+      "criteria": {
+        "author_layer": [
+          {
+            "id": "theme_author",
+            "name": "作品主题",
+            "weight": 6
+          },
+          {
+            "id": "plot_architecture",
+            "name": "情节架构",
+            "weight": 2
+          },
+          {
+            "id": "character_design",
+            "name": "人物设计",
+            "weight": 1
+          },
+          {
+            "id": "worldview",
+            "name": "世界观",
+            "weight": 1.5
+          },
+          {
+            "id": "narrative_time",
+            "name": "叙事时间",
+            "weight": 0.5
+          },
+          {
+            "id": "symbolism",
+            "name": "象征与意象",
+            "weight": 0
+          },
+          {
+            "id": "era_background",
+            "name": "时代背景",
+            "weight": 0.5
+          }
+        ],
+        "text_layer": [
+          {
+            "id": "plot_storytelling",
+            "name": "情节故事性",
+            "weight": 1
+          },
+          {
+            "id": "character_development",
+            "name": "登场人物塑造",
+            "weight": 3
+          },
+          {
+            "id": "relationship_network",
+            "name": "人物关系网络",
+            "weight": 1.5
+          },
+          {
+            "id": "background_description",
+            "name": "背景描写",
+            "weight": 2
+          },
+          {
+            "id": "theme_expression",
+            "name": "主题表达",
+            "weight": 6
+          },
+          {
+            "id": "narrative_perspective",
+            "name": "叙述视角",
+            "weight": 1.5
+          },
+          {
+            "id": "writing_style",
+            "name": "文笔文风信息量",
+            "weight": 2
+          },
+          {
+            "id": "rhetorical_devices",
+            "name": "修辞手法",
+            "weight": 1.5
+          },
+          {
+            "id": "dialogue_depth",
+            "name": "对话可咀嚼度",
+            "weight": 1.5
+          }
+        ],
+        "reader_layer": [
+          {
+            "id": "pre_reading_horizon",
+            "name": "阅读前视野",
+            "weight": 1
+          },
+          {
+            "id": "immersion",
+            "name": "代入感",
+            "weight": 0.5
+          },
+          {
+            "id": "plot_understanding",
+            "name": "情节理解",
+            "weight": 3
+          },
+          {
+            "id": "character_understanding",
+            "name": "人物理解",
+            "weight": 3
+          },
+          {
+            "id": "theme_understanding",
+            "name": "主题理解",
+            "weight": 4
+          },
+          {
+            "id": "overall_aesthetics",
+            "name": "整体审美",
+            "weight": 2
+          },
+          {
+            "id": "knowledge_acquisition",
+            "name": "知识获取",
+            "weight": 1.5
+          },
+          {
+            "id": "paradigm_shift",
+            "name": "观念改变",
+            "weight": 2.5
+          },
+          {
+            "id": "behavioral_impact",
+            "name": "行为影响",
+            "weight": 2.5
+          }
+        ]
+      },
+      "deleted": true
+    },
+    {
+      "id": "rc_1781416415364_xaju",
+      "name": "未命名实验",
+      "note": "",
+      "parentId": "rc_initial_v1",
+      "createdAt": "2026-06-14T05:53:35.364Z",
+      "criteria": {
+        "author_layer": [
+          {
+            "id": "theme_author",
+            "name": "作品主题",
+            "weight": 4
+          },
+          {
+            "id": "plot_architecture",
+            "name": "情节架构",
+            "weight": 1.5
+          },
+          {
+            "id": "character_design",
+            "name": "人物设计",
+            "weight": 1
+          },
+          {
+            "id": "worldview",
+            "name": "世界观",
+            "weight": 1.5
+          },
+          {
+            "id": "narrative_time",
+            "name": "叙事时间",
+            "weight": 0.5
+          },
+          {
+            "id": "symbolism",
+            "name": "象征与意象",
+            "weight": 6
+          },
+          {
+            "id": "era_background",
+            "name": "时代背景",
+            "weight": 0.5
+          }
+        ],
+        "text_layer": [
+          {
+            "id": "plot_storytelling",
+            "name": "情节故事性",
+            "weight": 0
+          },
+          {
+            "id": "character_development",
+            "name": "登场人物塑造",
+            "weight": 0
+          },
+          {
+            "id": "relationship_network",
+            "name": "人物关系网络",
+            "weight": 1.5
+          },
+          {
+            "id": "background_description",
+            "name": "背景描写",
+            "weight": 2
+          },
+          {
+            "id": "theme_expression",
+            "name": "主题表达",
+            "weight": 6
+          },
+          {
+            "id": "narrative_perspective",
+            "name": "叙述视角",
+            "weight": 1.5
+          },
+          {
+            "id": "writing_style",
+            "name": "文笔文风信息量",
+            "weight": 2
+          },
+          {
+            "id": "rhetorical_devices",
+            "name": "修辞手法",
+            "weight": 1.5
+          },
+          {
+            "id": "dialogue_depth",
+            "name": "对话可咀嚼度",
+            "weight": 1.5
+          }
+        ],
+        "reader_layer": [
+          {
+            "id": "pre_reading_horizon",
+            "name": "阅读前视野",
+            "weight": 1
+          },
+          {
+            "id": "immersion",
+            "name": "代入感",
+            "weight": 0.5
+          },
+          {
+            "id": "plot_understanding",
+            "name": "情节理解",
+            "weight": 2
+          },
+          {
+            "id": "character_understanding",
+            "name": "人物理解",
+            "weight": 3
+          },
+          {
+            "id": "theme_understanding",
+            "name": "主题理解",
+            "weight": 4
+          },
+          {
+            "id": "overall_aesthetics",
+            "name": "整体审美",
+            "weight": 2
+          },
+          {
+            "id": "knowledge_acquisition",
+            "name": "知识获取",
+            "weight": 1.5
+          },
+          {
+            "id": "paradigm_shift",
+            "name": "观念改变",
+            "weight": 2.5
+          },
+          {
+            "id": "behavioral_impact",
+            "name": "行为影响",
+            "weight": 2.5
+          }
+        ]
+      },
+      "deleted": true
+    },
+    {
+      "id": "rc_1781417069615_7k1a",
+      "name": "测试",
+      "note": "",
+      "parentId": "rc_1781410399508_61xl",
+      "createdAt": "2026-06-14T06:04:29.615Z",
+      "criteria": {
+        "author_layer": [
+          {
+            "id": "theme_author",
+            "name": "作品主题",
+            "weight": 6
+          },
+          {
+            "id": "plot_architecture",
+            "name": "情节架构",
+            "weight": 10
+          },
+          {
+            "id": "character_design",
+            "name": "人物设计",
+            "weight": 10
+          },
+          {
+            "id": "worldview",
+            "name": "世界观",
+            "weight": 1.5
+          },
+          {
+            "id": "narrative_time",
+            "name": "叙事时间",
+            "weight": 0.5
+          },
+          {
+            "id": "symbolism",
+            "name": "象征与意象",
+            "weight": 0
+          },
+          {
+            "id": "era_background",
+            "name": "时代背景",
+            "weight": 0.5
+          }
+        ],
+        "text_layer": [
+          {
+            "id": "plot_storytelling",
+            "name": "情节故事性",
+            "weight": 1
+          },
+          {
+            "id": "character_development",
+            "name": "登场人物塑造",
+            "weight": 3
+          },
+          {
+            "id": "relationship_network",
+            "name": "人物关系网络",
+            "weight": 1.5
+          },
+          {
+            "id": "background_description",
+            "name": "背景描写",
+            "weight": 0
+          },
+          {
+            "id": "theme_expression",
+            "name": "主题表达",
+            "weight": 0
+          },
+          {
+            "id": "narrative_perspective",
+            "name": "叙述视角",
+            "weight": 0
+          },
+          {
+            "id": "writing_style",
+            "name": "文笔文风信息量",
+            "weight": 0
+          },
+          {
+            "id": "rhetorical_devices",
+            "name": "修辞手法",
+            "weight": 0
+          },
+          {
+            "id": "dialogue_depth",
+            "name": "对话可咀嚼度",
+            "weight": 0
+          }
+        ],
+        "reader_layer": [
+          {
+            "id": "pre_reading_horizon",
+            "name": "阅读前视野",
+            "weight": 1
+          },
+          {
+            "id": "immersion",
+            "name": "代入感",
+            "weight": 0.5
+          },
+          {
+            "id": "plot_understanding",
+            "name": "情节理解",
+            "weight": 3
+          },
+          {
+            "id": "character_understanding",
+            "name": "人物理解",
+            "weight": 3
+          },
+          {
+            "id": "theme_understanding",
+            "name": "主题理解",
+            "weight": 0
+          },
+          {
+            "id": "overall_aesthetics",
+            "name": "整体审美",
+            "weight": 2
+          },
+          {
+            "id": "knowledge_acquisition",
+            "name": "知识获取",
+            "weight": 1.5
+          },
+          {
+            "id": "paradigm_shift",
+            "name": "观念改变",
+            "weight": 2.5
+          },
+          {
+            "id": "behavioral_impact",
+            "name": "行为影响",
+            "weight": 2.5
+          }
+        ]
+      },
+      "deleted": true
+    }
+  ]
+}

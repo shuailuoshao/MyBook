@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>企画0004</title>
-    <link rel="stylesheet" href="styles.css?v=888">
+    <link rel="stylesheet" href="styles.css?v=909">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: file:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
+    <!-- V3.0 对比分析：Data-Dense Dashboard 设计系统字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap">
+    <!-- V3.0 对比分析：Lucide 图标（SVG，禁用 emoji 作结构性图标） -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: file:; connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
 </head>
 <body>
     <div class="app-container">
@@ -21,6 +27,9 @@
                     </button>
                     <button id="viewInspiration" class="view-switcher-btn" onclick="switchView('inspiration')">
                         <i class="fas fa-lightbulb"></i> 灵感记录
+                    </button>
+                    <button id="viewComparison" class="view-switcher-btn" onclick="switchView('comparison')">
+                        <i class="fas fa-balance-scale"></i> 对比分析
                     </button>
                 </div>
                 <button id="themeToggleBtn" class="btn-secondary theme-toggle-global" title="切换主题">
@@ -462,6 +471,128 @@
                 </section>
             </section>
 
+            <!-- V3.0 对比分析视图（与知识库/灵感记录平级） -->
+            <section id="comparisonContainer" class="comparison-section" style="display: none;">
+                <!-- 列表页：项目网格 -->
+                <div id="comparisonListView" class="comparison-list-view">
+                    <div class="comparison-list-header">
+                        <div class="comparison-list-title">
+                            <h2><i class="fas fa-balance-scale"></i> 对比分析</h2>
+                            <span id="comparisonCount" class="section-count"></span>
+                        </div>
+                        <button id="newComparisonBtn" class="cmp-btn cmp-btn-primary">
+                            <i class="fas fa-plus"></i> 新建对比项目
+                        </button>
+                    </div>
+                    <div id="comparisonGrid" class="comparison-grid">
+                        <!-- 卡片由 renderer 渲染 -->
+                    </div>
+                    <div id="comparisonEmptyState" class="cmp-empty-state" style="display: none;">
+                        <i class="fas fa-balance-scale"></i>
+                        <h3>还没有对比项目</h3>
+                        <p>把两本以上评过分的作品放在一起，长期追踪它们在你评分体系下的高低演变。</p>
+                        <button class="cmp-btn cmp-btn-primary" onclick="window.bookApp.openNewComparisonDialog()">
+                            <i class="fas fa-plus"></i> 创建第一个对比项目
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 工作区：单个对比项目 -->
+                <div id="comparisonWorkspace" class="comparison-workspace" style="display: none;">
+                    <!-- 顶部 meta bar -->
+                    <div class="cmp-workspace-topbar">
+                        <button id="cmpBackToListBtn" class="cmp-btn cmp-btn-ghost" title="返回列表">
+                            <i class="fas fa-arrow-left"></i> 返回
+                        </button>
+                        <span id="cmpWorkspaceTitle" class="cmp-workspace-title">对比项目</span>
+                        <span id="cmpWorkspaceCriteria" class="cmp-card-criteria" title="当前查看版本使用的评分体系">—</span>
+                        <div class="cmp-workspace-actions">
+                            <button id="cmpCriteriaBtn" class="cmp-btn cmp-btn-ghost" title="评分体系版本管理">
+                                <i class="fas fa-sliders-h"></i> 评分体系
+                            </button>
+                            <button id="cmpRefreshBtn" class="cmp-btn cmp-btn-ghost" title="基于最新评分数据在主线追加一个新版本">
+                                <i class="fas fa-sync-alt"></i> 刷新版本
+                            </button>
+                            <button id="cmpForkBtn" class="cmp-btn cmp-btn-ghost" title="基于当前版本派生一个实验分支">
+                                <i class="fas fa-code-branch"></i> Fork 实验
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- meta 第二行：描述 + 涉及书 -->
+                    <div class="cmp-workspace-meta">
+                        <input type="text" id="cmpWorkspaceDesc" class="cmp-desc-input"
+                            placeholder="这个对比项目的初衷（可选）..." maxlength="200">
+                        <div id="cmpWorkspaceBooks" class="cmp-workspace-books"></div>
+                    </div>
+
+                    <!-- 版本时间线 chip-rail -->
+                    <div class="cmp-version-rail">
+                        <span class="cmp-rail-label">版本</span>
+                        <div id="cmpVersionChips" class="cmp-version-chips"></div>
+                    </div>
+
+                    <!-- 双列内容区 -->
+                    <div class="cmp-workspace-columns">
+                        <!-- 左：图表区 -->
+                        <div class="cmp-charts-col">
+                            <div id="cmpChartsWarn" class="cmp-warn-banner" style="display:none;" role="alert"></div>
+                            <div id="cmpChartsContainer" class="cmp-charts-container">
+                                <div class="cmp-chart-block">
+                                    <h4 class="cmp-chart-title"><i class="fas fa-trophy"></i> 综合得分</h4>
+                                    <div id="cmpChartTotals" class="cmp-chart-totals"></div>
+                                </div>
+                                <div class="cmp-chart-block">
+                                    <h4 class="cmp-chart-title">
+                                        <i class="fas fa-chart-pie"></i>
+                                        <span id="cmpRadarTitle">层面对比雷达</span>
+                                    </h4>
+                                    <div id="cmpRadarTabs" class="cmp-radar-tabs">
+                                        <button class="cmp-radar-tab active" data-layer="">全部层面</button>
+                                        <button class="cmp-radar-tab" data-layer="author_layer">作者层面</button>
+                                        <button class="cmp-radar-tab" data-layer="text_layer">文本层面</button>
+                                        <button class="cmp-radar-tab" data-layer="reader_layer">读者层面</button>
+                                    </div>
+                                    <div id="cmpChartDrillRadar" class="cmp-chart-canvas cmp-chart-canvas-tall"></div>
+                                </div>
+                            </div>
+                            <div id="cmpChartsEmpty" class="cmp-charts-placeholder" style="display:none;">
+                                <p>该版本缺少可用的评分数据，无法绘制图表。</p>
+                            </div>
+                        </div>
+                        <!-- 右：评价区 -->
+                        <div class="cmp-annotation-col">
+                            <div class="cmp-annotation-header">
+                                <span class="cmp-annotation-title">评价 <span id="cmpAnnotationVer" class="cmp-anno-ver"></span></span>
+                                <span id="cmpAnnotationSaveState" class="cmp-anno-save-state"></span>
+                            </div>
+                            <div id="cmpAnnotationEditor" class="cmp-annotation-editor markdown-body"
+                                contenteditable="true" spellcheck="false"
+                                data-placeholder="写下你对这一版对比的洞察、结论、疑问...（支持 Markdown，所见即所得）"></div>
+                        </div>
+                    </div>
+
+                    <!-- 评分体系版本管理抽屉（4c） -->
+                    <div id="cmpCriteriaDrawer" class="cmp-drawer" style="display:none;">
+                        <div class="cmp-drawer-overlay" id="cmpDrawerOverlay"></div>
+                        <div class="cmp-drawer-panel">
+                            <div class="cmp-drawer-header">
+                                <h3><i class="fas fa-sliders-h"></i> 评分体系版本</h3>
+                                <button class="close-btn" id="cmpDrawerCloseBtn">×</button>
+                            </div>
+                            <div class="cmp-drawer-body">
+                                <div class="cmp-drawer-section-label">所有版本</div>
+                                <div id="cmpCriteriaVersionList" class="cmp-criteria-version-list"></div>
+                                <button id="cmpNewCriteriaBtn" class="cmp-btn cmp-btn-ghost cmp-btn-block">
+                                    <i class="fas fa-code-branch"></i> 基于当前版本新建（Fork 权重实验）
+                                </button>
+                                <div id="cmpCriteriaDiff" class="cmp-criteria-diff"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -473,6 +604,80 @@
             <div class="modal-actions">
                 <button id="cancelDeleteBtn" class="btn-secondary">取消</button>
                 <button id="confirmDeleteBtn" class="btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- V3.0 新建对比项目对话框 -->
+    <div id="newComparisonModal" class="modal" style="display: none;">
+        <div class="modal-content cmp-new-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-balance-scale"></i> 新建对比项目</h3>
+                <button class="close-btn" onclick="window.bookApp.closeNewComparisonModal()">×</button>
+            </div>
+            <div class="cmp-new-body">
+                <label class="cmp-field-label" for="cmpNewTitle">项目名称</label>
+                <input type="text" id="cmpNewTitle" class="cmp-text-input" placeholder="例如：马尔克斯三部曲对比" maxlength="60">
+
+                <label class="cmp-field-label">选择作品（至少 2 部已评分）</label>
+                <div id="cmpNewBookPicker" class="cmp-book-picker">
+                    <!-- 由 renderer 渲染已评分书的多选列表 -->
+                </div>
+                <div class="cmp-new-hint" id="cmpNewHint">已选 0 部</div>
+            </div>
+            <div class="modal-actions">
+                <button class="cmp-btn cmp-btn-ghost" onclick="window.bookApp.closeNewComparisonModal()">取消</button>
+                <button id="cmpNewCreateBtn" class="cmp-btn cmp-btn-primary">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- V3.0 Fork 权重实验对话框（4c-2/3） -->
+    <div id="cmpForkModal" class="modal" style="display: none;">
+        <div class="modal-content cmp-fork-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-code-branch"></i> Fork 权重实验</h3>
+                <button class="close-btn" onclick="window.bookApp.closeForkDialog()">×</button>
+            </div>
+            <div class="cmp-fork-body">
+                <div class="cmp-fork-left">
+                    <label class="cmp-field-label" for="cmpForkName">新版本名称</label>
+                    <input type="text" id="cmpForkName" class="cmp-text-input" placeholder="例如：调低主题表达权重" maxlength="60">
+                    <label class="cmp-field-label" for="cmpForkNote">备注（为什么改 / 改了什么）</label>
+                    <textarea id="cmpForkNote" class="cmp-fork-note" placeholder="支持 Markdown"></textarea>
+                    <label class="cmp-field-label">权重调节</label>
+                    <div id="cmpForkSliders" class="cmp-fork-sliders"></div>
+                </div>
+                <div class="cmp-fork-right">
+                    <div class="cmp-fork-preview-title"><i class="fas fa-bolt"></i> 实时影响预览</div>
+                    <div id="cmpForkPreview" class="cmp-fork-preview"></div>
+                </div>
+            </div>
+            <div class="cmp-fork-sumbar">
+                <span class="cmp-fork-sum-label">权重总和</span>
+                <span id="cmpForkSumValue" class="cmp-fork-sum-value">50 / 50</span>
+                <span id="cmpForkSumHint" class="cmp-fork-sum-hint"></span>
+            </div>
+            <div class="modal-actions">
+                <button class="cmp-btn cmp-btn-ghost" onclick="window.bookApp.closeForkDialog()">取消</button>
+                <button id="cmpForkCreateBtn" class="cmp-btn cmp-btn-primary">保存为新版本</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用确认对话框（删除等危险操作，替代 confirm()） -->
+    <div id="cmpConfirmModal" class="modal" style="display: none;">
+        <div class="modal-content cmp-confirm-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-triangle-exclamation"></i> <span id="cmpConfirmTitle">确认操作</span></h3>
+                <button class="close-btn" onclick="window.bookApp.closeConfirmDialog()">×</button>
+            </div>
+            <div class="cmp-confirm-body">
+                <p id="cmpConfirmMessage">确定要执行此操作吗？</p>
+            </div>
+            <div class="modal-actions">
+                <button class="cmp-btn cmp-btn-ghost" onclick="window.bookApp.closeConfirmDialog()">取消</button>
+                <button id="cmpConfirmOkBtn" class="cmp-btn cmp-btn-danger">删除</button>
             </div>
         </div>
     </div>

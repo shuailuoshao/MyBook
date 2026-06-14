@@ -1,0 +1,40 @@
+[
+  {
+    "id": "cmp_1781418987860_jxbro2",
+    "title": "未命名对比",
+    "description": "",
+    "createdAt": "2026-06-14T06:36:27.860Z",
+    "updatedAt": "2026-06-14T06:36:27.860Z",
+    "mainBranchTipId": "ver_v1",
+    "versions": [
+      {
+        "id": "ver_v1",
+        "parentId": null,
+        "branchName": "main",
+        "createdAt": "2026-06-14T06:36:27.860Z",
+        "createReason": "initial",
+        "forkNote": "",
+        "criteriaVersionId": "rc_initial_v1",
+        "bookRefs": [
+          {
+            "bookId": "1772938575454",
+            "ratingEntryId": "rate_1772938575454_002"
+          },
+          {
+            "bookId": "1772938762057",
+            "ratingEntryId": "rate_1772938762057_005"
+          },
+          {
+            "bookId": "1772939198038",
+            "ratingEntryId": "rate_1772939198038_001"
+          },
+          {
+            "bookId": "1772956012201",
+            "ratingEntryId": "rate_1772956012201_001"
+          }
+        ],
+        "annotation": ""
+      }
+    ]
+  }
+]
